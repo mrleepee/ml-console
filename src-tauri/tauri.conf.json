@@ -24,6 +24,9 @@
       "dangerousDisableAssetCspModification": true
     }
   },
+  "plugins": {
+    "http": {}
+  },
   "bundle": {
     "active": true,
     "targets": "all",

@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { fetch } from "@tauri-apps/plugin-http";
+import { invoke } from "@tauri-apps/api/core";
 import TestHarness from "./TestHarness";
-import { digestAuthRequest } from "./digestAuth";
 import "./App.css";
 
 function App() {
@@ -55,22 +54,25 @@ function App() {
       console.log("Request body:", body);
       console.log("Query params:", queryParams.toString());
       
-      // Use digest authentication
-      const response = await digestAuthRequest(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: body,
-        username: username,
-        password: password,
+      // Use Tauri command to make HTTP request (bypasses CORS)
+      const response = await invoke("http_request", {
+        request: {
+          url: url,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: body,
+          username: username,
+          password: password,
+        }
       });
 
-      if (!response.ok) {
+      if (!response.success) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const result = await response.text();
+      const result = response.body;
       console.log("Response status:", response.status);
       console.log("Response headers:", response.headers);
       console.log("Response text:", result);
@@ -100,17 +102,23 @@ function App() {
       console.log("Fetch function available:", typeof fetch);
       
       // First test with a known good endpoint
-      const testResponse = await fetch("https://httpbin.org/get", {
-        method: "GET",
+      const testResponse = await invoke("http_request", {
+        request: {
+          url: "https://httpbin.org/get",
+          method: "GET",
+        }
       });
       
       console.log("Test response (httpbin):", testResponse.status);
       
-      // Then test the actual server with digest auth
-      const response = await digestAuthRequest(serverUrl, {
-        method: "GET",
-        username: username,
-        password: password,
+      // Then test the actual server with basic auth
+      const response = await invoke("http_request", {
+        request: {
+          url: serverUrl,
+          method: "GET",
+          username: username,
+          password: password,
+        }
       });
       
       console.log("Connection test response:", response.status);

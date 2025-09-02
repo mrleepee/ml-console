@@ -5,19 +5,6 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "opener:default",
-    "http:default",
-    "http:allow-fetch",
-    "http:allow-fetch-send",
-    {
-      "identifier": "http:allow-fetch",
-      "allow": [
-        { "url": "https://httpbin.org/**" },
-        { "url": "http://localhost:*/**" },
-        { "url": "https://localhost:*/**" },
-        { "url": "http://**" },
-        { "url": "https://**" }
-      ]
-    }
+    "opener:default"
   ]
 }

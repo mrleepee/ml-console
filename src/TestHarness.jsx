@@ -1,20 +1,21 @@
 import { useState } from "react";
-import { fetch } from "@tauri-apps/plugin-http";
-import { digestAuthRequest } from "./digestAuth";
+import { invoke } from "@tauri-apps/api/core";
 import "./TestHarness.css";
 
 function TestHarness({ serverUrl, username = "admin", password = "admin" }) {
   const [testResults, setTestResults] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [selectedEndpoint, setSelectedEndpoint] = useState("httpTest");
+  const [selectedEndpoint, setSelectedEndpoint] = useState("digestAuthTest");
 
   const endpoints = {
-    httpTest: {
-      name: "HTTP Test (httpbin.org)",
-      path: "",
-      method: "GET",
-      description: "Test basic HTTP functionality",
-      fullUrl: "https://httpbin.org/get"
+    digestAuthTest: {
+      name: "Digest Auth Test",
+      path: "/qconsole/endpoints/evaler.xqy",
+      method: "POST",
+      description: "Test digest authentication with MarkLogic Query Console",
+      testData: {
+        xquery: 'xquery version "1.0-ml";\n\n"digest auth test"'
+      }
     },
     evaluator: {
       name: "Query Evaluator",
@@ -26,19 +27,24 @@ function TestHarness({ serverUrl, username = "admin", password = "admin" }) {
         javascript: 'console.log("hello world");\n"hello world"'
       }
     },
-    // Add more endpoints as we discover them
-    // history: {
-    //   name: "Query History",
-    //   path: "/qconsole/endpoints/history.xqy",
-    //   method: "GET",
-    //   description: "Get query execution history"
-    // },
-    // sessions: {
-    //   name: "Sessions",
-    //   path: "/qconsole/endpoints/sessions.xqy", 
-    //   method: "GET",
-    //   description: "Get active sessions"
-    // }
+    history: {
+      name: "Query History",
+      path: "/qconsole/endpoints/history.xqy",
+      method: "GET",
+      description: "Get query execution history"
+    },
+    sessions: {
+      name: "Sessions",
+      path: "/qconsole/endpoints/sessions.xqy", 
+      method: "GET",
+      description: "Get active sessions"
+    },
+    databases: {
+      name: "Databases",
+      path: "/qconsole/endpoints/databases.xqy",
+      method: "GET", 
+      description: "Get available databases"
+    }
   };
 
   const generateSessionIds = () => {
@@ -63,33 +69,52 @@ function TestHarness({ serverUrl, username = "admin", password = "admin" }) {
       const sessionIds = generateSessionIds();
       let url, body, headers;
 
-      if (endpointKey === "httpTest") {
-        // Test basic HTTP functionality
-        url = endpoint.fullUrl;
-        headers = {};
+      if (endpointKey === "digestAuthTest") {
+        // Test digest authentication specifically
+        const sessionIds = generateSessionIds();
+        const queryParams = new URLSearchParams({
+          ...sessionIds,
+          querytype: "xquery",
+          action: "eval",
+          optimize: "1",
+          trace: "",
+        });
+
+        url = `${serverUrl}${endpoint.path}?${queryParams}`;
+        body = `data=${encodeURIComponent(endpoint.testData.xquery)}`;
+        headers = {
+          "Content-Type": "application/x-www-form-urlencoded",
+        };
 
         const startTime = Date.now();
-        const response = await fetch(url, {
-          method: endpoint.method,
-          headers,
+        const response = await invoke("http_request", {
+          request: {
+            url: url,
+            method: endpoint.method,
+            headers: headers,
+            body: body,
+            username: username,
+            password: password,
+          }
         });
         const endTime = Date.now();
 
-        const responseText = await response.text();
+        const responseText = response.body;
         
         setTestResults(prev => [...prev, {
-          id: testId.toString(),
+          id: `${testId}-digest-auth`,
           endpoint: endpoint.name,
-          type: "http-test",
+          type: "digest-auth",
           url,
           method: endpoint.method,
-          requestBody: "",
+          requestBody: body,
           status: response.status,
           statusText: response.statusText,
           responseText,
           duration: endTime - startTime,
           timestamp: new Date().toISOString(),
-          success: response.ok
+          success: response.success,
+          authType: "digest"
         }]);
       } else if (endpointKey === "evaluator") {
         // Test both XQuery and JavaScript
@@ -113,17 +138,20 @@ function TestHarness({ serverUrl, username = "admin", password = "admin" }) {
             "Content-Type": "application/x-www-form-urlencoded",
           };
 
-          const startTime = Date.now();
-          const response = await digestAuthRequest(url, {
+                  const startTime = Date.now();
+        const response = await invoke("http_request", {
+          request: {
+            url: url,
             method: endpoint.method,
-            headers,
-            body,
+            headers: headers,
+            body: body,
             username: username,
             password: password,
-          });
-          const endTime = Date.now();
+          }
+        });
+        const endTime = Date.now();
 
-          const responseText = await response.text();
+        const responseText = response.body;
           
           setTestResults(prev => [...prev, {
             id: `${testId}-${test.type}`,
@@ -137,7 +165,7 @@ function TestHarness({ serverUrl, username = "admin", password = "admin" }) {
             responseText,
             duration: endTime - startTime,
             timestamp: new Date().toISOString(),
-            success: response.ok
+            success: response.success
           }]);
         }
       } else {
@@ -148,15 +176,18 @@ function TestHarness({ serverUrl, username = "admin", password = "admin" }) {
         };
 
         const startTime = Date.now();
-        const response = await digestAuthRequest(url, {
-          method: endpoint.method,
-          headers,
-          username: username,
-          password: password,
+        const response = await invoke("http_request", {
+          request: {
+            url: url,
+            method: endpoint.method,
+            headers: headers,
+            username: username,
+            password: password,
+          }
         });
         const endTime = Date.now();
 
-        const responseText = await response.text();
+        const responseText = response.body;
         
         setTestResults(prev => [...prev, {
           id: testId.toString(),
@@ -168,9 +199,9 @@ function TestHarness({ serverUrl, username = "admin", password = "admin" }) {
           status: response.status,
           statusText: response.statusText,
           responseText,
-          duration: endTime - startTime,
-          timestamp: new Date().toISOString(),
-          success: response.ok
+                      duration: endTime - startTime,
+            timestamp: new Date().toISOString(),
+            success: response.success
         }]);
       }
 
