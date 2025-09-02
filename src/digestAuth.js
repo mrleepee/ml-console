@@ -1,4 +1,6 @@
-import { createHash } from 'crypto';
+// Note: We provide a lightweight `createHash` implementation below.
+// The previous import from Node's `crypto` module caused build failures
+// in the browser/tauri environment, resulting in a blank UI.
 
 /**
  * Parse digest challenge from WWW-Authenticate header
@@ -125,23 +127,25 @@ export async function digestAuthRequest(url, options = {}) {
  * Simple MD5 hash function for browser compatibility
  */
 function createHash(algorithm) {
-  if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
-    // Browser environment - we'll need to implement MD5 differently
-    return {
-      update: function(data) {
-        this.data = data;
-        return this;
-      },
-      digest: function(encoding) {
-        // Simple MD5 implementation for browser
-        return md5(this.data);
-      }
-    };
-  } else {
-    // Node.js environment
-    const crypto = require('crypto');
-    return crypto.createHash(algorithm);
+  // We only support MD5 for the digest auth calculations.
+  // This implementation works in both browser and Node environments
+  // without relying on Node's `crypto` module which isn't available
+  // during client-side builds.
+  if (algorithm.toLowerCase() !== 'md5') {
+    throw new Error('Unsupported hash algorithm: ' + algorithm);
   }
+
+  return {
+    data: '',
+    update(data) {
+      this.data = data;
+      return this;
+    },
+    digest(encoding) {
+      // Encoding is ignored because `md5` returns a hex string.
+      return md5(this.data);
+    }
+  };
 }
 
 /**
