@@ -110,6 +110,14 @@ async fn http_request(request: HttpRequest) -> Result<HttpResponse, String> {
         }
     }
 
+    // Add body before attempting authentication so the challenge request
+    // matches the actual request the server will receive. Some endpoints
+    // (like MarkLogic's evaler.xqy) require a POST body even for the
+    // initial 401 challenge.
+    if let Some(body) = request.body {
+        req_builder = req_builder.body(body);
+    }
+
     // Handle authentication - try digest first, fallback to basic
     if let (Some(username), Some(password)) = (request.username, request.password) {
         // First, make a request without auth to get the challenge
@@ -133,11 +141,6 @@ async fn http_request(request: HttpRequest) -> Result<HttpResponse, String> {
             // If challenge request fails, fallback to basic auth
             req_builder = req_builder.basic_auth(&username, Some(&password));
         }
-    }
-
-    // Add body if provided
-    if let Some(body) = request.body {
-        req_builder = req_builder.body(body);
     }
 
     match req_builder.send().await {
