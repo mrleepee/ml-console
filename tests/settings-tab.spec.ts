@@ -46,7 +46,6 @@ test('Settings tab can be activated and displays settings form', async () => {
   
   // Check that settings form fields are present
   await expect(win.locator('#settings-server')).toBeVisible();
-  await expect(win.locator('#settings-modules-db')).toBeVisible();
   await expect(win.locator('#settings-username')).toBeVisible();
   await expect(win.locator('#settings-password')).toBeVisible();
   
@@ -65,10 +64,8 @@ test('Settings tab contains all required fields with correct defaults', async ()
   await expect(serverSelect).toHaveValue('localhost');
   await expect(serverSelect.locator('option[value="localhost"]')).toBeVisible();
   
-  // Check Modules Database dropdown
-  const modulesDbSelect = win.locator('#settings-modules-db');
-  await expect(modulesDbSelect).toHaveValue('prime-content-modules');
-  await expect(modulesDbSelect.locator('option[value="prime-content-modules"]')).toBeVisible();
+  // Note: Modules Database dropdown has been removed from Settings tab
+  // and moved to combined database dropdown on main page
   
   // Check Username field
   const usernameInput = win.locator('#settings-username');
@@ -190,10 +187,10 @@ test('Settings tab layout is responsive and well-styled', async () => {
   
   // Check that all settings groups are properly styled
   const settingsGroups = win.locator('.settings-group');
-  await expect(settingsGroups).toHaveCount(4); // Server, Modules DB, Username, Password
+  await expect(settingsGroups).toHaveCount(3); // Server, Username, Password
   
   // Verify each group has label and input/select
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 3; i++) {
     const group = settingsGroups.nth(i);
     await expect(group.locator('label')).toBeVisible();
     await expect(group.locator('select, input')).toBeVisible();
@@ -224,6 +221,71 @@ test('Settings tab integration with existing functionality', async () => {
   // Verify the interface is functional
   await expect(win.locator('.query-editor')).toBeVisible();
   await expect(win.locator('.results-output')).toBeVisible();
+  
+  await app.close();
+});
+
+test('Combined database-modules dropdown is present on Query Console', async () => {
+  const { app, win } = await launchApp();
+  
+  // Ensure Query Console tab is active
+  await win.getByText('Query Console').click();
+  await win.waitForTimeout(1000);
+  
+  // Check that combined database dropdown is present in header
+  const databaseConfigSelect = win.locator('#database-config');
+  await expect(databaseConfigSelect).toBeVisible();
+  
+  // The dropdown should show database name with modules database in parentheses
+  // Since this is running with mock data, we can't test specific values
+  // but we can verify the dropdown exists and has options
+  const options = databaseConfigSelect.locator('option');
+  await expect(options).not.toHaveCount(0);
+  
+  await app.close();
+});
+
+test('Database configuration is preserved when switching tabs', async () => {
+  const { app, win } = await launchApp();
+  
+  // Start on Query Console
+  await win.getByText('Query Console').click();
+  await win.waitForTimeout(1000);
+  
+  // Note down current database selection
+  const databaseConfigSelect = win.locator('#database-config');
+  const initialValue = await databaseConfigSelect.inputValue();
+  
+  // Switch to Settings and back
+  await win.getByText('Settings').click();
+  await win.waitForTimeout(500);
+  await win.getByText('Query Console').click();
+  await win.waitForTimeout(500);
+  
+  // Verify database selection is maintained
+  await expect(databaseConfigSelect).toHaveValue(initialValue);
+  
+  await app.close();
+});
+
+test('Combined database dropdown shows modules database in parentheses', async () => {
+  const { app, win } = await launchApp();
+  
+  // Go to Query Console
+  await win.getByText('Query Console').click();
+  await win.waitForTimeout(1000);
+  
+  // Check database dropdown format
+  const databaseConfigSelect = win.locator('#database-config');
+  await expect(databaseConfigSelect).toBeVisible();
+  
+  // Get the selected option text and verify it contains parentheses
+  // This indicates it's showing "DatabaseName (ModulesDatabase)" format
+  const selectedOption = databaseConfigSelect.locator('option:checked');
+  const optionText = await selectedOption.textContent();
+  
+  // Should contain parentheses indicating modules database
+  expect(optionText).toMatch(/\(.+\)/);
   
   await app.close();
 });
