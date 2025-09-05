@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Editor from '@monaco-editor/react';
 import parseHeaders from 'parse-headers';
 import TestHarness from "./TestHarness";
 import "./App.css";
 
 function App() {
-  console.log("🚀 App component loaded - React code is running!");
+  // console.log("🚀 App component loaded - React code is running!");
   
   // Content-Type to Monaco language mapping
   function getMonacoLanguageFromContentType(contentType) {
@@ -83,7 +83,7 @@ function App() {
   };
 
   // Simple HTTP request helper (works in both Electron and web)
-  async function makeRequest(options) {
+  const makeRequest = useCallback(async (options) => {
     try {
       // Check if we're in Electron environment
       if (window.electronAPI && window.electronAPI.httpRequest) {
@@ -111,7 +111,7 @@ function App() {
       console.error('HTTP request failed:', error);
       throw error;
     }
-  }
+  }, []);
 
   // Database helper functions
   async function saveQueryToHistory(content, queryType, databaseName, executionTimeMs = null, status = 'executed') {
@@ -144,7 +144,7 @@ function App() {
     }
   }
 
-  async function loadQueryHistory(limit = 15) {
+  const loadQueryHistory = useCallback(async (limit = 15) => {
     try {
       if (window.electronAPI && window.electronAPI.database) {
         setHistoryLoading(true);
@@ -163,7 +163,7 @@ function App() {
     } finally {
       setHistoryLoading(false);
     }
-  }
+  }, []);
 
   async function loadQueryFromHistory(id) {
     try {
@@ -258,10 +258,10 @@ function App() {
   }
 
   // Parse multipart/mixed response to extract just the content (legacy)
-  function parseMultipartResponse(responseText) {
+  const parseMultipartResponse = useCallback((responseText) => {
     const tableData = parseMultipartToTableData(responseText);
     return tableData.map(record => record.content).join('\n');
-  }
+  }, []);
 
   // Pretty-print helpers for displaying record content
   function formatJsonPretty(rawText) {
@@ -418,7 +418,7 @@ function App() {
   });
 
   // Health check function for connection status
-  async function checkConnection() {
+  const checkConnection = useCallback(async () => {
     try {
       setConnectionStatus("connecting");
       
@@ -439,12 +439,12 @@ function App() {
     } catch (err) {
       setConnectionStatus("error");
     }
-  }
+  }, [server, username, password, makeRequest]);
 
   // Get available databases
-  async function getDatabases() {
+  const getDatabases = useCallback(async () => {
     try {
-      console.log("=== GETTING DATABASES ===");
+      // console.log("=== GETTING DATABASES ===");
       
       // Query MarkLogic for databases using XQuery
       const databaseQuery = `
@@ -500,7 +500,7 @@ function App() {
       // Fallback to common database names
       setDatabases(["Documents", "Modules", "Security", "Schemas", "Triggers"]);
     }
-  }
+  }, [serverUrl, username, password, makeRequest, parseMultipartResponse]);
 
   // Get databases and check connection when server/credentials change
   useEffect(() => {
@@ -508,12 +508,12 @@ function App() {
       // checkConnection();
       getDatabases();
     }
-  }, [username, password, server]);
+  }, [username, password, server]); // Remove getDatabases from dependencies to break the loop
 
   // Load query history on startup
   useEffect(() => {
     loadQueryHistory();
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
 
   // Background health check every 5 seconds
   useEffect(() => {
@@ -524,7 +524,7 @@ function App() {
 
       return () => clearInterval(intervalId);
     }
-  }, [username, password, server]);
+  }, [username, password, server]); // Remove checkConnection from dependencies to break the loop
 
   // Keyboard shortcuts for record navigation
   useEffect(() => {
