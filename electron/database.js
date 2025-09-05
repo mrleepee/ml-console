@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const { app } = require('electron');
+const crypto = require('crypto');
 
 class QueryRepository {
   constructor() {
@@ -40,6 +41,7 @@ class QueryRepository {
         content TEXT NOT NULL,
         query_type TEXT NOT NULL CHECK(query_type IN ('xquery', 'javascript', 'sparql', 'optic')),
         database_name TEXT,
+        query_hash TEXT UNIQUE,
         version INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -65,6 +67,7 @@ class QueryRepository {
       CREATE INDEX IF NOT EXISTS idx_queries_type_time ON queries(query_type, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_queries_database_time ON queries(database_name, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_queries_status_time ON queries(status, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_queries_hash ON queries(query_hash);
     `);
 
     // Trigger to keep FTS table in sync
@@ -94,8 +97,18 @@ class QueryRepository {
     // Prepared statements for common operations
     this.statements = {
       insertQuery: this.db.prepare(`
-        INSERT INTO queries (content, query_type, database_name, embedding, execution_time_ms, status)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO queries (content, query_type, database_name, query_hash, embedding, execution_time_ms, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `),
+      
+      findQueryByHash: this.db.prepare(`
+        SELECT id, created_at, updated_at FROM queries WHERE query_hash = ?
+      `),
+      
+      updateQueryTimestamp: this.db.prepare(`
+        UPDATE queries 
+        SET updated_at = CURRENT_TIMESTAMP, execution_time_ms = ?, status = ?
+        WHERE query_hash = ?
       `),
       
       getRecentQueries: this.db.prepare(`
@@ -103,7 +116,7 @@ class QueryRepository {
                execution_time_ms, status,
                SUBSTR(content, 1, 100) || CASE WHEN LENGTH(content) > 100 THEN '...' ELSE '' END as preview
         FROM queries 
-        ORDER BY created_at DESC 
+        ORDER BY updated_at DESC 
         LIMIT ?
       `),
       
@@ -118,7 +131,7 @@ class QueryRepository {
         FROM queries q
         JOIN query_fts fts ON q.id = fts.rowid
         WHERE query_fts MATCH ?
-        ORDER BY q.created_at DESC
+        ORDER BY q.updated_at DESC
         LIMIT ?
       `),
       
@@ -128,7 +141,7 @@ class QueryRepository {
                SUBSTR(content, 1, 100) || CASE WHEN LENGTH(content) > 100 THEN '...' ELSE '' END as preview
         FROM queries 
         WHERE query_type = ?
-        ORDER BY created_at DESC 
+        ORDER BY updated_at DESC 
         LIMIT ?
       `),
       
@@ -144,24 +157,60 @@ class QueryRepository {
     };
   }
 
-  // Save a new query
+  // Generate a unique hash for query deduplication
+  generateQueryHash(content, queryType, databaseName) {
+    // Normalize inputs for consistent hashing
+    const normalizedContent = content.trim().replace(/\s+/g, ' ');
+    const normalizedType = (queryType || '').toLowerCase();
+    const normalizedDatabase = (databaseName || '').toLowerCase();
+    
+    // Create hash from combination of content, type, and database
+    const hashInput = `${normalizedContent}|${normalizedType}|${normalizedDatabase}`;
+    return crypto.createHash('sha256').update(hashInput, 'utf8').digest('hex');
+  }
+
+  // Save a new query or update existing if duplicate
   saveQuery(content, queryType, databaseName, embedding = null, executionTimeMs = null, status = 'saved') {
     try {
-      const result = this.statements.insertQuery.run(
-        content, 
-        queryType, 
-        databaseName, 
-        embedding ? Buffer.from(embedding) : null,
-        executionTimeMs,
-        status
-      );
+      // Generate hash for deduplication
+      const queryHash = this.generateQueryHash(content, queryType, databaseName);
       
-      console.log(`Saved query with ID: ${result.lastInsertRowid}`);
-      return {
-        success: true,
-        id: result.lastInsertRowid,
-        changes: result.changes
-      };
+      // Check if a query with this hash already exists
+      const existingQuery = this.statements.findQueryByHash.get(queryHash);
+      
+      if (existingQuery) {
+        // Update existing query's timestamp and execution info
+        const updateResult = this.statements.updateQueryTimestamp.run(executionTimeMs, status, queryHash);
+        
+        console.log(`Updated existing query with hash: ${queryHash}`);
+        return {
+          success: true,
+          id: existingQuery.id,
+          changes: updateResult.changes,
+          updated: true,
+          message: 'Query already exists, updated timestamp'
+        };
+      } else {
+        // Insert new query
+        const result = this.statements.insertQuery.run(
+          content, 
+          queryType, 
+          databaseName, 
+          queryHash,
+          embedding ? Buffer.from(embedding) : null,
+          executionTimeMs,
+          status
+        );
+        
+        console.log(`Saved new query with ID: ${result.lastInsertRowid}`);
+        return {
+          success: true,
+          id: result.lastInsertRowid,
+          changes: result.changes,
+          updated: false,
+          message: 'New query saved'
+        };
+      }
     } catch (error) {
       console.error('Error saving query:', error);
       return {

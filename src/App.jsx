@@ -126,7 +126,13 @@ function App() {
         });
         
         if (result.success) {
-          console.log('Query saved to history:', result.id);
+          if (result.updated) {
+            console.log('Query already exists, updated timestamp:', result.id);
+            console.log(result.message);
+          } else {
+            console.log('New query saved to history:', result.id);
+            console.log(result.message);
+          }
           // Refresh history after saving
           loadQueryHistory();
         } else {
@@ -514,7 +520,7 @@ function App() {
     if (username && password && server) {
       const intervalId = setInterval(() => {
         checkConnection();
-      }, 5000); // 5 seconds
+      }, 30000); // 30 seconds
 
       return () => clearInterval(intervalId);
     }
