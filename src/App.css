@@ -293,6 +293,7 @@ body {
   cursor: not-allowed;
 }
 
+/* Legacy textarea query input styles (kept for backward compatibility) */
 .query-input {
   flex: 1;
   padding: 16px;
@@ -319,6 +320,48 @@ body {
 .query-input::selection {
   background-color: rgba(7, 122, 204, 0.3);
   color: var(--text-color);
+}
+
+/* Monaco Query Editor styles */
+.query-editor {
+  flex: 1;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: var(--background);
+  transition: border-color 0.2s ease;
+}
+
+.query-editor:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(7, 122, 204, 0.1);
+}
+
+.query-editor .monaco-editor {
+  background-color: var(--background) !important;
+}
+
+.query-editor .monaco-editor .monaco-editor-background {
+  background-color: var(--background) !important;
+}
+
+.query-editor .monaco-editor .view-lines {
+  background-color: var(--background) !important;
+}
+
+/* Dark mode adjustments for Monaco editor */
+@media (prefers-color-scheme: dark) {
+  .query-editor .monaco-editor {
+    background-color: var(--background) !important;
+  }
+  
+  .query-editor .monaco-editor .view-lines {
+    background-color: var(--background) !important;
+  }
+  
+  .query-editor .monaco-editor .monaco-editor-background {
+    background-color: var(--background) !important;
+  }
 }
 
 /* Results Section */
