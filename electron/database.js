@@ -59,13 +59,18 @@ class QueryRepository {
 
     // Add query_hash column if it doesn't exist (migration)
     try {
-      this.db.exec(`ALTER TABLE queries ADD COLUMN query_hash TEXT UNIQUE;`);
-      console.log('Added query_hash column to existing database');
+      this.db.exec(`ALTER TABLE queries ADD COLUMN query_hash TEXT;`);
+      console.log('✅ Added query_hash column to existing database');
+      
+      // Add unique index for query_hash
+      this.db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_queries_hash ON queries(query_hash);`);
+      console.log('✅ Added query_hash unique index');
     } catch (error) {
-      if (error.code === 'SQLITE_ERROR' && error.message.includes('duplicate column name')) {
-        console.log('query_hash column already exists');
+      if (error.message.includes('duplicate column name')) {
+        console.log('✅ query_hash column already exists');
       } else {
-        console.log('query_hash column already exists or migration not needed');
+        console.warn('⚠️ Could not add query_hash column:', error.message);
+        // Continue without the column - this is a migration issue
       }
     }
 

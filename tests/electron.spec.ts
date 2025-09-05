@@ -164,21 +164,24 @@ test('prevents duplicate queries in history - updates timestamp instead', async 
     console.log(`Loading message visible: ${loadingMsg}`);
   }
   
-  // Count history items - should only have 1 item despite running the same query twice
+  // Count history items with our specific query content
   const historyItems = await win.locator('.history-item').count();
-  console.log(`History items count: ${historyItems}`);
+  console.log(`Total history items count: ${historyItems}`);
   
-  // For now, let's be more lenient and just check that we don't have 2 identical items
-  // The real test is that we don't have duplicates
-  expect(historyItems).toBeLessThanOrEqual(1);
+  // Count items that contain our specific test query
+  const testQueryItems = await win.locator('.history-item-preview:has-text("for $i in 1 to 3 return $i")').count();
+  console.log(`Test query items count: ${testQueryItems}`);
   
-  // Only verify content if we have items
-  if (historyItems > 0) {
-    const historyPreview = await win.locator('.history-item-preview').first().textContent();
+  // The key test: should only have 1 item with our specific query despite running it twice
+  expect(testQueryItems).toBe(1);
+  
+  // Verify the content is correct
+  if (testQueryItems > 0) {
+    const historyPreview = await win.locator('.history-item-preview:has-text("for $i in 1 to 3 return $i")').first().textContent();
     expect(historyPreview).toContain('for $i in 1 to 3 return $i');
     console.log(`History preview content: ${historyPreview}`);
   } else {
-    console.log('No history items found - database may not be working in test environment');
+    console.log('No history items found with our test query - database may not be working in test environment');
   }
   
   await win.screenshot({ path: 'unique-query-history-test.png' });

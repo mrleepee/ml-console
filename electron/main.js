@@ -117,13 +117,17 @@ function waitForServer(urlString, timeoutMs = 30000, intervalMs = 500) {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Initialize database
   try {
     queryRepository = new QueryRepository();
-    console.log('Query repository initialized');
+    console.log('Query repository initialized successfully');
   } catch (error) {
     console.error('Failed to initialize query repository:', error);
+    // Don't create window if database fails - this is critical
+    console.error('Cannot start application without database');
+    app.quit();
+    return;
   }
   
   createWindow();
