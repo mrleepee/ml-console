@@ -880,8 +880,9 @@ function App() {
                     <div className="table-view">
                       {tableData.length > 0 ? (
                         tableData.map((record, index) => {
-                          // Create stable path identifier using content hash or URI
-                          const stableId = record.uri || `record-${index}-${record.content?.substring(0, 50)?.replace(/\W+/g, '') || 'empty'}`;
+                          // Create truly unique identifier using index + URI + content hash
+                          const contentHash = record.content?.substring(0, 50)?.replace(/\W+/g, '') || 'empty';
+                          const stableId = `record-${index}-${record.uri || 'no-uri'}-${contentHash}`;
                           const recordId = `record-${index}`;
                           
                           return (

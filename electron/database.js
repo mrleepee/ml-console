@@ -12,7 +12,14 @@ class QueryRepository {
   initDatabase() {
     try {
       // Store database in userData directory
-      const dbPath = path.join(app.getPath('userData'), 'ml-console-queries.db');
+      let dbPath;
+      try {
+        dbPath = path.join(app.getPath('userData'), 'ml-console-queries.db');
+      } catch (error) {
+        // Fallback for development mode
+        console.warn('Could not get userData path, using fallback:', error.message);
+        dbPath = path.join(__dirname, '..', 'ml-console-queries.db');
+      }
       console.log('Initializing database at:', dbPath);
       
       this.db = new Database(dbPath);
@@ -34,14 +41,13 @@ class QueryRepository {
   }
 
   createTables() {
-    // Main queries table
+    // Main queries table - create without query_hash first
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS queries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         content TEXT NOT NULL,
         query_type TEXT NOT NULL CHECK(query_type IN ('xquery', 'javascript', 'sparql', 'optic')),
         database_name TEXT,
-        query_hash TEXT UNIQUE,
         version INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -50,6 +56,18 @@ class QueryRepository {
         status TEXT DEFAULT 'saved' CHECK(status IN ('saved', 'executed', 'failed'))
       );
     `);
+
+    // Add query_hash column if it doesn't exist (migration)
+    try {
+      this.db.exec(`ALTER TABLE queries ADD COLUMN query_hash TEXT UNIQUE;`);
+      console.log('Added query_hash column to existing database');
+    } catch (error) {
+      if (error.code === 'SQLITE_ERROR' && error.message.includes('duplicate column name')) {
+        console.log('query_hash column already exists');
+      } else {
+        console.log('query_hash column already exists or migration not needed');
+      }
+    }
 
     // Full-text search table
     this.db.exec(`
