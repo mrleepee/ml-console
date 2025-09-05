@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import Editor from '@monaco-editor/react';
 import parseHeaders from 'parse-headers';
 import TestHarness from "./TestHarness";
+import QueryEditor from "./components/QueryEditor";
 import "./App.css";
 
 function App() {
@@ -584,9 +585,13 @@ function App() {
       if (queryType === "xquery") {
         body = `xquery=${encodeURIComponent(query)}&database=${encodeURIComponent(database)}`;
         contentType = "application/x-www-form-urlencoded";
-      } else {
-        // JavaScript
+      } else if (queryType === "javascript") {
         body = `javascript=${encodeURIComponent(query)}&database=${encodeURIComponent(database)}`;
+        contentType = "application/x-www-form-urlencoded";
+      } else if (queryType === "sparql") {
+        // For SPARQL, we might need a different endpoint or parameter
+        // For now, treating it as XQuery with special handling
+        body = `xquery=${encodeURIComponent(query)}&database=${encodeURIComponent(database)}`;
         contentType = "application/x-www-form-urlencoded";
       }
   
@@ -751,6 +756,7 @@ function App() {
           >
             <option value="xquery">XQuery</option>
             <option value="javascript">JavaScript</option>
+            <option value="sparql">SPARQL</option>
           </select>
           <label htmlFor="database">Database:</label>
           <select
@@ -824,12 +830,12 @@ function App() {
                     </button>
                   </div>
                 </div>
-                <textarea
-                  className="query-input"
+                <QueryEditor
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={handleQueryKeyDown}
-                  placeholder={`Enter your ${queryType === 'xquery' ? 'XQuery' : 'JavaScript'} query here...`}
+                  language={queryType}
+                  placeholder={`Enter your ${queryType === 'xquery' ? 'XQuery' : queryType === 'sparql' ? 'SPARQL' : 'JavaScript'} query here...`}
                   disabled={isLoading}
                 />
               </div>
