@@ -1,49 +1,41 @@
 import { useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import "./TestHarness.css";
 
 function TestHarness({ serverUrl, username = "admin", password = "admin" }) {
   const [testResults, setTestResults] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [selectedEndpoint, setSelectedEndpoint] = useState("digestAuthTest");
+  const [selectedEndpoint, setSelectedEndpoint] = useState("restEval");
 
   const endpoints = {
-    digestAuthTest: {
-      name: "Digest Auth Test",
+    restEval: {
+      name: "REST API Eval",
+      path: "/v1/eval",
+      method: "POST",
+      description: "Test MarkLogic REST API query evaluation (primary endpoint used by console)",
+      testData: {
+        xquery: 'xquery version "1.0-ml";\n\n"REST API test"'
+      }
+    },
+    digestAuth: {
+      name: "Digest Authentication",
       path: "/qconsole/endpoints/evaler.xqy",
       method: "POST",
-      description: "Test digest authentication with MarkLogic Query Console",
+      description: "Test digest authentication with Query Console evaler endpoint",
       testData: {
         xquery: 'xquery version "1.0-ml";\n\n"digest auth test"'
       }
     },
-    evaluator: {
-      name: "Query Evaluator",
-      path: "/qconsole/endpoints/evaler.xqy",
-      method: "POST",
-      description: "Execute XQuery/JavaScript queries",
-      testData: {
-        xquery: 'xquery version "1.0-ml";\n\n"hello world"',
-        javascript: 'console.log("hello world");\n"hello world"'
-      }
-    },
-    history: {
-      name: "Query History",
-      path: "/qconsole/endpoints/history.xqy",
-      method: "GET",
-      description: "Get query execution history"
-    },
-    sessions: {
-      name: "Sessions",
-      path: "/qconsole/endpoints/sessions.xqy", 
-      method: "GET",
-      description: "Get active sessions"
-    },
     databases: {
-      name: "Databases",
+      name: "Database List",
       path: "/qconsole/endpoints/databases.xqy",
       method: "GET", 
-      description: "Get available databases"
+      description: "Test database enumeration endpoint"
+    },
+    healthCheck: {
+      name: "Server Health",
+      path: "/",
+      method: "GET",
+      description: "Basic server connectivity test"
     }
   };
 
@@ -69,9 +61,15 @@ function TestHarness({ serverUrl, username = "admin", password = "admin" }) {
       const sessionIds = generateSessionIds();
       let url, body, headers;
 
-      if (endpointKey === "digestAuthTest") {
-        // Test digest authentication specifically
-        const sessionIds = generateSessionIds();
+      if (endpointKey === "restEval") {
+        // Test REST API eval endpoint (primary console endpoint)
+        url = `${serverUrl}${endpoint.path}`;
+        body = `xquery=${encodeURIComponent(endpoint.testData.xquery)}`;
+        headers = {
+          "Content-Type": "application/x-www-form-urlencoded",
+        };
+      } else if (endpointKey === "digestAuth") {
+        // Test Query Console digest authentication
         const queryParams = new URLSearchParams({
           ...sessionIds,
           querytype: "xquery",
@@ -85,125 +83,42 @@ function TestHarness({ serverUrl, username = "admin", password = "admin" }) {
         headers = {
           "Content-Type": "application/x-www-form-urlencoded",
         };
-
-        const startTime = Date.now();
-        const response = await invoke("http_request", {
-          request: {
-            url: url,
-            method: endpoint.method,
-            headers: headers,
-            body: body,
-            username: username,
-            password: password,
-          }
-        });
-        const endTime = Date.now();
-
-        const responseText = response.body;
-        
-        setTestResults(prev => [...prev, {
-          id: `${testId}-digest-auth`,
-          endpoint: endpoint.name,
-          type: "digest-auth",
-          url,
-          method: endpoint.method,
-          requestBody: body,
-          status: response.status,
-          statusText: response.statusText,
-          responseText,
-          duration: endTime - startTime,
-          timestamp: new Date().toISOString(),
-          success: response.success,
-          authType: "digest"
-        }]);
-      } else if (endpointKey === "evaluator") {
-        // Test both XQuery and JavaScript
-        const tests = [
-          { type: "xquery", query: endpoint.testData.xquery },
-          { type: "javascript", query: endpoint.testData.javascript }
-        ];
-
-        for (const test of tests) {
-          const queryParams = new URLSearchParams({
-            ...sessionIds,
-            querytype: test.type,
-            action: "eval",
-            optimize: "1",
-            trace: "",
-          });
-
-          url = `${serverUrl}${endpoint.path}?${queryParams}`;
-          body = `data=${encodeURIComponent(test.query)}`;
-          headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
-          };
-
-                  const startTime = Date.now();
-        const response = await invoke("http_request", {
-          request: {
-            url: url,
-            method: endpoint.method,
-            headers: headers,
-            body: body,
-            username: username,
-            password: password,
-          }
-        });
-        const endTime = Date.now();
-
-        const responseText = response.body;
-          
-          setTestResults(prev => [...prev, {
-            id: `${testId}-${test.type}`,
-            endpoint: endpoint.name,
-            type: test.type,
-            url,
-            method: endpoint.method,
-            requestBody: body,
-            status: response.status,
-            statusText: response.statusText,
-            responseText,
-            duration: endTime - startTime,
-            timestamp: new Date().toISOString(),
-            success: response.success
-          }]);
-        }
       } else {
-        // Generic endpoint test
+        // Simple GET endpoint test
         url = `${serverUrl}${endpoint.path}`;
+        body = "";
         headers = { 
           "Content-Type": "application/json",
         };
-
-        const startTime = Date.now();
-        const response = await invoke("http_request", {
-          request: {
-            url: url,
-            method: endpoint.method,
-            headers: headers,
-            username: username,
-            password: password,
-          }
-        });
-        const endTime = Date.now();
-
-        const responseText = response.body;
-        
-        setTestResults(prev => [...prev, {
-          id: testId.toString(),
-          endpoint: endpoint.name,
-          type: "generic",
-          url,
-          method: endpoint.method,
-          requestBody: "",
-          status: response.status,
-          statusText: response.statusText,
-          responseText,
-                      duration: endTime - startTime,
-            timestamp: new Date().toISOString(),
-            success: response.success
-        }]);
       }
+
+      const startTime = Date.now();
+      const response = await window.electronAPI.httpRequest({
+        url: url,
+        method: endpoint.method,
+        headers: headers,
+        body: body,
+        username: username,
+        password: password,
+      });
+      const endTime = Date.now();
+
+      const responseText = response.body;
+      
+      setTestResults(prev => [...prev, {
+        id: testId.toString(),
+        endpoint: endpoint.name,
+        type: endpointKey,
+        url,
+        method: endpoint.method,
+        requestBody: body,
+        status: response.status,
+        statusText: response.statusText,
+        responseText,
+        duration: endTime - startTime,
+        timestamp: new Date().toISOString(),
+        success: response.status >= 200 && response.status < 300
+      }]);
 
     } catch (error) {
       setTestResults(prev => [...prev, {
