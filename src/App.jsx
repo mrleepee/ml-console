@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Editor from '@monaco-editor/react';
 import parseHeaders from 'parse-headers';
 import TestHarness from "./TestHarness";
 import "./App.css";
 
 function App() {
-  console.log("🚀 App component loaded - React code is running!");
+  // console.log("🚀 App component loaded - React code is running!");
   
   // Content-Type to Monaco language mapping
   function getMonacoLanguageFromContentType(contentType) {
@@ -83,7 +83,7 @@ function App() {
   };
 
   // Simple HTTP request helper (works in both Electron and web)
-  async function makeRequest(options) {
+  const makeRequest = useCallback(async (options) => {
     try {
       // Check if we're in Electron environment
       if (window.electronAPI && window.electronAPI.httpRequest) {
@@ -111,7 +111,7 @@ function App() {
       console.error('HTTP request failed:', error);
       throw error;
     }
-  }
+  }, []);
 
   // Database helper functions
   async function saveQueryToHistory(content, queryType, databaseName, executionTimeMs = null, status = 'executed') {
@@ -144,7 +144,7 @@ function App() {
     }
   }
 
-  async function loadQueryHistory(limit = 15) {
+  const loadQueryHistory = useCallback(async (limit = 15) => {
     try {
       if (window.electronAPI && window.electronAPI.database) {
         setHistoryLoading(true);
@@ -163,7 +163,7 @@ function App() {
     } finally {
       setHistoryLoading(false);
     }
-  }
+  }, []);
 
   async function loadQueryFromHistory(id) {
     try {
@@ -258,10 +258,10 @@ function App() {
   }
 
   // Parse multipart/mixed response to extract just the content (legacy)
-  function parseMultipartResponse(responseText) {
+  const parseMultipartResponse = useCallback((responseText) => {
     const tableData = parseMultipartToTableData(responseText);
     return tableData.map(record => record.content).join('\n');
-  }
+  }, []);
 
   // Pretty-print helpers for displaying record content
   function formatJsonPretty(rawText) {
@@ -418,7 +418,7 @@ function App() {
   });
 
   // Health check function for connection status
-  async function checkConnection() {
+  const checkConnection = useCallback(async () => {
     try {
       setConnectionStatus("connecting");
       
@@ -439,12 +439,12 @@ function App() {
     } catch (err) {
       setConnectionStatus("error");
     }
-  }
+  }, [server, username, password, makeRequest]);
 
   // Get available databases
-  async function getDatabases() {
+  const getDatabases = useCallback(async () => {
     try {
-      console.log("=== GETTING DATABASES ===");
+      // console.log("=== GETTING DATABASES ===");
       
       // Query MarkLogic for databases using XQuery
       const databaseQuery = `
@@ -500,7 +500,7 @@ function App() {
       // Fallback to common database names
       setDatabases(["Documents", "Modules", "Security", "Schemas", "Triggers"]);
     }
-  }
+  }, [serverUrl, username, password, makeRequest, parseMultipartResponse]);
 
   // Get databases and check connection when server/credentials change
   useEffect(() => {
@@ -508,12 +508,12 @@ function App() {
       // checkConnection();
       getDatabases();
     }
-  }, [username, password, server]);
+  }, [username, password, server]); // Remove getDatabases from dependencies to break the loop
 
   // Load query history on startup
   useEffect(() => {
     loadQueryHistory();
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
 
   // Background health check every 5 seconds
   useEffect(() => {
@@ -524,7 +524,7 @@ function App() {
 
       return () => clearInterval(intervalId);
     }
-  }, [username, password, server]);
+  }, [username, password, server]); // Remove checkConnection from dependencies to break the loop
 
   // Keyboard shortcuts for record navigation
   useEffect(() => {
@@ -849,25 +849,27 @@ function App() {
                     </select>
                     {viewMode === "table" && hasRecords && (
                       <div className="record-navigation">
-                        <button 
-                          onClick={goToPrevRecord} 
-                          disabled={activeRecordIndex <= 0}
-                          className="nav-btn"
-                          title="Previous record"
-                        >
-                          ↑ Prev
-                        </button>
+                        <div className="nav-arrows">
+                          <button 
+                            onClick={goToPrevRecord} 
+                            disabled={activeRecordIndex <= 0}
+                            className="nav-arrow"
+                            title="Previous record (Ctrl+↑)"
+                          >
+                            ↑
+                          </button>
+                          <button 
+                            onClick={goToNextRecord} 
+                            disabled={activeRecordIndex >= tableData.length - 1}
+                            className="nav-arrow"
+                            title="Next record (Ctrl+↓)"
+                          >
+                            ↓
+                          </button>
+                        </div>
                         <span className="record-counter">
-                          {activeRecordIndex + 1} / {tableData.length}
+                          {activeRecordIndex + 1} of {tableData.length}
                         </span>
-                        <button 
-                          onClick={goToNextRecord} 
-                          disabled={activeRecordIndex >= tableData.length - 1}
-                          className="nav-btn"
-                          title="Next record"
-                        >
-                          ↓ Next
-                        </button>
                       </div>
                     )}
                   </div>
@@ -898,14 +900,25 @@ function App() {
                               }}
                               id={recordId}
                             >
-                              <div className="record-header">
+                              <div className="record-header" style={{ 
+                                height: '85%', 
+                                backgroundColor: '#1e3a8a',
+                                color: 'white',
+                                padding: '8px 12px',
+                                borderRadius: '4px 4px 0 0',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                fontSize: '14px',
+                                fontWeight: '500'
+                              }}>
                                 <span className="record-number">#{index + 1}</span>
                                 <span className="record-uri">{record.uri || 'No URI'}</span>
                               </div>
                               <div className="record-metadata">
-                                <div><strong>Content Type:</strong> <span>{record.contentType || 'Not available'}</span></div>
-                                <div><strong>Datatype:</strong> <span>{record.primitive || 'Not available'}</span></div>
-                                {record.path && <div><strong>XPath:</strong> <span>{record.path}</span></div>}
+                                <span><strong>Content Type:</strong> {record.contentType || 'Not available'}</span>
+                                <span style={{ margin: '0 10px' }}><strong>Datatype:</strong> {record.primitive || 'Not available'}</span>
+                                {record.path && <span style={{ margin: '0 10px' }}><strong>XPath:</strong> {record.path}</span>}
                               </div>
                               <div className="record-content">
                                 <MemoMonacoEditor 

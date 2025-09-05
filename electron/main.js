@@ -4,6 +4,7 @@ const https = require('https');
 const http = require('http');
 const { URL } = require('url');
 const crypto = require('crypto');
+const { spawn } = require('child_process');
 const QueryRepository = require('./database');
 
 let mainWindow;
@@ -195,17 +196,46 @@ ipcMain.handle('http-request', async (event, options) => {
       };
     }
     
-    // Handle regular query request - return XML pathway data
-    const part = [
-      `--${boundary}`,
-      'Content-Type: application/xml',
-      'X-Primitive: element()',
-      'X-URI: pathway/mock',
-      'X-Path: /pathway',
-      '',
-      '<pathway><pathway-uri>pathway/mock</pathway-uri><pathway-status>active</pathway-status></pathway>'
-    ].join('\r\n');
-    const body = `${part}\r\n--${boundary}--`;
+    // Handle regular query request - return multiple XML records for navigation testing
+    const parts = [
+      [
+        `--${boundary}`,
+        'Content-Type: application/xml',
+        'X-Primitive: element()',
+        'X-URI: pathway/mock-1',
+        'X-Path: /pathway[1]',
+        '',
+        '<pathway><pathway-uri>pathway/mock-1</pathway-uri><pathway-status>active</pathway-status><id>1</id></pathway>'
+      ].join('\r\n'),
+      [
+        `--${boundary}`,
+        'Content-Type: application/json',
+        'X-Primitive: object-node()',
+        'X-URI: product/mock-2',
+        'X-Path: /product[1]',
+        '',
+        '{"id": 2, "name": "Test Product", "status": "available", "price": 29.99}'
+      ].join('\r\n'),
+      [
+        `--${boundary}`,
+        'Content-Type: text/plain',
+        'X-Primitive: xs:string',
+        'X-URI: text/mock-3',
+        'X-Path: /text()[1]',
+        '',
+        'This is a simple text record for testing navigation between different content types.'
+      ].join('\r\n'),
+      [
+        `--${boundary}`,
+        'Content-Type: application/xml',
+        'X-Primitive: element()',
+        'X-URI: config/mock-4',
+        'X-Path: /config[1]',
+        '',
+        '<config><setting name="debug">true</setting><setting name="timeout">5000</setting><version>1.2.3</version></config>'
+      ].join('\r\n')
+    ];
+    const body = `${parts.join('\r\n')}\r\n--${boundary}--`;
     return {
       status: 200,
       headers: { 'content-type': `multipart/mixed; boundary=${boundary}` },
@@ -399,4 +429,56 @@ ipcMain.handle('db-get-stats', async (event) => {
   }
   
   return queryRepository.getStats();
+});
+
+// Command execution handler for running tests
+ipcMain.handle('run-command', async (event, options) => {
+  const { command, cwd } = options;
+  
+  return new Promise((resolve, reject) => {
+    console.log(`Running command: ${command} in ${cwd || process.cwd()}`);
+    
+    // Parse command and arguments
+    const parts = command.split(' ');
+    const cmd = parts[0];
+    const args = parts.slice(1);
+    
+    const child = spawn(cmd, args, {
+      cwd: cwd || process.cwd(),
+      shell: true,
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    
+    let stdout = '';
+    let stderr = '';
+    
+    child.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+    
+    child.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+    
+    child.on('close', (code) => {
+      console.log(`Command finished with code ${code}`);
+      resolve({
+        code,
+        stdout,
+        stderr,
+        success: code === 0
+      });
+    });
+    
+    child.on('error', (error) => {
+      console.error('Command error:', error);
+      reject(error);
+    });
+    
+    // Set a timeout to prevent hanging
+    setTimeout(() => {
+      child.kill();
+      reject(new Error('Command timeout'));
+    }, 300000); // 5 minutes timeout
+  });
 });

@@ -96,8 +96,8 @@ test('renders a formatted record using mocked HTTP', async () => {
     return editor && editor.querySelector('.view-lines');
   }, { timeout: 15000 });
 
-  // Ensure content contains our mock root element
-  await expect(win.locator('.record-content')).toContainText('<pathway>');
+  // Ensure first record content contains our mock root element
+  await expect(win.locator('.record-content').first()).toContainText('<pathway>');
 
   await app.close();
 });

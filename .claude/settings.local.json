@@ -43,7 +43,10 @@
       "Bash(npm run:*)",
       "Bash(tree:*)",
       "Bash(lsof:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(git checkout:*)",
+      "Bash(PREVIEW_PORT=1421 MOCK_HTTP=1 concurrently --kill-others --success first \"vite preview --port 1421\" \"wait-on http://localhost:1421 && playwright test tests/navigation.spec.ts\")",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
