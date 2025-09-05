@@ -849,25 +849,27 @@ function App() {
                     </select>
                     {viewMode === "table" && hasRecords && (
                       <div className="record-navigation">
-                        <button 
-                          onClick={goToPrevRecord} 
-                          disabled={activeRecordIndex <= 0}
-                          className="nav-btn"
-                          title="Previous record"
-                        >
-                          ↑ Prev
-                        </button>
+                        <div className="nav-arrows">
+                          <button 
+                            onClick={goToPrevRecord} 
+                            disabled={activeRecordIndex <= 0}
+                            className="nav-arrow"
+                            title="Previous record (Ctrl+↑)"
+                          >
+                            ↑
+                          </button>
+                          <button 
+                            onClick={goToNextRecord} 
+                            disabled={activeRecordIndex >= tableData.length - 1}
+                            className="nav-arrow"
+                            title="Next record (Ctrl+↓)"
+                          >
+                            ↓
+                          </button>
+                        </div>
                         <span className="record-counter">
-                          {activeRecordIndex + 1} / {tableData.length}
+                          {activeRecordIndex + 1} of {tableData.length}
                         </span>
-                        <button 
-                          onClick={goToNextRecord} 
-                          disabled={activeRecordIndex >= tableData.length - 1}
-                          className="nav-btn"
-                          title="Next record"
-                        >
-                          ↓ Next
-                        </button>
                       </div>
                     )}
                   </div>
@@ -898,14 +900,25 @@ function App() {
                               }}
                               id={recordId}
                             >
-                              <div className="record-header">
+                              <div className="record-header" style={{ 
+                                height: '85%', 
+                                backgroundColor: '#1e3a8a',
+                                color: 'white',
+                                padding: '8px 12px',
+                                borderRadius: '4px 4px 0 0',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                fontSize: '14px',
+                                fontWeight: '500'
+                              }}>
                                 <span className="record-number">#{index + 1}</span>
                                 <span className="record-uri">{record.uri || 'No URI'}</span>
                               </div>
                               <div className="record-metadata">
-                                <div><strong>Content Type:</strong> <span>{record.contentType || 'Not available'}</span></div>
-                                <div><strong>Datatype:</strong> <span>{record.primitive || 'Not available'}</span></div>
-                                {record.path && <div><strong>XPath:</strong> <span>{record.path}</span></div>}
+                                <span><strong>Content Type:</strong> {record.contentType || 'Not available'}</span>
+                                <span style={{ margin: '0 10px' }}><strong>Datatype:</strong> {record.primitive || 'Not available'}</span>
+                                {record.path && <span style={{ margin: '0 10px' }}><strong>XPath:</strong> {record.path}</span>}
                               </div>
                               <div className="record-content">
                                 <MemoMonacoEditor 

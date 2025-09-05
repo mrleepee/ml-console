@@ -1,161 +1,178 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./TestHarness.css";
 
 function TestHarness({ serverUrl, username = "admin", password = "admin" }) {
   const [testResults, setTestResults] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [selectedEndpoint, setSelectedEndpoint] = useState("restEval");
+  const [selectedTest, setSelectedTest] = useState("all");
+  const [testOutput, setTestOutput] = useState("");
+  const [testSummary, setTestSummary] = useState(null);
 
-  const endpoints = {
-    restEval: {
-      name: "REST API Eval",
-      path: "/v1/eval",
-      method: "POST",
-      description: "Test MarkLogic REST API query evaluation (primary endpoint used by console)",
-      testData: {
-        xquery: 'xquery version "1.0-ml";\n\n"REST API test"'
-      }
+  const availableTests = {
+    all: {
+      name: "All Tests",
+      description: "Run all Playwright tests",
+      command: "npm run e2e:electron"
     },
-    digestAuth: {
-      name: "Digest Authentication",
-      path: "/qconsole/endpoints/evaler.xqy",
-      method: "POST",
-      description: "Test digest authentication with Query Console evaler endpoint",
-      testData: {
-        xquery: 'xquery version "1.0-ml";\n\n"digest auth test"'
-      }
+    electron: {
+      name: "Electron Tests",
+      description: "Test Electron app functionality and UI",
+      command: "npx playwright test tests/electron.spec.ts"
     },
-    databases: {
-      name: "Database List",
-      path: "/qconsole/endpoints/databases.xqy",
-      method: "GET", 
-      description: "Test database enumeration endpoint"
-    },
-    healthCheck: {
-      name: "Server Health",
-      path: "/",
-      method: "GET",
-      description: "Basic server connectivity test"
+    navigation: {
+      name: "Navigation Tests", 
+      description: "Test navigation and record handling",
+      command: "npx playwright test tests/navigation.spec.ts"
     }
   };
 
-  const generateSessionIds = () => {
-    const timestamp = Date.now();
-    return {
-      qid: timestamp.toString(),
-      dbid: "7682138842179613689",
-      sid: timestamp.toString(),
-      crid: Math.floor(Math.random() * 10000000000).toString(),
-      cache: timestamp.toString()
-    };
-  };
-
-  const testEndpoint = async (endpointKey) => {
-    const endpoint = endpoints[endpointKey];
-    if (!endpoint) return;
+  const runTest = async (testKey) => {
+    const test = availableTests[testKey];
+    if (!test) return;
 
     setIsRunning(true);
+    setTestOutput("");
+    setTestResults([]);
+    setTestSummary(null);
+    
     const testId = Date.now();
+    const startTime = Date.now();
     
     try {
-      const sessionIds = generateSessionIds();
-      let url, body, headers;
-
-      if (endpointKey === "restEval") {
-        // Test REST API eval endpoint (primary console endpoint)
-        url = `${serverUrl}${endpoint.path}`;
-        body = `xquery=${encodeURIComponent(endpoint.testData.xquery)}`;
-        headers = {
-          "Content-Type": "application/x-www-form-urlencoded",
-        };
-      } else if (endpointKey === "digestAuth") {
-        // Test Query Console digest authentication
-        const queryParams = new URLSearchParams({
-          ...sessionIds,
-          querytype: "xquery",
-          action: "eval",
-          optimize: "1",
-          trace: "",
-        });
-
-        url = `${serverUrl}${endpoint.path}?${queryParams}`;
-        body = `data=${encodeURIComponent(endpoint.testData.xquery)}`;
-        headers = {
-          "Content-Type": "application/x-www-form-urlencoded",
-        };
-      } else {
-        // Simple GET endpoint test
-        url = `${serverUrl}${endpoint.path}`;
-        body = "";
-        headers = { 
-          "Content-Type": "application/json",
-        };
-      }
-
-      const startTime = Date.now();
-      const response = await window.electronAPI.httpRequest({
-        url: url,
-        method: endpoint.method,
-        headers: headers,
-        body: body,
-        username: username,
-        password: password,
+      // Use Electron's child_process to run the test command
+      const result = await window.electronAPI.runCommand({
+        command: test.command,
+        cwd: process.cwd()
       });
-      const endTime = Date.now();
-
-      const responseText = response.body;
       
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      // Parse the test output
+      const output = result.stdout || result.stderr || "";
+      setTestOutput(output);
+      
+      // Parse test results from Playwright output
+      const parsedResults = parsePlaywrightOutput(output);
+      setTestResults(parsedResults);
+      
+      // Calculate summary
+      const summary = {
+        total: parsedResults.length,
+        passed: parsedResults.filter(r => r.success).length,
+        failed: parsedResults.filter(r => !r.success).length,
+        duration: duration
+      };
+      setTestSummary(summary);
+      
+      // Add overall test result
       setTestResults(prev => [...prev, {
         id: testId.toString(),
-        endpoint: endpoint.name,
-        type: endpointKey,
-        url,
-        method: endpoint.method,
-        requestBody: body,
-        status: response.status,
-        statusText: response.statusText,
-        responseText,
-        duration: endTime - startTime,
+        testName: test.name,
+        type: "summary",
+        success: summary.failed === 0,
+        duration: duration,
         timestamp: new Date().toISOString(),
-        success: response.status >= 200 && response.status < 300
+        summary: summary
       }]);
 
     } catch (error) {
-      setTestResults(prev => [...prev, {
+      const endTime = Date.now();
+      setTestOutput(`Error running test: ${error.message}`);
+      setTestResults([{
         id: testId.toString(),
-        endpoint: endpoint.name,
+        testName: test.name,
         type: "error",
-        url: `${serverUrl}${endpoint.path}`,
-        method: endpoint.method,
-        requestBody: "",
-        status: 0,
-        statusText: "Network Error",
-        responseText: error.message,
-        duration: 0,
-        timestamp: new Date().toISOString(),
         success: false,
-        error: true
+        duration: endTime - startTime,
+        timestamp: new Date().toISOString(),
+        error: error.message
       }]);
+      setTestSummary({
+        total: 1,
+        passed: 0,
+        failed: 1,
+        duration: endTime - startTime
+      });
     } finally {
       setIsRunning(false);
     }
   };
 
-  const testAllEndpoints = async () => {
-    setIsRunning(true);
-    setTestResults([]);
+  const runAllTests = async () => {
+    await runTest("all");
+  };
+
+  const parsePlaywrightOutput = (output) => {
+    const results = [];
+    const lines = output.split('\n');
     
-    for (const endpointKey of Object.keys(endpoints)) {
-      await testEndpoint(endpointKey);
-      // Small delay between tests
-      await new Promise(resolve => setTimeout(resolve, 100));
+    let currentTest = null;
+    let inTestResult = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Look for test start patterns
+      if (line.includes('Running') && line.includes('test')) {
+        const testName = line.match(/Running (\d+) test/)?.[1] || 'Unknown';
+        currentTest = {
+          id: Date.now() + i,
+          testName: `Test ${testName}`,
+          type: 'playwright',
+          success: false,
+          duration: 0,
+          timestamp: new Date().toISOString(),
+          output: []
+        };
+        inTestResult = true;
+      }
+      
+      // Look for test result patterns
+      if (line.includes('✓') || line.includes('PASS')) {
+        if (currentTest) {
+          currentTest.success = true;
+          currentTest.output.push(line);
+        }
+      } else if (line.includes('✗') || line.includes('FAIL') || line.includes('Error')) {
+        if (currentTest) {
+          currentTest.success = false;
+          currentTest.output.push(line);
+        }
+      }
+      
+      // Look for test completion
+      if (line.includes('Test finished') || line.includes('passed') || line.includes('failed')) {
+        if (currentTest && inTestResult) {
+          // Extract duration if available
+          const durationMatch = line.match(/(\d+)ms/);
+          if (durationMatch) {
+            currentTest.duration = parseInt(durationMatch[1]);
+          }
+          results.push(currentTest);
+          currentTest = null;
+          inTestResult = false;
+        }
+      }
+      
+      // Collect output for current test
+      if (currentTest && inTestResult && line) {
+        currentTest.output.push(line);
+      }
     }
     
-    setIsRunning(false);
+    // If we have a current test that wasn't closed, add it
+    if (currentTest) {
+      results.push(currentTest);
+    }
+    
+    return results;
   };
 
   const clearResults = () => {
     setTestResults([]);
+    setTestOutput("");
+    setTestSummary(null);
   };
 
   const copyToClipboard = (text) => {
@@ -165,32 +182,32 @@ function TestHarness({ serverUrl, username = "admin", password = "admin" }) {
   return (
     <div className="test-harness">
       <div className="test-header">
-        <h2>Query Console Test Harness</h2>
+        <h2>Playwright Test Runner</h2>
         <div className="test-controls">
           <select 
-            value={selectedEndpoint} 
-            onChange={(e) => setSelectedEndpoint(e.target.value)}
-            className="endpoint-selector"
+            value={selectedTest} 
+            onChange={(e) => setSelectedTest(e.target.value)}
+            className="test-selector"
           >
-            {Object.entries(endpoints).map(([key, endpoint]) => (
+            {Object.entries(availableTests).map(([key, test]) => (
               <option key={key} value={key}>
-                {endpoint.name}
+                {test.name}
               </option>
             ))}
           </select>
           <button 
-            onClick={() => testEndpoint(selectedEndpoint)}
+            onClick={() => runTest(selectedTest)}
             disabled={isRunning}
             className="test-single-btn"
           >
-            Test Selected
+            Run Selected Test
           </button>
           <button 
-            onClick={testAllEndpoints}
+            onClick={runAllTests}
             disabled={isRunning}
             className="test-all-btn"
           >
-            {isRunning ? "Testing..." : "Test All Endpoints"}
+            {isRunning ? "Running Tests..." : "Run All Tests"}
           </button>
           <button 
             onClick={clearResults}
@@ -202,12 +219,35 @@ function TestHarness({ serverUrl, username = "admin", password = "admin" }) {
         </div>
       </div>
 
-      <div className="endpoint-info">
-        <h3>{endpoints[selectedEndpoint]?.name}</h3>
-        <p><strong>Path:</strong> {endpoints[selectedEndpoint]?.path}</p>
-        <p><strong>Method:</strong> {endpoints[selectedEndpoint]?.method}</p>
-        <p><strong>Description:</strong> {endpoints[selectedEndpoint]?.description}</p>
+      <div className="test-info">
+        <h3>{availableTests[selectedTest]?.name}</h3>
+        <p><strong>Command:</strong> <code>{availableTests[selectedTest]?.command}</code></p>
+        <p><strong>Description:</strong> {availableTests[selectedTest]?.description}</p>
       </div>
+
+      {testSummary && (
+        <div className="test-summary">
+          <h3>Test Summary</h3>
+          <div className="summary-stats">
+            <div className="stat">
+              <span className="stat-label">Total:</span>
+              <span className="stat-value">{testSummary.total}</span>
+            </div>
+            <div className="stat success">
+              <span className="stat-label">Passed:</span>
+              <span className="stat-value">{testSummary.passed}</span>
+            </div>
+            <div className="stat error">
+              <span className="stat-label">Failed:</span>
+              <span className="stat-value">{testSummary.failed}</span>
+            </div>
+            <div className="stat">
+              <span className="stat-label">Duration:</span>
+              <span className="stat-value">{testSummary.duration}ms</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="test-results">
         <h3>Test Results ({testResults.length})</h3>
@@ -219,64 +259,70 @@ function TestHarness({ serverUrl, username = "admin", password = "admin" }) {
               <div key={result.id} className={`result-item ${result.success ? 'success' : 'error'}`}>
                 <div className="result-header">
                   <div className="result-meta">
-                    <span className="endpoint-name">{result.endpoint}</span>
+                    <span className="test-name">{result.testName}</span>
                     <span className="test-type">{result.type}</span>
                     <span className={`status ${result.success ? 'success' : 'error'}`}>
-                      {result.status} {result.statusText}
+                      {result.success ? 'PASSED' : 'FAILED'}
                     </span>
                     <span className="duration">{result.duration}ms</span>
                   </div>
                   <div className="result-actions">
                     <button 
-                      onClick={() => copyToClipboard(result.url)}
+                      onClick={() => copyToClipboard(result.output?.join('\n') || '')}
                       className="copy-btn"
-                      title="Copy URL"
+                      title="Copy Output"
                     >
-                      📋 URL
-                    </button>
-                    <button 
-                      onClick={() => copyToClipboard(result.responseText)}
-                      className="copy-btn"
-                      title="Copy Response"
-                    >
-                      📋 Response
+                      📋 Output
                     </button>
                   </div>
                 </div>
                 
                 <div className="result-details">
                   <div className="detail-section">
-                    <h4>Request</h4>
+                    <h4>Test Details</h4>
                     <div className="detail-content">
-                      <p><strong>URL:</strong> <code>{result.url}</code></p>
-                      <p><strong>Method:</strong> {result.method}</p>
-                      {result.requestBody && (
+                      <p><strong>Test Name:</strong> {result.testName}</p>
+                      <p><strong>Type:</strong> {result.type}</p>
+                      <p><strong>Duration:</strong> {result.duration}ms</p>
+                      <p><strong>Timestamp:</strong> {new Date(result.timestamp).toLocaleString()}</p>
+                      {result.error && (
                         <div>
-                          <p><strong>Body:</strong></p>
-                          <pre className="request-body">{result.requestBody}</pre>
+                          <p><strong>Error:</strong></p>
+                          <pre className="error-output">{result.error}</pre>
                         </div>
                       )}
                     </div>
                   </div>
                   
-                  <div className="detail-section">
-                    <h4>Response</h4>
-                    <div className="detail-content">
-                      <p><strong>Status:</strong> {result.status} {result.statusText}</p>
-                      <p><strong>Duration:</strong> {result.duration}ms</p>
-                      <p><strong>Timestamp:</strong> {new Date(result.timestamp).toLocaleString()}</p>
-                      <div>
-                        <p><strong>Response Body:</strong></p>
-                        <pre className="response-body">{result.responseText}</pre>
+                  {result.output && result.output.length > 0 && (
+                    <div className="detail-section">
+                      <h4>Test Output</h4>
+                      <div className="detail-content">
+                        <pre className="test-output">{result.output.join('\n')}</pre>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {testOutput && (
+        <div className="raw-output">
+          <h3>Raw Test Output</h3>
+          <div className="output-controls">
+            <button 
+              onClick={() => copyToClipboard(testOutput)}
+              className="copy-btn"
+            >
+              📋 Copy All Output
+            </button>
+          </div>
+          <pre className="raw-output-content">{testOutput}</pre>
+        </div>
+      )}
     </div>
   );
 }
