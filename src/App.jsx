@@ -40,6 +40,7 @@ function App() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(true);
   const [server, setServer] = useState("localhost");
+  const [modulesDatabase, setModulesDatabase] = useState("prime-content-modules");
   const recordRefs = useRef({});
   const resultsOutputRef = useRef(null);
   
@@ -583,15 +584,26 @@ function App() {
       let contentType;
       
       if (queryType === "xquery") {
-        body = `xquery=${encodeURIComponent(query)}&database=${encodeURIComponent(database)}`;
+        // Wrap the query with xdmp:eval to include modules database
+        const wrappedQuery = `xdmp:eval("${query.replace(/"/g, '""')}", (), 
+          map:new((
+            map:entry("database", xdmp:database("${database}")),
+            map:entry("modules", xdmp:database("${modulesDatabase}"))
+          )))`;
+        body = `xquery=${encodeURIComponent(wrappedQuery)}`;
         contentType = "application/x-www-form-urlencoded";
       } else if (queryType === "javascript") {
-        body = `javascript=${encodeURIComponent(query)}&database=${encodeURIComponent(database)}`;
+        // For JavaScript, we can use the modules database parameter directly in the /v1/eval endpoint
+        body = `javascript=${encodeURIComponent(query)}&database=${encodeURIComponent(database)}&modules=${encodeURIComponent(modulesDatabase)}`;
         contentType = "application/x-www-form-urlencoded";
       } else if (queryType === "sparql") {
-        // For SPARQL, we might need a different endpoint or parameter
-        // For now, treating it as XQuery with special handling
-        body = `xquery=${encodeURIComponent(query)}&database=${encodeURIComponent(database)}`;
+        // For SPARQL, treating it as XQuery with modules database
+        const wrappedQuery = `xdmp:eval("${query.replace(/"/g, '""')}", (), 
+          map:new((
+            map:entry("database", xdmp:database("${database}")),
+            map:entry("modules", xdmp:database("${modulesDatabase}"))
+          )))`;
+        body = `xquery=${encodeURIComponent(wrappedQuery)}`;
         contentType = "application/x-www-form-urlencoded";
       }
   
@@ -601,6 +613,7 @@ function App() {
       console.log("Content-Type:", contentType);
       console.log("Body:", body);
       console.log("Database:", database);
+      console.log("Modules Database:", modulesDatabase);
       console.log("Username:", username);
   
       const response = await makeRequest({
@@ -740,14 +753,6 @@ function App() {
       <header className="header">
         <h1>ML Console</h1>
         <div className="server-config">
-          <label htmlFor="server">Server:</label>
-          <select
-            id="server"
-            value={server}
-            onChange={(e) => setServer(e.target.value)}
-          >
-            <option value="localhost">localhost</option>
-          </select>
           <label htmlFor="query-type">Query Type:</label>
           <select
             id="query-type"
@@ -768,22 +773,6 @@ function App() {
               <option key={`db-${index}-${db}`} value={db}>{db}</option>
             ))}
           </select>
-          <label htmlFor="username">Username:</label>
-          <input
-            id="username"
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="admin"
-          />
-          <label htmlFor="password">Password:</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="admin"
-          />
         </div>
         <div className="connection-indicator">
           <div className={`status-dot ${
@@ -810,6 +799,12 @@ function App() {
           onClick={() => setActiveTab('test')}
         >
           Test Harness
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('settings')}
+        >
+          Settings
         </button>
       </div>
 
@@ -1004,9 +999,58 @@ function App() {
               )}
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'test' ? (
           <TestHarness serverUrl={serverUrl} username={username} password={password} />
-        )}
+        ) : activeTab === 'settings' ? (
+          <div className="settings-layout">
+            <h2>Settings</h2>
+            <div className="settings-section">
+              <div className="settings-group">
+                <label htmlFor="settings-server">Server:</label>
+                <select
+                  id="settings-server"
+                  value={server}
+                  onChange={(e) => setServer(e.target.value)}
+                >
+                  <option value="localhost">localhost</option>
+                </select>
+              </div>
+
+              <div className="settings-group">
+                <label htmlFor="settings-modules-db">Modules Database:</label>
+                <select
+                  id="settings-modules-db"
+                  value={modulesDatabase}
+                  onChange={(e) => setModulesDatabase(e.target.value)}
+                >
+                  <option value="prime-content-modules">prime-content-modules</option>
+                </select>
+              </div>
+
+              <div className="settings-group">
+                <label htmlFor="settings-username">Username:</label>
+                <input
+                  id="settings-username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="admin"
+                />
+              </div>
+
+              <div className="settings-group">
+                <label htmlFor="settings-password">Password:</label>
+                <input
+                  id="settings-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="admin"
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
       </main>
     </div>
   );

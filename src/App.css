@@ -867,3 +867,68 @@ body {
     font-size: 11px;
   }
 }
+
+/* Settings Tab Styles */
+.settings-layout {
+  padding: 24px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.settings-layout h2 {
+  margin-bottom: 24px;
+  color: var(--text-color);
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-group label {
+  font-weight: 500;
+  color: var(--text-color);
+  font-size: 14px;
+}
+
+.settings-group select,
+.settings-group input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: var(--background);
+  color: var(--text-color);
+  min-height: 36px;
+}
+
+.settings-group select:focus,
+.settings-group input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.1);
+}
+
+.settings-group input[type="password"] {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+@media (max-width: 768px) {
+  .settings-layout {
+    padding: 16px;
+  }
+  
+  .settings-layout h2 {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+}
