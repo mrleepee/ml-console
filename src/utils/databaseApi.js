@@ -3,6 +3,55 @@
  */
 
 /**
+ * Safely parse JSON response with error handling
+ * @param {string} responseBody - Response body to parse
+ * @param {string} endpoint - Endpoint name for error context
+ * @returns {Object} Parsed JSON object
+ * @throws {Error} If response is not valid JSON
+ */
+function safeJsonParse(responseBody, endpoint) {
+  if (!responseBody || typeof responseBody !== 'string') {
+    throw new Error(`${endpoint}: Empty or invalid response body`);
+  }
+
+  // Check if response looks like HTML (common error response)
+  if (responseBody.trim().toLowerCase().startsWith('<!doctype') || 
+      responseBody.trim().toLowerCase().startsWith('<html')) {
+    throw new Error(`${endpoint}: Server returned HTML instead of JSON. This usually indicates a 404 error or server misconfiguration.`);
+  }
+
+  try {
+    return JSON.parse(responseBody);
+  } catch (parseError) {
+    // Provide more context about what we received
+    const preview = responseBody.substring(0, 200);
+    throw new Error(`${endpoint}: Invalid JSON response. Parse error: ${parseError.message}. Response preview: ${preview}...`);
+  }
+}
+
+/**
+ * Validate response status and content type
+ * @param {Object} response - Response object
+ * @param {string} endpoint - Endpoint name for error context
+ * @throws {Error} If response is not valid
+ */
+function validateResponse(response, endpoint) {
+  if (!response) {
+    throw new Error(`${endpoint}: No response received`);
+  }
+
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(`${endpoint}: HTTP ${response.status} ${response.statusText || 'Unknown Error'}`);
+  }
+
+  // Check content type if available
+  const contentType = response.headers?.['content-type'] || response.headers?.['Content-Type'];
+  if (contentType && !contentType.includes('application/json')) {
+    console.warn(`${endpoint}: Unexpected content type: ${contentType}. Expected application/json.`);
+  }
+}
+
+/**
  * Get all servers from MarkLogic Management API
  * @param {string} server - Server hostname
  * @param {string} username - Username for authentication
@@ -11,20 +60,24 @@
  * @returns {Promise<Object>} Server configuration data
  */
 export async function getServers(server, username, password, makeRequest) {
-  const response = await makeRequest({
-    url: `http://${server}:8002/manage/v2/servers?format=json`,
-    method: "GET",
-    headers: {
-      "Accept": "application/json",
-    },
-    username,
-    password,
-  });
+  const endpoint = 'servers';
+  
+  try {
+    const response = await makeRequest({
+      url: `http://${server}:8002/manage/v2/servers?format=json`,
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+      },
+      username,
+      password,
+    });
 
-  if (response.status >= 200 && response.status < 300) {
-    return JSON.parse(response.body);
-  } else {
-    throw new Error(`Failed to get servers: ${response.status} ${response.statusText}`);
+    validateResponse(response, endpoint);
+    return safeJsonParse(response.body, endpoint);
+  } catch (error) {
+    // Re-throw with more context
+    throw new Error(`Failed to get servers from ${server}: ${error.message}`);
   }
 }
 
@@ -37,20 +90,24 @@ export async function getServers(server, username, password, makeRequest) {
  * @returns {Promise<Object>} Database configuration data
  */
 export async function getDatabases(server, username, password, makeRequest) {
-  const response = await makeRequest({
-    url: `http://${server}:8002/manage/v2/databases?format=json`,
-    method: "GET",
-    headers: {
-      "Accept": "application/json",
-    },
-    username,
-    password,
-  });
+  const endpoint = 'databases';
+  
+  try {
+    const response = await makeRequest({
+      url: `http://${server}:8002/manage/v2/databases?format=json`,
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+      },
+      username,
+      password,
+    });
 
-  if (response.status >= 200 && response.status < 300) {
-    return JSON.parse(response.body);
-  } else {
-    throw new Error(`Failed to get databases: ${response.status} ${response.statusText}`);
+    validateResponse(response, endpoint);
+    return safeJsonParse(response.body, endpoint);
+  } catch (error) {
+    // Re-throw with more context
+    throw new Error(`Failed to get databases from ${server}: ${error.message}`);
   }
 }
 

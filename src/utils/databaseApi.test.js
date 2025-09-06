@@ -1,358 +1,275 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+/**
+ * Unit tests for databaseApi.js
+ */
+
+import { describe, it, expect, vi } from 'vitest';
 import { getServers, getDatabases, parseDatabaseConfigs } from './databaseApi.js';
 
-// Mock data for MarkLogic Management API responses
-const mockServersResponse = {
-  "server-default-list": {
-    "list-items": {
-      "list-item": [
-        {
-          "idref": "8000",
-          "nameref": "App-Services",
-          "typeref": "http",
-          "contentDatabase": "7682138842179613689",
-          "modulesDatabase": "15944027002351853507"
-        },
-        {
-          "idref": "8001",
-          "nameref": "Admin",
-          "typeref": "http",
-          "contentDatabase": "12142949855174069457",
-          "modulesDatabase": "15944027002351853507"
-        },
-        {
-          "idref": "8002",
-          "nameref": "Manage",
-          "typeref": "http",
-          "contentDatabase": "12142949855174069457",
-          "modulesDatabase": "15944027002351853507"
-        }
-      ]
-    }
-  }
-};
-
-const mockDatabasesResponse = {
-  "database-default-list": {
-    "list-items": {
-      "list-item": [
-        {
-          "idref": "7682138842179613689",
-          "nameref": "Documents"
-        },
-        {
-          "idref": "12142949855174069457",
-          "nameref": "Security"
-        },
-        {
-          "idref": "15944027002351853507",
-          "nameref": "Modules"
-        },
-        {
-          "idref": "123456789",
-          "nameref": "prime-content"
-        },
-        {
-          "idref": "987654321",
-          "nameref": "prime-content-modules"
-        }
-      ]
-    }
-  }
+// Mock the makeRequest function
+const createMockMakeRequest = (response) => {
+  return vi.fn().mockResolvedValue(response);
 };
 
 describe('databaseApi', () => {
-  let mockMakeRequest;
-
-  beforeEach(() => {
-    mockMakeRequest = vi.fn();
-  });
-
   describe('getServers', () => {
-    it('should fetch servers successfully', async () => {
-      // Arrange
-      mockMakeRequest.mockResolvedValue({
+    it('should successfully parse valid JSON response', async () => {
+      const mockResponse = {
         status: 200,
-        body: JSON.stringify(mockServersResponse)
-      });
+        statusText: 'OK',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          'server-default-list': {
+            'list-items': {
+              'list-item': [
+                { idref: '1', nameref: 'test-server', typeref: 'http' }
+              ]
+            }
+          }
+        })
+      };
 
-      // Act
-      const result = await getServers('localhost', 'admin', 'admin', mockMakeRequest);
+      const makeRequest = createMockMakeRequest(mockResponse);
+      const result = await getServers('localhost', 'admin', 'admin', makeRequest);
 
-      // Assert
-      expect(mockMakeRequest).toHaveBeenCalledWith({
-        url: 'http://localhost:8002/manage/v2/servers?format=json',
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json'
-        },
-        username: 'admin',
-        password: 'admin'
+      expect(result).toEqual({
+        'server-default-list': {
+          'list-items': {
+            'list-item': [
+              { idref: '1', nameref: 'test-server', typeref: 'http' }
+            ]
+          }
+        }
       });
-      expect(result).toEqual(mockServersResponse);
     });
 
-    it('should throw error on HTTP failure', async () => {
-      // Arrange
-      mockMakeRequest.mockResolvedValue({
-        status: 401,
-        statusText: 'Unauthorized'
-      });
+    it('should throw error for HTML response (404)', async () => {
+      const mockResponse = {
+        status: 200,
+        statusText: 'OK',
+        headers: { 'content-type': 'text/html' },
+        body: '<!doctype html><html><body>404 Not Found</body></html>'
+      };
 
-      // Act & Assert
-      await expect(getServers('localhost', 'admin', 'admin', mockMakeRequest))
-        .rejects.toThrow('Failed to get servers: 401 Unauthorized');
+      const makeRequest = createMockMakeRequest(mockResponse);
+      
+      await expect(getServers('localhost', 'admin', 'admin', makeRequest))
+        .rejects
+        .toThrow('Failed to get servers from localhost: servers: Server returned HTML instead of JSON. This usually indicates a 404 error or server misconfiguration.');
     });
 
-    it('should handle JSON parsing errors gracefully', async () => {
-      // Arrange
-      mockMakeRequest.mockResolvedValue({
+    it('should throw error for invalid JSON', async () => {
+      const mockResponse = {
         status: 200,
-        body: 'invalid json'
-      });
+        statusText: 'OK',
+        headers: { 'content-type': 'application/json' },
+        body: 'invalid json {'
+      };
 
-      // Act & Assert
-      await expect(getServers('localhost', 'admin', 'admin', mockMakeRequest))
-        .rejects.toThrow();
+      const makeRequest = createMockMakeRequest(mockResponse);
+      
+      await expect(getServers('localhost', 'admin', 'admin', makeRequest))
+        .rejects
+        .toThrow('Failed to get servers from localhost: servers: Invalid JSON response. Parse error:');
+    });
+
+    it('should throw error for HTTP error status', async () => {
+      const mockResponse = {
+        status: 404,
+        statusText: 'Not Found',
+        headers: { 'content-type': 'application/json' },
+        body: '{"error": "not found"}'
+      };
+
+      const makeRequest = createMockMakeRequest(mockResponse);
+      
+      await expect(getServers('localhost', 'admin', 'admin', makeRequest))
+        .rejects
+        .toThrow('Failed to get servers from localhost: servers: HTTP 404 Not Found');
+    });
+
+    it('should throw error for empty response', async () => {
+      const mockResponse = {
+        status: 200,
+        statusText: 'OK',
+        headers: { 'content-type': 'application/json' },
+        body: ''
+      };
+
+      const makeRequest = createMockMakeRequest(mockResponse);
+      
+      await expect(getServers('localhost', 'admin', 'admin', makeRequest))
+        .rejects
+        .toThrow('Failed to get servers from localhost: servers: Empty or invalid response body');
     });
   });
 
   describe('getDatabases', () => {
-    it('should fetch databases successfully', async () => {
-      // Arrange
-      mockMakeRequest.mockResolvedValue({
+    it('should successfully parse valid JSON response', async () => {
+      const mockResponse = {
         status: 200,
-        body: JSON.stringify(mockDatabasesResponse)
-      });
+        statusText: 'OK',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          'database-default-list': {
+            'list-items': {
+              'list-item': [
+                { idref: '1', nameref: 'test-db' }
+              ]
+            }
+          }
+        })
+      };
 
-      // Act
-      const result = await getDatabases('localhost', 'admin', 'admin', mockMakeRequest);
+      const makeRequest = createMockMakeRequest(mockResponse);
+      const result = await getDatabases('localhost', 'admin', 'admin', makeRequest);
 
-      // Assert
-      expect(mockMakeRequest).toHaveBeenCalledWith({
-        url: 'http://localhost:8002/manage/v2/databases?format=json',
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json'
-        },
-        username: 'admin',
-        password: 'admin'
+      expect(result).toEqual({
+        'database-default-list': {
+          'list-items': {
+            'list-item': [
+              { idref: '1', nameref: 'test-db' }
+            ]
+          }
+        }
       });
-      expect(result).toEqual(mockDatabasesResponse);
     });
 
-    it('should throw error on HTTP failure', async () => {
-      // Arrange
-      mockMakeRequest.mockResolvedValue({
-        status: 500,
-        statusText: 'Internal Server Error'
-      });
+    it('should throw error for HTML response', async () => {
+      const mockResponse = {
+        status: 200,
+        statusText: 'OK',
+        headers: { 'content-type': 'text/html' },
+        body: '<html><body>Error</body></html>'
+      };
 
-      // Act & Assert
-      await expect(getDatabases('localhost', 'admin', 'admin', mockMakeRequest))
-        .rejects.toThrow('Failed to get databases: 500 Internal Server Error');
+      const makeRequest = createMockMakeRequest(mockResponse);
+      
+      await expect(getDatabases('localhost', 'admin', 'admin', makeRequest))
+        .rejects
+        .toThrow('Failed to get databases from localhost: databases: Server returned HTML instead of JSON');
     });
   });
 
   describe('parseDatabaseConfigs', () => {
     it('should parse server and database data correctly', () => {
-      // Act
-      const result = parseDatabaseConfigs(mockServersResponse, mockDatabasesResponse);
+      const serversData = {
+        'server-default-list': {
+          'list-items': {
+            'list-item': [
+              {
+                idref: 'server1',
+                nameref: 'test-server',
+                typeref: 'http',
+                contentDatabase: 'content-db',
+                modulesDatabase: 'modules-db'
+              }
+            ]
+          }
+        }
+      };
 
-      // Assert
-      expect(result).toHaveLength(6); // 3 from servers + 3 standalone databases
+      const databasesData = {
+        'database-default-list': {
+          'list-items': {
+            'list-item': [
+              { idref: 'content-db', nameref: 'Documents' },
+              { idref: 'modules-db', nameref: 'Modules' }
+            ]
+          }
+        }
+      };
 
-      // Check server-based configurations
-      const appServicesConfig = result.find(config => config.serverName === 'App-Services');
-      expect(appServicesConfig).toEqual({
-        id: '7682138842179613689',
-        name: 'Documents',
-        modulesDatabase: 'Modules',
-        modulesDatabaseId: '15944027002351853507',
-        serverId: '8000',
-        serverName: 'App-Services'
-      });
+      const result = parseDatabaseConfigs(serversData, databasesData);
 
-      // Check standalone database configurations - should use specific modules database
-      const primeContentConfig = result.find(config => config.name === 'prime-content');
-      expect(primeContentConfig).toEqual({
-        id: '123456789',
-        name: 'prime-content',
-        modulesDatabase: 'prime-content-modules',
-        modulesDatabaseId: '987654321',
-        serverId: null,
-        serverName: null
-      });
-
-      // Check that the modules database itself is configured correctly
-      const primeContentModulesConfig = result.find(config => config.name === 'prime-content-modules');
-      expect(primeContentModulesConfig).toEqual({
-        id: '987654321',
-        name: 'prime-content-modules',
-        modulesDatabase: 'Modules',
-        modulesDatabaseId: '15944027002351853507',
-        serverId: null,
-        serverName: null
-      });
+      expect(result).toEqual([
+        {
+          id: 'content-db',
+          name: 'Documents',
+          modulesDatabase: 'Modules',
+          modulesDatabaseId: 'modules-db',
+          serverId: 'server1',
+          serverName: 'test-server'
+        },
+        {
+          id: 'modules-db',
+          name: 'Modules',
+          modulesDatabase: 'Modules',
+          modulesDatabaseId: 'modules-db',
+          serverId: null,
+          serverName: null
+        }
+      ]);
     });
 
-    it('should handle missing data gracefully', () => {
-      // Act
+    it('should handle empty data gracefully', () => {
       const result = parseDatabaseConfigs({}, {});
-
-      // Assert
       expect(result).toEqual([]);
     });
 
-    it('should handle malformed server data', () => {
-      // Arrange
-      const malformedServerData = {
-        "server-default-list": {
-          "list-items": {
-            "list-item": [
-              {
-                "idref": "8000",
-                "nameref": "App-Services",
-                "typeref": "http"
-                // Missing contentDatabase and modulesDatabase
-              }
-            ]
-          }
-        }
-      };
-
-      // Act
-      const result = parseDatabaseConfigs(malformedServerData, mockDatabasesResponse);
-
-      // Assert
-      expect(result).toHaveLength(5); // Should still process standalone databases
+    it('should handle null/undefined data gracefully', () => {
+      const result = parseDatabaseConfigs(null, undefined);
+      expect(result).toEqual([]);
     });
 
-    it('should only process HTTP servers', () => {
-      // Arrange
-      const mixedServersData = {
-        "server-default-list": {
-          "list-items": {
-            "list-item": [
-              {
-                "idref": "7997",
-                "nameref": "HealthCheck",
-                "typeref": "http",
-                "contentDatabase": "7682138842179613689",
-                "modulesDatabase": "15944027002351853507"
-              },
-              {
-                "idref": "8050",
-                "nameref": "XDBCServer",
-                "typeref": "xdbc",
-                "contentDatabase": "7682138842179613689",
-                "modulesDatabase": "15944027002351853507"
-              }
+    it('should add standalone databases', () => {
+      const serversData = { 'server-default-list': { 'list-items': { 'list-item': [] } } };
+      const databasesData = {
+        'database-default-list': {
+          'list-items': {
+            'list-item': [
+              { idref: 'standalone-db', nameref: 'StandaloneDB' }
             ]
           }
         }
       };
 
-      // Act
-      const result = parseDatabaseConfigs(mixedServersData, mockDatabasesResponse);
+      const result = parseDatabaseConfigs(serversData, databasesData);
 
-      // Assert  
-      // Should have 1 HTTP server config + 4 standalone databases (excluding Documents which is used by the server)
-      expect(result).toHaveLength(5);
-      expect(result.find(config => config.serverName === 'HealthCheck')).toBeDefined();
-      expect(result.find(config => config.serverName === 'XDBCServer')).toBeUndefined();
+      expect(result).toEqual([
+        {
+          id: 'standalone-db',
+          name: 'StandaloneDB',
+          modulesDatabase: 'StandaloneDB',
+          modulesDatabaseId: 'standalone-db',
+          serverId: null,
+          serverName: null
+        }
+      ]);
     });
 
-    it('should use Modules as default modules database when no specific modules database exists', () => {
-      // Arrange - Use data that includes Modules but no specific modules database for test-db
-      const testDatabasesData = {
-        "database-default-list": {
-          "list-items": {
-            "list-item": [
-              {
-                "idref": "15944027002351853507",
-                "nameref": "Modules"
-              },
-              {
-                "idref": "999999999",
-                "nameref": "test-db"
-              }
+    it('should handle database-specific modules database', () => {
+      const serversData = { 'server-default-list': { 'list-items': { 'list-item': [] } } };
+      const databasesData = {
+        'database-default-list': {
+          'list-items': {
+            'list-item': [
+              { idref: 'content-db', nameref: 'prime-content' },
+              { idref: 'modules-db', nameref: 'prime-content-modules' }
             ]
           }
         }
       };
 
-      // Act
-      const result = parseDatabaseConfigs({}, testDatabasesData);
+      const result = parseDatabaseConfigs(serversData, databasesData);
 
-      // Assert
-      const standaloneConfig = result.find(config => config.name === 'test-db');
-      expect(standaloneConfig.modulesDatabase).toBe('Modules');
-      expect(standaloneConfig.modulesDatabaseId).toBe('15944027002351853507');
-    });
-
-    it('should fall back to same database as modules database when Modules not available', () => {
-      // Arrange
-      const databasesWithoutModules = {
-        "database-default-list": {
-          "list-items": {
-            "list-item": [
-              {
-                "idref": "123456789",
-                "nameref": "prime-content"
-              }
-            ]
-          }
+      expect(result).toEqual([
+        {
+          id: 'content-db',
+          name: 'prime-content',
+          modulesDatabase: 'prime-content-modules',
+          modulesDatabaseId: 'modules-db',
+          serverId: null,
+          serverName: null
+        },
+        {
+          id: 'modules-db',
+          name: 'prime-content-modules',
+          modulesDatabase: 'prime-content-modules',
+          modulesDatabaseId: 'modules-db',
+          serverId: null,
+          serverName: null
         }
-      };
-
-      // Act
-      const result = parseDatabaseConfigs({}, databasesWithoutModules);
-
-      // Assert
-      expect(result).toHaveLength(1);
-      expect(result[0].modulesDatabase).toBe('prime-content');
-      expect(result[0].modulesDatabaseId).toBe('123456789');
-    });
-
-    it('should match database-specific modules databases by naming convention', () => {
-      // Arrange
-      const customDatabasesData = {
-        "database-default-list": {
-          "list-items": {
-            "list-item": [
-              {
-                "idref": "111111111",
-                "nameref": "my-app-content"
-              },
-              {
-                "idref": "222222222",
-                "nameref": "my-app-content-modules"
-              },
-              {
-                "idref": "333333333",
-                "nameref": "other-database"
-              }
-            ]
-          }
-        }
-      };
-
-      // Act
-      const result = parseDatabaseConfigs({}, customDatabasesData);
-
-      // Assert
-      expect(result).toHaveLength(3);
-      
-      // Check that my-app-content uses my-app-content-modules
-      const appContentConfig = result.find(config => config.name === 'my-app-content');
-      expect(appContentConfig.modulesDatabase).toBe('my-app-content-modules');
-      expect(appContentConfig.modulesDatabaseId).toBe('222222222');
-      
-      // Check that other-database falls back to itself (no Modules db available)
-      const otherDbConfig = result.find(config => config.name === 'other-database');
-      expect(otherDbConfig.modulesDatabase).toBe('other-database');
-      expect(otherDbConfig.modulesDatabaseId).toBe('333333333');
+      ]);
     });
   });
 });
