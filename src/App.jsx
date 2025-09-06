@@ -3,6 +3,7 @@ import Editor from '@monaco-editor/react';
 import parseHeaders from 'parse-headers';
 import TestHarness from "./TestHarness";
 import QueryEditor from "./components/QueryEditor";
+import QueryClassifier from "./components/QueryClassifier";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
 import { defineCustomMonacoThemes, getEnhancedTheme } from "./utils/monacoThemes";
 import "./App.css";
@@ -46,6 +47,7 @@ function App() {
   const [queryHistory, setQueryHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(true);
+  const [classifyingQueries, setClassifyingQueries] = useState(new Set());
   const [server, setServer] = useState("localhost");
   const [theme, setTheme] = useState("light");
   const [monacoTheme, setMonacoTheme] = useState("vs");
@@ -177,6 +179,18 @@ function App() {
       setHistoryLoading(false);
     }
   }, []);
+
+  const handleQueryClassification = (queryId, isClassifying) => {
+    setClassifyingQueries(prev => {
+      const newSet = new Set(prev);
+      if (isClassifying) {
+        newSet.add(queryId);
+      } else {
+        newSet.delete(queryId);
+      }
+      return newSet;
+    });
+  };
 
   async function loadQueryFromHistory(id) {
     try {
@@ -1060,13 +1074,20 @@ function App() {
                               {new Date(historyItem.createdAt).toLocaleTimeString()}
                             </span>
                           </div>
-                          <button 
-                            className="history-delete-btn"
-                            onClick={(e) => deleteQueryFromHistory(historyItem.id, e)}
-                            title="Delete query"
-                          >
-                            ×
-                          </button>
+                          <div className="history-item-actions">
+                            <QueryClassifier 
+                              query={historyItem.content}
+                              onClassify={(isClassifying) => handleQueryClassification(historyItem.id, isClassifying)}
+                              isClassifying={classifyingQueries.has(historyItem.id)}
+                            />
+                            <button 
+                              className="history-delete-btn"
+                              onClick={(e) => deleteQueryFromHistory(historyItem.id, e)}
+                              title="Delete query"
+                            >
+                              ×
+                            </button>
+                          </div>
                         </div>
                         <div className="history-item-preview">
                           {historyItem.preview}

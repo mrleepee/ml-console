@@ -952,3 +952,52 @@ body {
     margin-bottom: 16px;
   }
 }
+
+/* Query Classifier Styles */
+.query-classifier {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.classify-btn {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.classify-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.classify-btn:disabled {
+  background: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.classification-result {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.classified-type {
+  font-weight: 600;
+  color: var(--accent-color);
+}
+
+.confidence {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.classification-error {
+  color: var(--error-color);
+  font-size: 10px;
+}
