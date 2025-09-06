@@ -1,6 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react'
 import App from './App.jsx'
+
+// Cleanup after each test to prevent React issues
+afterEach(() => {
+  cleanup()
+  global.mockConsoleCapture.logs = []
+})
 
 // Test the parsing functions in isolation first
 describe('Multipart Response Parsing', () => {
@@ -126,10 +132,15 @@ Simple text result
 })
 
 describe('App Component Rendering', () => {
-  it('should render without crashing', () => {
+  it('should render without crashing', async () => {
     console.log('🧪 Testing App component rendering...')
     
-    const { container } = render(<App />)
+    let container
+    await act(async () => {
+      const result = render(<App />)
+      container = result.container
+    })
+    
     expect(container).toBeInTheDocument()
     
     // Check if our test console log appeared
@@ -139,15 +150,19 @@ describe('App Component Rendering', () => {
     expect(hasRenderLog).toBe(true)
   })
 
-  it('should have Console tab active by default', () => {
-    render(<App />)
+  it('should have Console tab active by default', async () => {
+    await act(async () => {
+      render(<App />)
+    })
     
-    const consoleTab = screen.getByRole('button', { name: /console/i })
+    const consoleTab = screen.getByRole('button', { name: /query console/i })
     expect(consoleTab).toHaveClass('active')
   })
 
-  it('should show execute button', () => {
-    render(<App />)
+  it('should show execute button', async () => {
+    await act(async () => {
+      render(<App />)
+    })
     
     const executeButton = screen.getByRole('button', { name: /execute/i })
     expect(executeButton).toBeInTheDocument()
@@ -165,10 +180,15 @@ describe('Query Execution Logic', () => {
       })
     }
 
-    render(<App />)
+    await act(async () => {
+      render(<App />)
+    })
     
     const executeButton = screen.getByRole('button', { name: /execute/i })
-    fireEvent.click(executeButton)
+    
+    await act(async () => {
+      fireEvent.click(executeButton)
+    })
     
     // Check if executeQuery function was triggered by looking for our logging
     await waitFor(() => {

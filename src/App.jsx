@@ -3,6 +3,7 @@ import Editor from '@monaco-editor/react';
 import parseHeaders from 'parse-headers';
 import TestHarness from "./TestHarness";
 import QueryEditor from "./components/QueryEditor";
+import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
 import "./App.css";
 
 function App() {
@@ -25,9 +26,9 @@ function App() {
   const [error, setError] = useState("");
   const [queryType, setQueryType] = useState("xquery");
   const [selectedDatabaseConfig, setSelectedDatabaseConfig] = useState({
-    name: "prime-content",
+    name: "",
     id: "",
-    modulesDatabase: "prime-content-modules",
+    modulesDatabase: "",
     modulesDatabaseId: ""
   });
   const [databaseConfigs, setDatabaseConfigs] = useState([]);
@@ -470,143 +471,50 @@ function App() {
     }
   }
 
-  // Get database-modules configurations from MarkLogic servers
+  // Get database-modules configurations from MarkLogic servers using REST Management API
   async function getDatabaseConfigs() {
     try {
-      console.log("=== GETTING DATABASE CONFIGURATIONS ===");
+      console.log("=== GETTING DATABASE CONFIGURATIONS via REST API ===");
       
-      // First, get all servers with their database configurations
-      const serversResponse = await makeRequest({
-        url: `http://${server}:8002/manage/v2/servers?group-id=Default&format=json`,
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        username,
-        password,
-      });
-
-      if (serversResponse.status >= 200 && serversResponse.status < 300) {
-        const serversData = JSON.parse(serversResponse.body);
-        console.log("Servers data:", serversData);
-        
-        const configs = [];
-        
-        if (serversData['server-default-list'] && serversData['server-default-list']['list-items']) {
-          const serverItems = serversData['server-default-list']['list-items']['list-item'];
-          const seenDatabases = new Set(); // Prevent duplicate database configs
-          
-          for (const serverItem of Array.isArray(serverItems) ? serverItems : [serverItems]) {
-            if (serverItem.nameref) {
-              // Get detailed server configuration
-              const serverDetailResponse = await makeRequest({
-                url: `http://${server}:8002/manage/v2/servers/${serverItem.nameref}?group-id=Default&format=json`,
-                method: "GET",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                username,
-                password,
-              });
-              
-              if (serverDetailResponse.status >= 200 && serverDetailResponse.status < 300) {
-                const serverConfig = JSON.parse(serverDetailResponse.body);
-                
-                if (serverConfig.database && serverConfig.database !== '0') {
-                  const databaseId = serverConfig.database;
-                  
-                  // Skip if we've already processed this database
-                  if (seenDatabases.has(databaseId)) {
-                    continue;
-                  }
-                  seenDatabases.add(databaseId);
-                  
-                  // Get database name from database ID
-                  const dbName = await getDatabaseNameById(databaseId);
-                  const modulesDatabaseId = serverConfig['modules-database'] && serverConfig['modules-database'] !== '0' 
-                    ? serverConfig['modules-database'] 
-                    : '0';
-                  const modulesDbName = modulesDatabaseId !== '0'
-                    ? await getDatabaseNameById(modulesDatabaseId) 
-                    : 'file-system';
-                  
-                  configs.push({
-                    id: databaseId,
-                    name: dbName || `Database-${databaseId}`,
-                    modulesDatabase: modulesDbName,
-                    modulesDatabaseId: modulesDatabaseId
-                  });
-                }
-              }
-            }
-          }
-        }
-        
-        // Add default configuration if none found
-        if (configs.length === 0) {
-          configs.push({
-            id: "7682138842179613689", // Default Documents database ID
-            name: "Documents",
-            modulesDatabase: "Modules",
-            modulesDatabaseId: "0" // Default Modules database ID
-          });
-        }
-        
-        console.log("Found database configurations:", configs);
-        setDatabaseConfigs(configs);
-        
-        // Set first config as default if current selection isn't valid
-        const currentIsValid = configs.some(config => 
-          config.name === selectedDatabaseConfig.name && 
-          config.id === selectedDatabaseConfig.id
-        );
-        
-        if (!currentIsValid && configs.length > 0) {
-          setSelectedDatabaseConfig(configs[0]);
-        }
-        
-      } else {
-        throw new Error(`Failed to get server configurations: HTTP ${serversResponse.status}`);
+      // Get servers and databases data using REST Management API
+      const [serversData, databasesData] = await Promise.all([
+        getServers(server, username, password, makeRequest),
+        getDatabases(server, username, password, makeRequest)
+      ]);
+      
+      console.log("Servers data:", serversData);
+      console.log("Databases data:", databasesData);
+      
+      // Parse the combined data to create database-modules configurations
+      const configs = parseDatabaseConfigs(serversData, databasesData);
+      
+      console.log("Found database configurations:", JSON.stringify(configs, null, 2));
+      setDatabaseConfigs(configs);
+      
+      // Set first config as default if current selection isn't valid
+      const currentIsValid = configs.some(config => 
+        config.name === selectedDatabaseConfig.name && 
+        config.id === selectedDatabaseConfig.id
+      );
+      
+      if (!currentIsValid && configs.length > 0) {
+        setSelectedDatabaseConfig(configs[0]);
       }
+      
     } catch (err) {
       console.error("Get database configs error:", err);
-      setError(`Failed to get database configurations: ${err.message}`);
+      setError(`Failed to get database configurations: ${err.message}. Please check your server connection and credentials.`);
       setConnectionStatus("error");
       
-      // Fallback to default configurations
-      const fallbackConfigs = [
-        { id: "7682138842179613689", name: "Documents", modulesDatabase: "Modules", modulesDatabaseId: "0" },
-        { id: "0", name: "Security", modulesDatabase: "file-system", modulesDatabaseId: "0" },
-        { id: "0", name: "Schemas", modulesDatabase: "file-system", modulesDatabaseId: "0" },
-      ];
-      setDatabaseConfigs(fallbackConfigs);
-      if (!selectedDatabaseConfig.id) {
-        setSelectedDatabaseConfig(fallbackConfigs[0]);
-      }
-    }
-  }
-  
-  // Helper function to get database name by ID
-  async function getDatabaseNameById(databaseId) {
-    try {
-      const response = await makeRequest({
-        url: `http://${server}:8002/manage/v2/databases/${databaseId}?format=json`,
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        username,
-        password,
+      // Clear configurations on error - user must fix connection to proceed
+      setDatabaseConfigs([]);
+      setSelectedDatabaseConfig({
+        name: "",
+        id: "",
+        modulesDatabase: "",
+        modulesDatabaseId: ""
       });
-      
-      if (response.status >= 200 && response.status < 300) {
-        const dbData = JSON.parse(response.body);
-        return dbData['database-name'];
-      }
-    } catch (err) {
-      console.error(`Error getting database name for ID ${databaseId}:`, err);
     }
-    return null;
   }
 
   // Get database configs and check connection when server/credentials change
@@ -627,7 +535,8 @@ function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Background health check every 5 seconds
+// disabled for now - 7997 healthcheck endpoint isn't always available
+/*
   useEffect(() => {
     if (username && password && server) {
       const intervalId = setInterval(() => {
@@ -637,6 +546,7 @@ function App() {
       return () => clearInterval(intervalId);
     }
   }, [username, password, server]);
+*/
 
   // Keyboard shortcuts for record navigation
   useEffect(() => {
@@ -674,6 +584,11 @@ function App() {
     
     if (!query.trim()) {
       setError("Please enter a query");
+      return;
+    }
+
+    if (!selectedDatabaseConfig.id || databaseConfigs.length === 0) {
+      setError("Please select a database. Check your server connection and credentials.");
       return;
     }
   
@@ -881,12 +796,17 @@ function App() {
                 setSelectedDatabaseConfig(config);
               }
             }}
+            disabled={databaseConfigs.length === 0}
           >
-            {databaseConfigs.map((config, index) => (
-              <option key={`db-${index}-${config.id}`} value={config.id}>
-                {config.name} ({config.modulesDatabase})
-              </option>
-            ))}
+            {databaseConfigs.length === 0 ? (
+              <option value="">No databases available - check connection</option>
+            ) : (
+              databaseConfigs.map((config, index) => (
+                <option key={`db-${index}-${config.id}`} value={config.id}>
+                  {config.name} ({config.modulesDatabase})
+                </option>
+              ))
+            )}
           </select>
         </div>
         <div className="header-controls">
@@ -1109,7 +1029,12 @@ function App() {
                           {historyItem.preview}
                         </div>
                         <div className="history-item-meta">
-                          <span className="history-item-database">{historyItem.databaseName}</span>
+                          <span className="history-item-database">
+                            {historyItem.databaseName}
+                            {historyItem.modulesDatabase && historyItem.modulesDatabase !== historyItem.databaseName && 
+                              ` (${historyItem.modulesDatabase})`
+                            }
+                          </span>
                           {historyItem.executionTimeMs && (
                             <span className="history-item-duration">{historyItem.executionTimeMs}ms</span>
                           )}

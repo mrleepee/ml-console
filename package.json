@@ -11,12 +11,13 @@
     "electron": "electron .",
     "electron-dev": "concurrently \"vite\" \"wait-on http://localhost:1420 && electron .\"",
     "dist": "npm run build && electron-builder",
-    "test": "vitest",
-    "e2e": "playwright test",
-    "e2e:headed": "playwright test --headed",
-    "e2e:electron": "PREVIEW_PORT=1421 MOCK_HTTP=1 concurrently --kill-others --success first \"vite preview --port 1421\" \"wait-on http://localhost:1421 && playwright test tests/electron.spec.ts\"",
-    "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test": "vitest --config vitest.config.js",
+    "test:unit": "vitest --config vitest.config.js",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:electron": "PREVIEW_PORT=1421 MOCK_HTTP=1 concurrently --kill-others --success first \"vite preview --port 1421\" \"wait-on http://localhost:1421 && playwright test tests/electron.spec.ts\"",
+    "test:ui": "vitest --ui --config vitest.config.js",
+    "test:run": "vitest run --config vitest.config.js"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
