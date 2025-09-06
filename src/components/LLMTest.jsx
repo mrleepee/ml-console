@@ -33,6 +33,33 @@ export default function LLMTest() {
     }
   };
 
+  const handleTestClassification = async () => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      console.log('Testing LLM Classification with query:', testQuery);
+      
+      // Test the classification functionality
+      const { classifyQuery } = await import('../renderer/llm/classifier');
+      const classification = await classifyQuery(testQuery);
+      
+      setResult({
+        summary: `Classification: ${classification.label} (confidence: ${classification.confidence.toFixed(2)})`,
+        confidence: classification.confidence,
+        model: 'MobileBERT-ONNX'
+      });
+      
+      console.log('LLM Classification Result:', classification);
+    } catch (err) {
+      console.error('LLM Classification Error:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleIntegrationTest = async () => {
     setLoading(true);
     setError(null);
@@ -113,6 +140,22 @@ export default function LLMTest() {
           }}
         >
           {loading ? 'Testing...' : 'Test LLM Summarization'}
+        </button>
+
+        <button 
+          onClick={handleTestClassification}
+          disabled={loading}
+          style={{ 
+            marginRight: '10px', 
+            padding: '8px 16px',
+            backgroundColor: loading ? '#ccc' : '#17a2b8',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: loading ? 'not-allowed' : 'pointer'
+          }}
+        >
+          Test Classification
         </button>
 
         <button 

@@ -539,7 +539,14 @@ function App() {
       
     } catch (err) {
       console.error("Get database configs error:", err);
-      setError(`Failed to get database configurations: ${err.message}. Please check your server connection and credentials.`);
+      
+      // Check if this is a JSON parsing error
+      if (err.message && err.message.includes('Unexpected token')) {
+        setError(`Server connection failed: The server returned HTML instead of JSON. This usually means the MarkLogic Management API is not available at ${server}:8002. Please check if MarkLogic is running and the port is correct.`);
+      } else {
+        setError(`Failed to get database configurations: ${err.message}. Please check your server connection and credentials.`);
+      }
+      
       setConnectionStatus("error");
       
       // Clear configurations on error - user must fix connection to proceed
