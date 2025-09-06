@@ -7,7 +7,7 @@ import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/database
 import "./App.css";
 
 function App() {
-  // console.log("🚀 App component loaded - React code is running!");
+  console.log("🚀 App component loaded - React code is running!");
   
   // Content-Type to Monaco language mapping
   function getMonacoLanguageFromContentType(contentType) {
@@ -472,7 +472,7 @@ function App() {
   }, [server, username, password, makeRequest]);
 
   // Get database-modules configurations from MarkLogic servers using REST Management API
-  async function getDatabaseConfigs() {
+  const getDatabaseConfigs = useCallback(async () => {
     try {      
       // Get servers and databases data using REST Management API
       const [serversData, databasesData] = await Promise.all([
@@ -513,7 +513,7 @@ function App() {
         modulesDatabaseId: ""
       });
     }
-  }, [serverUrl, username, password, makeRequest, parseMultipartResponse]);
+  }, [server, username, password, makeRequest]);
 
   // Get database configs and check connection when server/credentials change
   useEffect(() => {
@@ -521,7 +521,7 @@ function App() {
       // checkConnection();
       getDatabaseConfigs();
     }
-  }, [username, password, server]); // Remove getDatabases from dependencies to break the loop
+  }, [username, password, server, getDatabaseConfigs]);
 
   // Load query history on startup
   useEffect(() => {
