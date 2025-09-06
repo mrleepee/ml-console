@@ -39,6 +39,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   llm: {
     status: () => ipcRenderer.invoke('llm-status'),
     update: (status) => ipcRenderer.send('llm-status-update', status),
+    test: (query) => ipcRenderer.invoke('test-llm', query)
   },
 
   // Paths helper

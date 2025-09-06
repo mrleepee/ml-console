@@ -460,6 +460,29 @@ ipcMain.handle('llm-status', async () => {
   return lastLLMStatus;
 });
 
+// LLM test endpoint
+ipcMain.handle('test-llm', async (event, query) => {
+  try {
+    console.log('Testing LLM with query:', query);
+    
+    // This will be called from the renderer process
+    // The actual LLM processing happens in the renderer
+    return {
+      success: true,
+      message: 'LLM test endpoint ready',
+      query: query,
+      timestamp: Date.now()
+    };
+  } catch (error) {
+    console.error('LLM test error:', error);
+    return {
+      success: false,
+      error: error.message,
+      timestamp: Date.now()
+    };
+  }
+});
+
 // Command execution handler for running tests
 ipcMain.handle('run-command', async (event, options) => {
   const { command, cwd } = options;

@@ -4,6 +4,7 @@ import parseHeaders from 'parse-headers';
 import TestHarness from "./TestHarness";
 import QueryEditor from "./components/QueryEditor";
 import QueryClassifier from "./components/QueryClassifier";
+import LLMTest from "./components/LLMTest";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
 import { defineCustomMonacoThemes, getEnhancedTheme } from "./utils/monacoThemes";
 import "./App.css";
@@ -1117,6 +1118,8 @@ function App() {
         ) : activeTab === 'settings' ? (
           <div className="settings-layout">
             <h2>Settings</h2>
+            
+            <LLMTest />
             <div className="settings-section">
               <div className="settings-group">
                 <label htmlFor="settings-server">Server:</label>
