@@ -1,5 +1,10 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+// Expose absolute model/wasm paths
+const paths = ipcRenderer.sendSync('get-model-paths-sync');
+contextBridge.exposeInMainWorld('__MODELS_DIR__', paths.modelsDir);
+contextBridge.exposeInMainWorld('__WASM_DIR__', paths.wasmDir);
+
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -28,5 +33,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     node: process.versions.node,
     electron: process.versions.electron,
     chrome: process.versions.chrome
-  }
+  },
+
+  // LLM status
+  llm: {
+    status: () => ipcRenderer.invoke('llm-status'),
+    update: (status) => ipcRenderer.send('llm-status-update', status),
+  },
+
+  // Paths helper
+  getModelPaths: () => ipcRenderer.invoke('get-model-paths')
 });

@@ -9,6 +9,18 @@ const QueryRepository = require('./database');
 
 let mainWindow;
 let queryRepository;
+let lastLLMStatus = {
+  backend: 'unknown',
+  modelsLoaded: { classifier: false, generator: false },
+  telemetry: { tokensGenerated: 0, generations: 0, classifications: 0, startedAt: Date.now() },
+  updatedAt: Date.now(),
+};
+
+function getModelPaths() {
+  const modelsDir = path.join(app.getPath('userData'), 'models');
+  const wasmDir = path.join(process.resourcesPath, 'wasm');
+  return { modelsDir, wasmDir };
+}
 
 function createWindow() {
   console.log('Creating Electron window...');
@@ -429,6 +441,23 @@ ipcMain.handle('db-get-stats', async (event) => {
   }
   
   return queryRepository.getStats();
+});
+
+// LLM paths and status IPC
+ipcMain.on('get-model-paths-sync', (event) => {
+  event.returnValue = getModelPaths();
+});
+
+ipcMain.handle('get-model-paths', async () => {
+  return getModelPaths();
+});
+
+ipcMain.on('llm-status-update', (event, status) => {
+  lastLLMStatus = { ...lastLLMStatus, ...status, updatedAt: Date.now() };
+});
+
+ipcMain.handle('llm-status', async () => {
+  return lastLLMStatus;
 });
 
 // Command execution handler for running tests
