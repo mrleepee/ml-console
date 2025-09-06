@@ -36,8 +36,8 @@ function App() {
   });
   const [databaseConfigs, setDatabaseConfigs] = useState([]);
   const [activeTab, setActiveTab] = useState("console");
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
   const [rawResults, setRawResults] = useState("");
   const [viewMode, setViewMode] = useState("table"); // "table", "parsed", "raw"
@@ -1153,7 +1153,7 @@ function App() {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin"
+                  placeholder="Enter username (e.g., admin)"
                 />
               </div>
 
@@ -1164,7 +1164,7 @@ function App() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="admin"
+                  placeholder="Enter password (e.g., admin)"
                 />
               </div>
               
