@@ -573,6 +573,13 @@ function App() {
     loadQueryHistory();
   }, []); // Empty dependency array - only run once on mount
 
+  // Clear error when navigating to Settings tab (database errors not relevant there)
+  useEffect(() => {
+    if (activeTab === 'settings') {
+      setError('');
+    }
+  }, [activeTab]);
+
   // Apply theme to document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -1161,6 +1168,23 @@ function App() {
                 />
               </div>
               
+              <div className="settings-group">
+                <button 
+                  onClick={getDatabaseConfigs}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    marginBottom: '16px'
+                  }}
+                >
+                  Test Database Connection
+                </button>
+              </div>
+
               <div className="settings-group">
                 <label htmlFor="settings-monaco-theme">Monaco Editor Theme:</label>
                 <select
