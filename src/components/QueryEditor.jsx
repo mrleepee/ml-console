@@ -269,6 +269,9 @@ function QueryEditor({
           renderLineHighlight: 'none',
           selectOnLineNumbers: true,
           selectionHighlight: true,
+          occurrencesHighlight: true,
+          renderWhitespace: 'selection',
+          showUnused: true,
           multiCursorModifier: 'alt',
           multiCursorMergeOverlapping: true,
           automaticLayout: true,
@@ -284,6 +287,9 @@ function QueryEditor({
           acceptSuggestionOnEnter: 'on',
           quickSuggestions: true,
           parameterHints: { enabled: true },
+          // Ensure selection is always visible
+          hideCursorInOverviewRuler: false,
+          overviewRulerBorder: false,
           // Enable bracket matching
           matchBrackets: 'always',
           // Auto closing brackets

@@ -426,6 +426,9 @@ function App() {
             renderLineHighlight: 'none',
             selectOnLineNumbers: true,
             selectionHighlight: true,
+            occurrencesHighlight: true,
+            renderWhitespace: 'selection',
+            showUnused: true,
             multiCursorModifier: 'alt',
             multiCursorMergeOverlapping: true,
             automaticLayout: true,
@@ -438,6 +441,9 @@ function App() {
             dragAndDrop: true,
             mouseWheelZoom: false,
             contextmenu: true,
+            // Ensure selection is always visible
+            hideCursorInOverviewRuler: false,
+            overviewRulerBorder: false,
             // Ensure Ctrl+A works
             find: {
               autoFindInSelection: 'never',
