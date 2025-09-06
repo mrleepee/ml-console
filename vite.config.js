@@ -13,4 +13,9 @@ export default defineConfig({
     emptyOutDir: true,
   },
   base: './', // Important for Electron
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.js',
+  }
 });

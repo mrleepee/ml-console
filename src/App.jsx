@@ -3,6 +3,7 @@ import Editor from '@monaco-editor/react';
 import parseHeaders from 'parse-headers';
 import TestHarness from "./TestHarness";
 import QueryEditor from "./components/QueryEditor";
+import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
 import "./App.css";
 
 function App() {
@@ -24,8 +25,13 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [queryType, setQueryType] = useState("xquery");
-  const [database, setDatabase] = useState("prime-content");
-  const [databases, setDatabases] = useState([]);
+  const [selectedDatabaseConfig, setSelectedDatabaseConfig] = useState({
+    name: "",
+    id: "",
+    modulesDatabase: "",
+    modulesDatabaseId: ""
+  });
+  const [databaseConfigs, setDatabaseConfigs] = useState([]);
   const [activeTab, setActiveTab] = useState("console");
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("admin");
@@ -40,6 +46,7 @@ function App() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(true);
   const [server, setServer] = useState("localhost");
+  const [theme, setTheme] = useState("light");
   const recordRefs = useRef({});
   const resultsOutputRef = useRef(null);
   
@@ -115,13 +122,16 @@ function App() {
   }, []);
 
   // Database helper functions
-  async function saveQueryToHistory(content, queryType, databaseName, executionTimeMs = null, status = 'executed') {
+  async function saveQueryToHistory(content, queryType, databaseConfig, executionTimeMs = null, status = 'executed') {
     try {
       if (window.electronAPI && window.electronAPI.database) {
         const result = await window.electronAPI.database.saveQuery({
           content,
           queryType,
-          databaseName,
+          databaseName: databaseConfig.name,
+          databaseId: databaseConfig.id,
+          modulesDatabase: databaseConfig.modulesDatabase,
+          modulesDatabaseId: databaseConfig.modulesDatabaseId,
           executionTimeMs,
           status
         });
@@ -174,7 +184,26 @@ function App() {
         if (result.success && result.query) {
           setQuery(result.query.content);
           setQueryType(result.query.queryType);
-          setDatabase(result.query.databaseName || database);
+          
+          // Restore database configuration if available
+          if (result.query.databaseId && result.query.databaseName) {
+            const restoredConfig = {
+              id: result.query.databaseId,
+              name: result.query.databaseName,
+              modulesDatabase: result.query.modulesDatabase || 'file-system',
+              modulesDatabaseId: result.query.modulesDatabaseId || '0'
+            };
+            
+            // Check if this config exists in current configs, if not add it
+            const existingConfig = databaseConfigs.find(config => config.id === restoredConfig.id);
+            if (existingConfig) {
+              setSelectedDatabaseConfig(existingConfig);
+            } else {
+              // Add the restored config to available configs and select it
+              setDatabaseConfigs(prev => [...prev, restoredConfig]);
+              setSelectedDatabaseConfig(restoredConfig);
+            }
+          }
         } else {
           console.error('Failed to load query:', result.error);
         }
@@ -442,72 +471,55 @@ function App() {
     }
   }, [server, username, password, makeRequest]);
 
-  // Get available databases
-  const getDatabases = useCallback(async () => {
-    try {
-      // console.log("=== GETTING DATABASES ===");
+  // Get database-modules configurations from MarkLogic servers using REST Management API
+  async function getDatabaseConfigs() {
+    try {      
+      // Get servers and databases data using REST Management API
+      const [serversData, databasesData] = await Promise.all([
+        getServers(server, username, password, makeRequest),
+        getDatabases(server, username, password, makeRequest)
+      ]);
       
-      // Query MarkLogic for databases using XQuery
-      const databaseQuery = `
-        xquery version "1.0-ml";
-        for $db in xdmp:databases()
-        return xdmp:database-name($db)
-      `;
+      console.log("Servers data:", serversData);
+      console.log("Databases data:", databasesData);
       
-      const response = await makeRequest({
-        url: `${serverUrl}/v1/eval`,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: `xquery=${encodeURIComponent(databaseQuery)}`,
-        username,
-        password,
-      });
-
-      if (response.status >= 200 && response.status < 300) {
-        // Parse the multipart response to extract database names
-        const cleanedResponse = parseMultipartResponse(response.body || "");
-        
-        // Split by lines and filter for valid database names (no XML/HTML content)
-        const dbNames = cleanedResponse.split('\n')
-          .map(name => name.trim())
-          .filter(name => 
-            name.length > 0 && 
-            !name.startsWith('<') && 
-            !name.includes('<?xml') &&
-            !name.includes('html')
-          );
-        
-        console.log("Found databases:", dbNames);
-        
-        if (dbNames.length > 0) {
-          setDatabases(dbNames);
-          
-          // Set first database as default if current selection isn't valid
-          if (!dbNames.includes(database)) {
-            setDatabase(dbNames[0]);
-          }
-        } else {
-          throw new Error("No valid database names found in response");
-        }
-      } else {
-        throw new Error(`Failed to get databases: HTTP ${response.status}`);
+      // Parse the combined data to create database-modules configurations
+      const configs = parseDatabaseConfigs(serversData, databasesData);
+      
+      console.log("Found database configurations:", JSON.stringify(configs, null, 2));
+      setDatabaseConfigs(configs);
+      
+      // Set first config as default if current selection isn't valid
+      const currentIsValid = configs.some(config => 
+        config.name === selectedDatabaseConfig.name && 
+        config.id === selectedDatabaseConfig.id
+      );
+      
+      if (!currentIsValid && configs.length > 0) {
+        setSelectedDatabaseConfig(configs[0]);
       }
+      
     } catch (err) {
-      console.error("Get databases error:", err);
-      setError(`Failed to get databases: ${err.message}`);
+      console.error("Get database configs error:", err);
+      setError(`Failed to get database configurations: ${err.message}. Please check your server connection and credentials.`);
       setConnectionStatus("error");
-      // Fallback to common database names
-      setDatabases(["Documents", "Modules", "Security", "Schemas", "Triggers"]);
+      
+      // Clear configurations on error - user must fix connection to proceed
+      setDatabaseConfigs([]);
+      setSelectedDatabaseConfig({
+        name: "",
+        id: "",
+        modulesDatabase: "",
+        modulesDatabaseId: ""
+      });
     }
   }, [serverUrl, username, password, makeRequest, parseMultipartResponse]);
 
-  // Get databases and check connection when server/credentials change
+  // Get database configs and check connection when server/credentials change
   useEffect(() => {
     if (username && password && server) {
       // checkConnection();
-      getDatabases();
+      getDatabaseConfigs();
     }
   }, [username, password, server]); // Remove getDatabases from dependencies to break the loop
 
@@ -516,7 +528,13 @@ function App() {
     loadQueryHistory();
   }, []); // Empty dependency array - only run once on mount
 
-  // Background health check every 5 seconds
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+// disabled for now - 7997 healthcheck endpoint isn't always available
+/*
   useEffect(() => {
     if (username && password && server) {
       const intervalId = setInterval(() => {
@@ -525,7 +543,8 @@ function App() {
 
       return () => clearInterval(intervalId);
     }
-  }, [username, password, server]); // Remove checkConnection from dependencies to break the loop
+  }, [username, password, server]);
+*/
 
   // Keyboard shortcuts for record navigation
   useEffect(() => {
@@ -565,6 +584,11 @@ function App() {
       setError("Please enter a query");
       return;
     }
+
+    if (!selectedDatabaseConfig.id || databaseConfigs.length === 0) {
+      setError("Please select a database. Check your server connection and credentials.");
+      return;
+    }
   
     console.log("=== SETTING INITIAL STATE ===");
     setIsLoading(true);
@@ -583,15 +607,25 @@ function App() {
       let contentType;
       
       if (queryType === "xquery") {
-        body = `xquery=${encodeURIComponent(query)}&database=${encodeURIComponent(database)}`;
+        // Use xdmp:eval-in with database ID and modules database ID
+        const wrappedQuery = selectedDatabaseConfig.modulesDatabaseId !== '0' 
+          ? `xdmp:eval-in("${query.replace(/"/g, '""')}", ${selectedDatabaseConfig.id}, (), ${selectedDatabaseConfig.modulesDatabaseId})`
+          : `xdmp:eval-in("${query.replace(/"/g, '""')}", ${selectedDatabaseConfig.id})`;
+        body = `xquery=${encodeURIComponent(wrappedQuery)}`;
         contentType = "application/x-www-form-urlencoded";
       } else if (queryType === "javascript") {
-        body = `javascript=${encodeURIComponent(query)}&database=${encodeURIComponent(database)}`;
+        // For JavaScript, use database ID directly with modules database ID
+        const modulesPart = selectedDatabaseConfig.modulesDatabaseId !== '0' 
+          ? `&modules=${encodeURIComponent(selectedDatabaseConfig.modulesDatabaseId)}`
+          : '';
+        body = `javascript=${encodeURIComponent(query)}&database=${encodeURIComponent(selectedDatabaseConfig.id)}${modulesPart}`;
         contentType = "application/x-www-form-urlencoded";
       } else if (queryType === "sparql") {
-        // For SPARQL, we might need a different endpoint or parameter
-        // For now, treating it as XQuery with special handling
-        body = `xquery=${encodeURIComponent(query)}&database=${encodeURIComponent(database)}`;
+        // For SPARQL, use xdmp:eval-in with database ID and modules database ID
+        const wrappedQuery = selectedDatabaseConfig.modulesDatabaseId !== '0' 
+          ? `xdmp:eval-in("${query.replace(/"/g, '""')}", ${selectedDatabaseConfig.id}, (), ${selectedDatabaseConfig.modulesDatabaseId})`
+          : `xdmp:eval-in("${query.replace(/"/g, '""')}", ${selectedDatabaseConfig.id})`;
+        body = `xquery=${encodeURIComponent(wrappedQuery)}`;
         contentType = "application/x-www-form-urlencoded";
       }
   
@@ -600,7 +634,7 @@ function App() {
       console.log("Method: POST");
       console.log("Content-Type:", contentType);
       console.log("Body:", body);
-      console.log("Database:", database);
+      console.log("Selected Database Config:", selectedDatabaseConfig);
       console.log("Username:", username);
   
       const response = await makeRequest({
@@ -654,7 +688,7 @@ function App() {
       
       // Save query to history
       const executionTime = Date.now() - executionStartTime;
-      await saveQueryToHistory(query, queryType, database, executionTime, 'executed');
+      await saveQueryToHistory(query, queryType, selectedDatabaseConfig, executionTime, 'executed');
       
     } catch (err) {
       console.error("Query execution error:", err);
@@ -740,14 +774,6 @@ function App() {
       <header className="header">
         <h1>ML Console</h1>
         <div className="server-config">
-          <label htmlFor="server">Server:</label>
-          <select
-            id="server"
-            value={server}
-            onChange={(e) => setServer(e.target.value)}
-          >
-            <option value="localhost">localhost</option>
-          </select>
           <label htmlFor="query-type">Query Type:</label>
           <select
             id="query-type"
@@ -758,43 +784,48 @@ function App() {
             <option value="javascript">JavaScript</option>
             <option value="sparql">SPARQL</option>
           </select>
-          <label htmlFor="database">Database:</label>
+          <label htmlFor="database-config">Database:</label>
           <select
-            id="database"
-            value={database}
-            onChange={(e) => setDatabase(e.target.value)}
+            id="database-config"
+            value={selectedDatabaseConfig.id}
+            onChange={(e) => {
+              const config = databaseConfigs.find(c => c.id === e.target.value);
+              if (config) {
+                setSelectedDatabaseConfig(config);
+              }
+            }}
+            disabled={databaseConfigs.length === 0}
           >
-            {databases.map((db, index) => (
-              <option key={`db-${index}-${db}`} value={db}>{db}</option>
-            ))}
+            {databaseConfigs.length === 0 ? (
+              <option value="">No databases available - check connection</option>
+            ) : (
+              databaseConfigs.map((config, index) => (
+                <option key={`db-${index}-${config.id}`} value={config.id}>
+                  {config.name} ({config.modulesDatabase})
+                </option>
+              ))
+            )}
           </select>
-          <label htmlFor="username">Username:</label>
-          <input
-            id="username"
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="admin"
-          />
-          <label htmlFor="password">Password:</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="admin"
-          />
         </div>
-        <div className="connection-indicator">
-          <div className={`status-dot ${
-            connectionStatus === "connected" ? "connected" :
-            connectionStatus === "error" ? "error" :
-            connectionStatus === "connecting" ? "connecting" : "ready"
-          }`} title={
-            connectionStatus === "connected" ? "Connected" :
-            connectionStatus === "error" ? "Connection Error" :
-            connectionStatus === "connecting" ? "Connecting..." : "Ready"
-          }></div>
+        <div className="header-controls">
+          <button 
+            className="theme-toggle"
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+          >
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
+          <div className="connection-indicator">
+            <div className={`status-dot ${
+              connectionStatus === "connected" ? "connected" :
+              connectionStatus === "error" ? "error" :
+              connectionStatus === "connecting" ? "connecting" : "ready"
+            }`} title={
+              connectionStatus === "connected" ? "Connected" :
+              connectionStatus === "error" ? "Connection Error" :
+              connectionStatus === "connecting" ? "Connecting..." : "Ready"
+            }></div>
+          </div>
         </div>
       </header>
 
@@ -810,6 +841,12 @@ function App() {
           onClick={() => setActiveTab('test')}
         >
           Test Harness
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('settings')}
+        >
+          Settings
         </button>
       </div>
 
@@ -1003,7 +1040,12 @@ function App() {
                           {historyItem.preview}
                         </div>
                         <div className="history-item-meta">
-                          <span className="history-item-database">{historyItem.databaseName}</span>
+                          <span className="history-item-database">
+                            {historyItem.databaseName}
+                            {historyItem.modulesDatabase && historyItem.modulesDatabase !== historyItem.databaseName && 
+                              ` (${historyItem.modulesDatabase})`
+                            }
+                          </span>
                           {historyItem.executionTimeMs && (
                             <span className="history-item-duration">{historyItem.executionTimeMs}ms</span>
                           )}
@@ -1017,9 +1059,47 @@ function App() {
               )}
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'test' ? (
           <TestHarness serverUrl={serverUrl} username={username} password={password} />
-        )}
+        ) : activeTab === 'settings' ? (
+          <div className="settings-layout">
+            <h2>Settings</h2>
+            <div className="settings-section">
+              <div className="settings-group">
+                <label htmlFor="settings-server">Server:</label>
+                <select
+                  id="settings-server"
+                  value={server}
+                  onChange={(e) => setServer(e.target.value)}
+                >
+                  <option value="localhost">localhost</option>
+                </select>
+              </div>
+
+              <div className="settings-group">
+                <label htmlFor="settings-username">Username:</label>
+                <input
+                  id="settings-username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="admin"
+                />
+              </div>
+
+              <div className="settings-group">
+                <label htmlFor="settings-password">Password:</label>
+                <input
+                  id="settings-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="admin"
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
       </main>
     </div>
   );
