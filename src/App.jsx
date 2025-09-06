@@ -4,10 +4,11 @@ import parseHeaders from 'parse-headers';
 import TestHarness from "./TestHarness";
 import QueryEditor from "./components/QueryEditor";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
+import { defineCustomMonacoThemes, getEnhancedTheme } from "./utils/monacoThemes";
 import "./App.css";
 
 function App() {
-  // console.log("🚀 App component loaded - React code is running!");
+  console.log("🚀 App component loaded - React code is running!");
   
   // Content-Type to Monaco language mapping
   function getMonacoLanguageFromContentType(contentType) {
@@ -47,6 +48,7 @@ function App() {
   const [showHistory, setShowHistory] = useState(true);
   const [server, setServer] = useState("localhost");
   const [theme, setTheme] = useState("light");
+  const [monacoTheme, setMonacoTheme] = useState("vs");
   const recordRefs = useRef({});
   const resultsOutputRef = useRef(null);
   
@@ -386,6 +388,9 @@ function App() {
     const handleEditorMount = React.useCallback((editor, monaco) => {
       editorRef.current = editor;
       setEditorMounted(true);
+      
+      // Define custom themes with proper selection highlighting
+      defineCustomMonacoThemes(monaco);
     }, []);
 
     // Format content when editor mounts and content changes
@@ -423,15 +428,33 @@ function App() {
             lineDecorationsWidth: 10,
             lineNumbersMinChars: 3,
             renderLineHighlight: 'none',
-            selectOnLineNumbers: false,
+            selectOnLineNumbers: true,
+            selectionHighlight: true,
+            occurrencesHighlight: true,
+            renderWhitespace: 'selection',
+            showUnused: true,
+            multiCursorModifier: 'alt',
+            multiCursorMergeOverlapping: true,
             automaticLayout: true,
             tabSize: 2,
             insertSpaces: true,
             detectIndentation: true,
             formatOnPaste: true,
-            formatOnType: false
+            formatOnType: false,
+            // Enable proper text selection
+            dragAndDrop: true,
+            mouseWheelZoom: false,
+            contextmenu: true,
+            // Ensure selection is always visible
+            hideCursorInOverviewRuler: false,
+            overviewRulerBorder: false,
+            // Ensure Ctrl+A works
+            find: {
+              autoFindInSelection: 'never',
+              seedSearchStringFromSelection: 'never'
+            }
           }}
-          theme="vs"
+          theme={getEnhancedTheme(monacoTheme)}
         />
       </div>
     );
@@ -472,7 +495,7 @@ function App() {
   }, [server, username, password, makeRequest]);
 
   // Get database-modules configurations from MarkLogic servers using REST Management API
-  async function getDatabaseConfigs() {
+  const getDatabaseConfigs = useCallback(async () => {
     try {      
       // Get servers and databases data using REST Management API
       const [serversData, databasesData] = await Promise.all([
@@ -513,7 +536,7 @@ function App() {
         modulesDatabaseId: ""
       });
     }
-  }, [serverUrl, username, password, makeRequest, parseMultipartResponse]);
+  }, [server, username, password, makeRequest]);
 
   // Get database configs and check connection when server/credentials change
   useEffect(() => {
@@ -521,7 +544,7 @@ function App() {
       // checkConnection();
       getDatabaseConfigs();
     }
-  }, [username, password, server]); // Remove getDatabases from dependencies to break the loop
+  }, [username, password, server, getDatabaseConfigs]);
 
   // Load query history on startup
   useEffect(() => {
@@ -532,6 +555,14 @@ function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Initialize Monaco theme based on app theme (only on first load)
+  useEffect(() => {
+    // Only set initial theme if not already set by user
+    if (monacoTheme === 'vs' && theme === 'dark') {
+      setMonacoTheme('vs-dark');
+    }
+  }, []); // Empty dependency array so this only runs once on mount
 
 // disabled for now - 7997 healthcheck endpoint isn't always available
 /*
@@ -874,6 +905,7 @@ function App() {
                   language={queryType}
                   placeholder={`Enter your ${queryType === 'xquery' ? 'XQuery' : queryType === 'sparql' ? 'SPARQL' : 'JavaScript'} query here...`}
                   disabled={isLoading}
+                  theme={monacoTheme}
                 />
               </div>
 
@@ -1096,6 +1128,39 @@ function App() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="admin"
                 />
+              </div>
+              
+              <div className="settings-group">
+                <label htmlFor="settings-monaco-theme">Monaco Editor Theme:</label>
+                <select
+                  id="settings-monaco-theme"
+                  value={monacoTheme}
+                  onChange={(e) => setMonacoTheme(e.target.value)}
+                >
+                  <option value="vs">Light (Visual Studio)</option>
+                  <option value="vs-dark">Dark (Visual Studio Dark)</option>
+                  <option value="hc-black">High Contrast Black</option>
+                  <option value="hc-light">High Contrast Light</option>
+                </select>
+                <small style={{ display: 'block', marginTop: '4px', color: 'var(--text-secondary)' }}>
+                  Choose your preferred color scheme for code editors
+                </small>
+                <div style={{ marginTop: '8px', border: '1px solid var(--border-color)', borderRadius: '4px' }}>
+                  <MonacoEditor 
+                    content={`// Monaco Editor Theme Preview
+const greeting = "Hello, World!";
+console.log(greeting);
+
+/* Multi-line comment
+   showing syntax highlighting */
+function example() {
+  return { theme: "${monacoTheme}" };
+}`}
+                    language="javascript"
+                    readOnly={true}
+                    height="120px"
+                  />
+                </div>
               </div>
             </div>
           </div>

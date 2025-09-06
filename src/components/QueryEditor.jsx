@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import Editor, { useMonaco } from '@monaco-editor/react';
+import { defineCustomMonacoThemes, getEnhancedTheme } from '../utils/monacoThemes';
 
 // XQuery language configuration
 const xqueryConfig = {
@@ -154,7 +155,8 @@ function QueryEditor({
   onKeyDown, 
   language = 'javascript', 
   placeholder = 'Enter your query here...', 
-  disabled = false 
+  disabled = false,
+  theme = 'vs'
 }) {
   const monaco = useMonaco();
   const editorRef = useRef(null);
@@ -162,6 +164,9 @@ function QueryEditor({
   // Register custom languages when Monaco is available
   useEffect(() => {
     if (monaco) {
+      // Ensure custom themes are registered before editor tries to apply them
+      defineCustomMonacoThemes(monaco);
+
       // Register XQuery
       if (!monaco.languages.getLanguages().find(lang => lang.id === 'xquery')) {
         monaco.languages.register({ id: 'xquery' });
@@ -231,6 +236,9 @@ function QueryEditor({
   const handleEditorMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
 
+    // Define custom themes with proper selection highlighting
+    defineCustomMonacoThemes(monaco);
+
     // Add Ctrl+Enter keyboard shortcut
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
       if (onKeyDown) {
@@ -266,7 +274,13 @@ function QueryEditor({
           lineDecorationsWidth: 10,
           lineNumbersMinChars: 3,
           renderLineHighlight: 'none',
-          selectOnLineNumbers: false,
+          selectOnLineNumbers: true,
+          selectionHighlight: true,
+          occurrencesHighlight: true,
+          renderWhitespace: 'selection',
+          showUnused: true,
+          multiCursorModifier: 'alt',
+          multiCursorMergeOverlapping: true,
           automaticLayout: true,
           tabSize: 2,
           insertSpaces: true,
@@ -280,14 +294,24 @@ function QueryEditor({
           acceptSuggestionOnEnter: 'on',
           quickSuggestions: true,
           parameterHints: { enabled: true },
+          // Ensure selection is always visible
+          hideCursorInOverviewRuler: false,
+          overviewRulerBorder: false,
           // Enable bracket matching
           matchBrackets: 'always',
           // Auto closing brackets
           autoClosingBrackets: 'always',
           autoClosingQuotes: 'always',
           autoSurround: 'languageDefined',
+          // Enable proper text selection
+          dragAndDrop: true,
+          // Ensure Ctrl+A works properly
+          find: {
+            autoFindInSelection: 'never',
+            seedSearchStringFromSelection: 'never'
+          }
         }}
-        theme="vs"
+        theme={getEnhancedTheme(theme)}
       />
     </div>
   );

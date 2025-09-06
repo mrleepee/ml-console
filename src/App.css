@@ -367,29 +367,14 @@ body {
   box-shadow: 0 0 0 2px rgba(7, 122, 204, 0.1);
 }
 
+/* Allow Monaco theme to control the editor backgrounds */
 .query-editor .monaco-editor {
-  background-color: var(--background) !important;
+  background-color: unset;
 }
 
-.query-editor .monaco-editor .monaco-editor-background {
-  background-color: var(--background) !important;
-}
-
-.query-editor .monaco-editor .view-lines {
-  background-color: var(--background) !important;
-}
-
-/* Dark mode adjustments for Monaco editor */
+/* In dark mode, let Monaco theme define colors too */
 [data-theme="dark"] .query-editor .monaco-editor {
-  background-color: var(--background) !important;
-}
-
-[data-theme="dark"] .query-editor .monaco-editor .view-lines {
-  background-color: var(--background) !important;
-}
-
-[data-theme="dark"] .query-editor .monaco-editor .monaco-editor-background {
-  background-color: var(--background) !important;
+  background-color: unset;
 }
 
 /* Results Section */
