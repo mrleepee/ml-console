@@ -5,6 +5,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   httpRequest: (options) => ipcRenderer.invoke('http-request', options),
   
+  // Command execution
+  runCommand: (options) => ipcRenderer.invoke('run-command', options),
+  
   // Database operations
   database: {
     saveQuery: (queryData) => ipcRenderer.invoke('db-save-query', queryData),
