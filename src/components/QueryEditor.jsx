@@ -154,7 +154,8 @@ function QueryEditor({
   onKeyDown, 
   language = 'javascript', 
   placeholder = 'Enter your query here...', 
-  disabled = false 
+  disabled = false,
+  theme = 'vs'
 }) {
   const monaco = useMonaco();
   const editorRef = useRef(null);
@@ -266,7 +267,10 @@ function QueryEditor({
           lineDecorationsWidth: 10,
           lineNumbersMinChars: 3,
           renderLineHighlight: 'none',
-          selectOnLineNumbers: false,
+          selectOnLineNumbers: true,
+          selectionHighlight: true,
+          multiCursorModifier: 'alt',
+          multiCursorMergeOverlapping: true,
           automaticLayout: true,
           tabSize: 2,
           insertSpaces: true,
@@ -286,8 +290,15 @@ function QueryEditor({
           autoClosingBrackets: 'always',
           autoClosingQuotes: 'always',
           autoSurround: 'languageDefined',
+          // Enable proper text selection
+          dragAndDrop: true,
+          // Ensure Ctrl+A works properly
+          find: {
+            autoFindInSelection: 'never',
+            seedSearchStringFromSelection: 'never'
+          }
         }}
-        theme="vs"
+        theme={theme}
       />
     </div>
   );
