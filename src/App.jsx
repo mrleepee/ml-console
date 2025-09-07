@@ -13,7 +13,6 @@ function App() {
   // Content-Type to Monaco language mapping
   function getMonacoLanguageFromContentType(contentType) {
     if (!contentType) return 'plaintext';
-    
     const type = contentType.toLowerCase();
     if (type.includes('json')) return 'json';
     if (type.includes('xml')) return 'xml';
@@ -21,6 +20,17 @@ function App() {
     if (type.includes('javascript') || type.includes('js')) return 'javascript';
     return 'plaintext';
   }
+
+  // Query type to Monaco language mapping
+  function getMonacoLanguageFromQueryType(queryType) {
+    switch (queryType) {
+      case 'javascript': return 'javascript';
+      case 'xquery': return 'xml'; // XQuery is similar to XML
+      case 'sparql': return 'sql'; // SPARQL is similar to SQL
+      default: return 'plaintext';
+    }
+  }
+
   const [query, setQuery] = useState('xquery version "1.0-ml";\n\n(//*[not(*)])[1 to 3]');
   const [results, setResults] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -60,47 +70,28 @@ function App() {
     const recordId = `record-${index}`;
     const element = recordRefs.current[recordId];
     const container = resultsOutputRef.current;
-    
     if (element && container) {
-      // Calculate the position to scroll to within the container
       const containerRect = container.getBoundingClientRect();
       const elementRect = element.getBoundingClientRect();
       const currentScroll = container.scrollTop;
       const containerTop = containerRect.top;
       const elementTop = elementRect.top;
-      
-      // Calculate target scroll position - element position relative to container
-      const targetScroll = currentScroll + (elementTop - containerTop) - 20; // 20px offset from top
-      
-      // Smooth scroll to the target position
-      container.scrollTo({
-        top: Math.max(0, targetScroll),
-        behavior: 'smooth'
-      });
-      
+      const targetScroll = currentScroll + (elementTop - containerTop) - 20;
+      container.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
       setActiveRecordIndex(index);
     }
   };
 
-  const goToPrevRecord = () => {
-    const newIndex = Math.max(activeRecordIndex - 1, 0);
-    scrollToRecord(newIndex);
-  };
-
-  const goToNextRecord = () => {
-    const newIndex = Math.min(activeRecordIndex + 1, tableData.length - 1);
-    scrollToRecord(newIndex);
-  };
+  const goToPrevRecord = () => scrollToRecord(Math.max(activeRecordIndex - 1, 0));
+  const goToNextRecord = () => scrollToRecord(Math.min(activeRecordIndex + 1, tableData.length - 1));
 
   // Simple HTTP request helper (works in both Electron and web)
   const makeRequest = useCallback(async (options) => {
     try {
-      // Check if we're in Electron environment
       if (window.electronAPI && window.electronAPI.httpRequest) {
         const response = await window.electronAPI.httpRequest(options);
         return response;
       } else {
-        // Web environment - attempt real network request using fetch (no mock)
         const resp = await fetch(options.url, {
           method: options.method || 'GET',
           headers: options.headers || {},
@@ -108,14 +99,8 @@ function App() {
         });
         const bodyText = await resp.text();
         const headers = {};
-        resp.headers.forEach((value, key) => {
-          headers[key.toLowerCase()] = value;
-        });
-        return {
-          status: resp.status,
-          headers,
-          body: bodyText
-        };
+        resp.headers.forEach((value, key) => { headers[key.toLowerCase()] = value; });
+        return { status: resp.status, headers, body: bodyText };
       }
     } catch (error) {
       console.error('HTTP request failed:', error);
@@ -137,16 +122,7 @@ function App() {
           executionTimeMs,
           status
         });
-        
         if (result.success) {
-          if (result.updated) {
-            console.log('Query already exists, updated timestamp:', result.id);
-            console.log(result.message);
-          } else {
-            console.log('New query saved to history:', result.id);
-            console.log(result.message);
-          }
-          // Refresh history after saving
           loadQueryHistory();
         } else {
           console.error('Failed to save query:', result.error);
@@ -162,10 +138,8 @@ function App() {
       if (window.electronAPI && window.electronAPI.database) {
         setHistoryLoading(true);
         const result = await window.electronAPI.database.getRecentQueries(limit);
-        
-        if (result.success) {
-          setQueryHistory(result.queries);
-        } else {
+        if (result.success) setQueryHistory(result.queries);
+        else {
           console.error('Failed to load query history:', result.error);
           setQueryHistory([]);
         }
@@ -182,12 +156,9 @@ function App() {
     try {
       if (window.electronAPI && window.electronAPI.database) {
         const result = await window.electronAPI.database.getQueryById(id);
-        
         if (result.success && result.query) {
           setQuery(result.query.content);
           setQueryType(result.query.queryType);
-          
-          // Restore database configuration if available
           if (result.query.databaseId && result.query.databaseName) {
             const restoredConfig = {
               id: result.query.databaseId,
@@ -195,13 +166,9 @@ function App() {
               modulesDatabase: result.query.modulesDatabase || 'file-system',
               modulesDatabaseId: result.query.modulesDatabaseId || '0'
             };
-            
-            // Check if this config exists in current configs, if not add it
-            const existingConfig = databaseConfigs.find(config => config.id === restoredConfig.id);
-            if (existingConfig) {
-              setSelectedDatabaseConfig(existingConfig);
-            } else {
-              // Add the restored config to available configs and select it
+            const existingConfig = databaseConfigs.find(c => c.id === restoredConfig.id);
+            if (existingConfig) setSelectedDatabaseConfig(existingConfig);
+            else {
               setDatabaseConfigs(prev => [...prev, restoredConfig]);
               setSelectedDatabaseConfig(restoredConfig);
             }
@@ -216,25 +183,19 @@ function App() {
   }
 
   async function deleteQueryFromHistory(id, event) {
-    event.stopPropagation(); // Prevent triggering the load query click
-    
+    event.stopPropagation();
     try {
       if (window.electronAPI && window.electronAPI.database) {
         const result = await window.electronAPI.database.deleteQuery(id);
-        
-        if (result.success) {
-          // Refresh history after deletion
-          loadQueryHistory();
-        } else {
-          console.error('Failed to delete query:', result.error);
-        }
+        if (result.success) loadQueryHistory();
+        else console.error('Failed to delete query:', result.error);
       }
     } catch (error) {
       console.error('Error deleting query from history:', error);
     }
   }
 
-  // Utility: escape regex metacharacters
+  // Utility
   function escapeRegExp(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
@@ -244,102 +205,55 @@ function App() {
     const txt = responseText.replace(/^\uFEFF/, '');
     const m = /\r?\n\r?\n/.exec(txt);
     if (!m) return [{ contentType: '', primitive: '', uri: '', path: '', content: txt }];
-
     const rawHeaders = txt.slice(0, m.index);
     const content = txt.slice(m.index + m[0].length);
-
-    const h = parseHeaders(rawHeaders); // keys are lowercase
-    return [{
-      contentType: h['content-type'] || '',
-      primitive: h['x-primitive'] || '',
-      uri: h['x-uri'] || '',
-      path: h['x-path'] || '',
-      content
-    }];
+    const h = parseHeaders(rawHeaders);
+    return [{ contentType: h['content-type'] || '', primitive: h['x-primitive'] || '', uri: h['x-uri'] || '', path: h['x-path'] || '', content }];
   }
 
-  // Parse multipart/mixed response into structured data for table view
   function parseMultipartToTableData(responseText) {
     if (!responseText) return [];
-    
     const results = [];
-    
-    // Find boundary: take the first line starting with -- and capture to EOL
     const boundaryMatch = responseText.match(/^--([^\r\n-]+)(?:--)?\s*$/m);
-    if (!boundaryMatch) {
-      // Fallback: use parseResponse for single-part responses
-      return parseResponse(responseText);
-    }
-
+    if (!boundaryMatch) return parseResponse(responseText);
     const boundary = boundaryMatch[1];
     const escapedBoundary = escapeRegExp(boundary);
-    
-    // Split the response by boundary
     const parts = responseText.split(new RegExp(`--${escapedBoundary}(?:--)?\\s*`, 'g'));
-    
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i].trim();
-      if (!part) continue; // Skip empty parts
-      
-      // Use the parseResponse function for each part
+      if (!part) continue;
       const parsedRecords = parseResponse(part);
       results.push(...parsedRecords);
     }
-    
     return results;
   }
 
-  // Parse multipart/mixed response to extract just the content (legacy)
   const parseMultipartResponse = useCallback((responseText) => {
     const tableData = parseMultipartToTableData(responseText);
     return tableData.map(record => record.content).join('\n');
   }, []);
 
-  // Pretty-print helpers for displaying record content
-  function formatJsonPretty(rawText) {
-    try {
-      const parsed = JSON.parse(rawText);
-      return JSON.stringify(parsed, null, 2);
-    } catch {
-      return rawText;
-    }
-  }
-
+  // Pretty printers
   function formatXmlPretty(rawText) {
     try {
-      const tokens = rawText
-        .replace(/>\s+</g, '><')
-        .split(/(<[^>]+>)/g)
-        .filter(Boolean);
-
+      const tokens = rawText.replace(/>\s+</g, '><').split(/(<[^>]+>)/g).filter(Boolean);
       let indentLevel = 0;
       const indentUnit = '  ';
       const lines = [];
-
       for (const token of tokens) {
         const isTag = token.startsWith('<') && token.endsWith('>');
         if (isTag) {
           const t = token.trim();
           const isClosing = /^<\//.test(t);
           const isSelfClosing = /\/>$/.test(t) || /^<\?/.test(t) || /^<!/.test(t);
-
-          if (isClosing) {
-            indentLevel = Math.max(indentLevel - 1, 0);
-          }
-
+          if (isClosing) indentLevel = Math.max(indentLevel - 1, 0);
           lines.push(`${indentUnit.repeat(indentLevel)}${t}`);
-
-          if (!isClosing && !isSelfClosing) {
-            indentLevel += 1;
-          }
+          if (!isClosing && !isSelfClosing) indentLevel += 1;
         } else {
           const text = token.trim();
-          if (text) {
-            lines.push(`${indentUnit.repeat(indentLevel)}${text}`);
-          }
+          if (text) lines.push(`${indentUnit.repeat(indentLevel)}${text}`);
         }
       }
-
       return lines.join('\n');
     } catch {
       return rawText;
@@ -349,23 +263,15 @@ function App() {
   function getRawContent(record) {
     const content = record.content || '';
     const contentType = (record.contentType || '').toLowerCase();
-
     if (contentType.includes('json')) {
-      try {
-        return JSON.stringify(JSON.parse(content), null, 2);
-      } catch {
-        return content;
-      }
+      try { return JSON.stringify(JSON.parse(content), null, 2); }
+      catch { return content; }
     }
-
-    if (contentType.includes('xml')) {
-      return formatXmlPretty(content);
-    }
-
+    if (contentType.includes('xml')) return formatXmlPretty(content);
     return content;
   }
 
-  // Monaco editor component for record content
+  // Monaco editor for record content (read-only viewer)
   function MonacoEditor({ content, language, readOnly = true, height = "200px", path }) {
     const [editorMounted, setEditorMounted] = useState(false);
     const editorRef = useRef(null);
@@ -373,12 +279,9 @@ function App() {
     const formatContent = React.useCallback(async () => {
       if (editorRef.current && content && (language === 'json' || language === 'xml' || language === 'html')) {
         try {
-          // Small delay to ensure editor is fully ready
           await new Promise(resolve => setTimeout(resolve, 100));
           const action = editorRef.current.getAction('editor.action.formatDocument');
-          if (action) {
-            await action.run();
-          }
+          if (action) await action.run();
         } catch (error) {
           console.debug('Auto-format failed:', error);
         }
@@ -388,25 +291,13 @@ function App() {
     const handleEditorMount = React.useCallback((editor, monaco) => {
       editorRef.current = editor;
       setEditorMounted(true);
-      
-      // Define custom themes with proper selection highlighting
       defineCustomMonacoThemes(monaco);
     }, []);
 
-    // Format content when editor mounts and content changes
-    useEffect(() => {
-      if (editorMounted && content) {
-        formatContent();
-      }
-    }, [editorMounted, content, formatContent]);
+    useEffect(() => { if (editorMounted && content) formatContent(); }, [editorMounted, content, formatContent]);
 
     return (
-      <div style={{ 
-        height: height, 
-        width: "100%",
-        border: "1px solid #ddd",
-        borderRadius: "4px"
-      }}>
+      <div style={{ height, width: "100%", border: "1px solid #ddd", borderRadius: "4px" }}>
         <Editor
           height={height}
           language={language}
@@ -415,7 +306,7 @@ function App() {
           keepCurrentModel={true}
           onMount={handleEditorMount}
           options={{
-            readOnly: readOnly,
+            readOnly,
             minimap: { enabled: false },
             scrollBeyondLastLine: false,
             wordWrap: 'on',
@@ -441,18 +332,12 @@ function App() {
             detectIndentation: true,
             formatOnPaste: true,
             formatOnType: false,
-            // Enable proper text selection
             dragAndDrop: true,
             mouseWheelZoom: false,
             contextmenu: true,
-            // Ensure selection is always visible
             hideCursorInOverviewRuler: false,
             overviewRulerBorder: false,
-            // Ensure Ctrl+A works
-            find: {
-              autoFindInSelection: 'never',
-              seedSearchStringFromSelection: 'never'
-            }
+            find: { autoFindInSelection: 'never', seedSearchStringFromSelection: 'never' }
           }}
           theme={getEnhancedTheme(monacoTheme)}
         />
@@ -460,475 +345,257 @@ function App() {
     );
   }
 
-  const MemoMonacoEditor = React.memo(MonacoEditor, (prevProps, nextProps) => {
-    return (
-      prevProps.content === nextProps.content &&
-      prevProps.language === nextProps.language &&
-      prevProps.readOnly === nextProps.readOnly &&
-      prevProps.height === nextProps.height &&
-      prevProps.path === nextProps.path
-    );
-  });
+  const MemoMonacoEditor = React.memo(MonacoEditor, (prev, next) =>
+    prev.content === next.content &&
+    prev.language === next.language &&
+    prev.readOnly === next.readOnly &&
+    prev.height === next.height &&
+    prev.path === next.path
+  );
 
-  // Health check function for connection status
+  // Health check (optional)
   const checkConnection = useCallback(async () => {
     try {
       setConnectionStatus("connecting");
-      
       const response = await makeRequest({
-        url: `http://${server}:7997/LATEST/healthcheck`, // Using healthcheck endpoint 
+        url: `http://${server}:7997/LATEST/healthcheck`,
         method: "GET",
         headers: {},
-        timeout: 10000, // 10 second timeout
+        timeout: 10000,
         username,
         password
       });
-
-      if (response.status === 200 || response.status === 204) {
-        setConnectionStatus("connected");
-      } else {
-        setConnectionStatus("error");
-      }
-    } catch (err) {
+      if (response.status === 200 || response.status === 204) setConnectionStatus("connected");
+      else setConnectionStatus("error");
+    } catch {
       setConnectionStatus("error");
     }
   }, [server, username, password, makeRequest]);
 
-  // Get database-modules configurations from MarkLogic servers using REST Management API
+  // Build DB configs
   const getDatabaseConfigs = useCallback(async () => {
     try {      
-      // Get servers and databases data using REST Management API
       const [serversData, databasesData] = await Promise.all([
         getServers(server, username, password, makeRequest),
         getDatabases(server, username, password, makeRequest)
       ]);
-      
-      console.log("Servers data:", serversData);
-      console.log("Databases data:", databasesData);
-      
-      // Parse the combined data to create database-modules configurations
       const configs = parseDatabaseConfigs(serversData, databasesData);
-      
-      console.log("Found database configurations:", JSON.stringify(configs, null, 2));
       setDatabaseConfigs(configs);
-      
-      // Set first config as default if current selection isn't valid
-      const currentIsValid = configs.some(config => 
-        config.name === selectedDatabaseConfig.name && 
-        config.id === selectedDatabaseConfig.id
-      );
-      
-      if (!currentIsValid && configs.length > 0) {
-        setSelectedDatabaseConfig(configs[0]);
-      }
-      
+      const currentIsValid = configs.some(c => c.name === selectedDatabaseConfig.name && c.id === selectedDatabaseConfig.id);
+      if (!currentIsValid && configs.length > 0) setSelectedDatabaseConfig(configs[0]);
     } catch (err) {
       console.error("Get database configs error:", err);
       setError(`Failed to get database configurations: ${err.message}. Please check your server connection and credentials.`);
       setConnectionStatus("error");
-      
-      // Clear configurations on error - user must fix connection to proceed
       setDatabaseConfigs([]);
-      setSelectedDatabaseConfig({
-        name: "",
-        id: "",
-        modulesDatabase: "",
-        modulesDatabaseId: ""
-      });
+      setSelectedDatabaseConfig({ name: "", id: "", modulesDatabase: "", modulesDatabaseId: "" });
     }
-  }, [server, username, password, makeRequest]);
+  }, [server, username, password, makeRequest, selectedDatabaseConfig.name, selectedDatabaseConfig.id]);
 
-  // Get database configs and check connection when server/credentials change
   useEffect(() => {
     if (username && password && server) {
-      // checkConnection();
       getDatabaseConfigs();
     }
   }, [username, password, server, getDatabaseConfigs]);
 
-  // Load query history on startup
+  useEffect(() => { loadQueryHistory(); }, []);
+  useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
+  useEffect(() => { if (monacoTheme === 'vs' && theme === 'dark') setMonacoTheme('vs-dark'); }, []);
+
+  // Force Monaco to relayout when the sidebar opens/closes
   useEffect(() => {
-    loadQueryHistory();
-  }, []); // Empty dependency array - only run once on mount
+    // Give the DOM a beat to settle then notify all listeners
+    const id = setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+    return () => clearTimeout(id);
+  }, [showHistory]);
 
-  // Apply theme to document
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
-
-  // Initialize Monaco theme based on app theme (only on first load)
-  useEffect(() => {
-    // Only set initial theme if not already set by user
-    if (monacoTheme === 'vs' && theme === 'dark') {
-      setMonacoTheme('vs-dark');
-    }
-  }, []); // Empty dependency array so this only runs once on mount
-
-// disabled for now - 7997 healthcheck endpoint isn't always available
-/*
-  useEffect(() => {
-    if (username && password && server) {
-      const intervalId = setInterval(() => {
-        checkConnection();
-      }, 30000); // 30 seconds
-
-      return () => clearInterval(intervalId);
-    }
-  }, [username, password, server]);
-*/
-
-  // Keyboard shortcuts for record navigation
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (viewMode === "table" && hasRecords) {
-        if (e.key === 'ArrowUp' && e.ctrlKey) {
-          e.preventDefault();
-          goToPrevRecord();
-        } else if (e.key === 'ArrowDown' && e.ctrlKey) {
-          e.preventDefault();
-          goToNextRecord();
-        }
+        if (e.key === 'ArrowUp' && e.ctrlKey) { e.preventDefault(); goToPrevRecord(); }
+        else if (e.key === 'ArrowDown' && e.ctrlKey) { e.preventDefault(); goToNextRecord(); }
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [viewMode, hasRecords, activeRecordIndex, tableData.length]);
 
-  // Update displayed results when view mode changes
+  // View mode change
   useEffect(() => {
     if (rawResults) {
-      if (viewMode === "raw") {
-        setResults(rawResults);
-      } else if (viewMode === "parsed") {
+      if (viewMode === "raw") setResults(rawResults);
+      else if (viewMode === "parsed") {
         const cleanedResults = parseMultipartResponse(rawResults);
         setResults(cleanedResults || "Query executed successfully (no results)");
       }
-      // Table mode doesn't use setResults - it renders directly from tableData
     }
-  }, [viewMode, rawResults]);
+  }, [viewMode, rawResults, parseMultipartResponse]);
 
   async function executeQuery() {
-    console.log("=== EXECUTEQUERY FUNCTION CALLED ===");
-    
-    if (!query.trim()) {
-      setError("Please enter a query");
-      return;
-    }
-
+    if (!query.trim()) { setError("Please enter a query"); return; }
     if (!selectedDatabaseConfig.id || databaseConfigs.length === 0) {
       setError("Please select a database. Check your server connection and credentials.");
       return;
     }
-  
-    console.log("=== SETTING INITIAL STATE ===");
-    setIsLoading(true);
-    setError("");
-    setResults("");
+    setIsLoading(true); setError(""); setResults("");
     const executionStartTime = Date.now();
-  
     try {
-      console.log("=== EXECUTING QUERY VIA REST API ===");
-      
-      // Use MarkLogic REST API v1/eval endpoint
       const url = `${serverUrl.replace(/\/+$/, "")}/v1/eval`;
-      
-      // Prepare request body based on query type
-      let body;
-      let contentType;
-      
+      let body; let contentType;
       if (queryType === "xquery") {
-        // Use xdmp:eval-in with database ID and modules database ID
         const wrappedQuery = selectedDatabaseConfig.modulesDatabaseId !== '0' 
           ? `xdmp:eval-in("${query.replace(/"/g, '""')}", ${selectedDatabaseConfig.id}, (), ${selectedDatabaseConfig.modulesDatabaseId})`
           : `xdmp:eval-in("${query.replace(/"/g, '""')}", ${selectedDatabaseConfig.id})`;
         body = `xquery=${encodeURIComponent(wrappedQuery)}`;
         contentType = "application/x-www-form-urlencoded";
       } else if (queryType === "javascript") {
-        // For JavaScript, use database ID directly with modules database ID
         const modulesPart = selectedDatabaseConfig.modulesDatabaseId !== '0' 
           ? `&modules=${encodeURIComponent(selectedDatabaseConfig.modulesDatabaseId)}`
           : '';
         body = `javascript=${encodeURIComponent(query)}&database=${encodeURIComponent(selectedDatabaseConfig.id)}${modulesPart}`;
         contentType = "application/x-www-form-urlencoded";
       } else if (queryType === "sparql") {
-        // For SPARQL, use xdmp:eval-in with database ID and modules database ID
         const wrappedQuery = selectedDatabaseConfig.modulesDatabaseId !== '0' 
           ? `xdmp:eval-in("${query.replace(/"/g, '""')}", ${selectedDatabaseConfig.id}, (), ${selectedDatabaseConfig.modulesDatabaseId})`
           : `xdmp:eval-in("${query.replace(/"/g, '""')}", ${selectedDatabaseConfig.id})`;
         body = `xquery=${encodeURIComponent(wrappedQuery)}`;
         contentType = "application/x-www-form-urlencoded";
       }
-  
-      console.log("=== REQUEST DEBUG ===");
-      console.log("URL:", url);
-      console.log("Method: POST");
-      console.log("Content-Type:", contentType);
-      console.log("Body:", body);
-      console.log("Selected Database Config:", selectedDatabaseConfig);
-      console.log("Username:", username);
-  
+
       const response = await makeRequest({
-        url,
-        method: "POST",
-        headers: {
-          "Content-Type": contentType,
-        },
-        body,
-        username,
-        password,
+        url, method: "POST",
+        headers: { "Content-Type": contentType },
+        body, username, password,
       });
 
-      console.log("=== RESPONSE RECEIVED ===");
-      console.log("Status:", response.status);
-      console.log("Headers:", response.headers);
-      console.log("Body preview:", response.body?.substring?.(0, 500));
-  
       if (response.status < 200 || response.status >= 300) {
         throw new Error(`HTTP ${response.status}: ${response.body || 'Unknown error'}`);
       }
-  
-      console.log("=== PROCESSING RESPONSE ===");
-      
-      // Store raw results
+
       const rawResponse = response.body || "";
-      console.log("Setting rawResults...");
       setRawResults(rawResponse);
-      
-      // Parse into structured table data
-      console.log("Parsing multipart data...");
       const parsedTableData = parseMultipartToTableData(rawResponse);
-      console.log("Setting tableData with:", parsedTableData);
       setTableData(parsedTableData);
-      
-      // Parse multipart/mixed response to extract just the results
-      console.log("Parsing multipart response...");
       const cleanedResults = parseMultipartResponse(rawResponse);
-      console.log("=== CLEANED RESULTS ===");
-      console.log("Raw response length:", rawResponse.length);
-      console.log("Parsed table data:", parsedTableData);
-      console.log("Cleaned results:", cleanedResults);
-      console.log("=== END CLEANED RESULTS ===");
-      
-      // Set results based on view mode - start with parsed view
-      const displayResults = cleanedResults || "Query executed successfully (no results)";
-      console.log("Setting results with:", displayResults);
-      setResults(displayResults);
-      console.log("Setting connection status to connected...");
+      setResults(cleanedResults || "Query executed successfully (no results)");
       setConnectionStatus("connected");
-      
-      // Save query to history
-      const executionTime = Date.now() - executionStartTime;
-      await saveQueryToHistory(query, queryType, selectedDatabaseConfig, executionTime, 'executed');
-      
+      await saveQueryToHistory(query, queryType, selectedDatabaseConfig, Date.now() - executionStartTime, 'executed');
     } catch (err) {
       console.error("Query execution error:", err);
-      console.error("Error details:", {
-        message: err.message,
-        stack: err.stack,
-        name: err.name
-      });
       setError(`Error: ${err.message || "Unknown error occurred"}`);
       setConnectionStatus("error");
     } finally {
       setIsLoading(false);
     }
   }
-  
+
   // Smart text wrapping for brackets and quotes
   const handleQueryKeyDown = (e) => {
-    // Handle Ctrl+Enter for execution
-    if (e.ctrlKey && e.key === "Enter") {
-      e.preventDefault();
-      executeQuery();
-      return;
-    }
-
+    if (e.ctrlKey && e.key === "Enter") { e.preventDefault(); executeQuery(); return; }
     const textarea = e.target;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = textarea.value.substring(start, end);
-    
-    // Only wrap if there's selected text
     if (start === end || !selectedText) return;
-
     let wrapChars = null;
-
-    // Define wrapping pairs
     switch (e.key) {
-      case '(':
-        wrapChars = ['(', ')'];
-        break;
-      case '[':
-        wrapChars = ['[', ']'];
-        break;
-      case '{':
-        wrapChars = ['{', '}'];
-        break;
-      case '"':
-        wrapChars = ['"', '"'];
-        break;
-      case "'":
-        wrapChars = ["'", "'"];
-        break;
-      case '`':
-        wrapChars = ['`', '`'];
-        break;
-      default:
-        return; // No wrapping for other keys
+      case '(': wrapChars = ['(', ')']; break;
+      case '[': wrapChars = ['[', ']']; break;
+      case '{': wrapChars = ['{', '}']; break;
+      case '"': wrapChars = ['"', '"']; break;
+      case "'": wrapChars = ["'", "'"]; break;
+      case '`': wrapChars = ['`', '`']; break;
+      default: return;
     }
-
     if (wrapChars) {
       e.preventDefault();
-      
-      const beforeSelection = textarea.value.substring(0, start);
-      const afterSelection = textarea.value.substring(end);
-      const wrappedText = wrapChars[0] + selectedText + wrapChars[1];
-      
-      const newValue = beforeSelection + wrappedText + afterSelection;
+      const before = textarea.value.substring(0, start);
+      const after = textarea.value.substring(end);
+      const wrapped = wrapChars[0] + selectedText + wrapChars[1];
+      const newValue = before + wrapped + after;
       setQuery(newValue);
-      
-      // Set selection to highlight the wrapped content
       setTimeout(() => {
         textarea.focus();
-        textarea.setSelectionRange(
-          start + wrapChars[0].length, 
-          end + wrapChars[0].length
-        );
+        textarea.setSelectionRange(start + wrapChars[0].length, end + wrapChars[0].length);
       }, 0);
     }
   };
 
-
-  return (
-    <div className="ml-console">
-      <header className="header">
-        <h1>ML Console</h1>
-        <div className="server-config">
-          <label htmlFor="query-type">Query Type:</label>
-          <select
-            id="query-type"
-            value={queryType}
-            onChange={(e) => setQueryType(e.target.value)}
-          >
-            <option value="xquery">XQuery</option>
-            <option value="javascript">JavaScript</option>
-            <option value="sparql">SPARQL</option>
-          </select>
-          <label htmlFor="database-config">Database:</label>
-          <select
-            id="database-config"
-            value={selectedDatabaseConfig.id}
-            onChange={(e) => {
-              const config = databaseConfigs.find(c => c.id === e.target.value);
-              if (config) {
-                setSelectedDatabaseConfig(config);
-              }
-            }}
-            disabled={databaseConfigs.length === 0}
-          >
-            {databaseConfigs.length === 0 ? (
-              <option value="">No databases available - check connection</option>
-            ) : (
-              databaseConfigs.map((config, index) => (
-                <option key={`db-${index}-${config.id}`} value={config.id}>
-                  {config.name} ({config.modulesDatabase})
-                </option>
-              ))
-            )}
-          </select>
-        </div>
-        <div className="header-controls">
-          <button 
-            className="theme-toggle"
-            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-          >
-            {theme === 'light' ? '🌙' : '☀️'}
-          </button>
-          <div className="connection-indicator">
-            <div className={`status-dot ${
-              connectionStatus === "connected" ? "connected" :
-              connectionStatus === "error" ? "error" :
-              connectionStatus === "connecting" ? "connecting" : "ready"
-            }`} title={
-              connectionStatus === "connected" ? "Connected" :
-              connectionStatus === "error" ? "Connection Error" :
-              connectionStatus === "connecting" ? "Connecting..." : "Ready"
-            }></div>
-          </div>
-        </div>
-      </header>
-
-      <div className="tab-navigation">
-        <button 
-          className={`tab-button ${activeTab === 'console' ? 'active' : ''}`}
-          onClick={() => setActiveTab('console')}
-        >
-          Query Console
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'test' ? 'active' : ''}`}
-          onClick={() => setActiveTab('test')}
-        >
-          Test Harness
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'settings' ? 'active' : ''}`}
-          onClick={() => setActiveTab('settings')}
-        >
-          Settings
-        </button>
-      </div>
-
-      <main className="main-content">
-        {activeTab === 'console' ? (
-          <div className="console-layout">
-            <div className="query-and-results">
-              <div className="query-section">
-                <div className="query-header">
-                  <h2>Query</h2>
-                  <div className="query-buttons">
+  // ---------- UI: renderer ----------
+  const renderMainContent = () => {
+    if (activeTab === 'console') {
+      return (
+        <div className="flex h-full gap-4">
+          {/* LEFT COLUMN: Query + Results stacked; min-w-0 avoids horizontal overflow */}
+          <div className="flex-1 flex flex-col gap-4 min-w-0">
+            {/* Query (bounded height) */}
+            <div className="card bg-base-100 shadow-sm border border-base-300">
+              <div className="card-header bg-base-200 px-4 py-3 border-b border-base-300">
+                <div className="flex items-center justify-between">
+                  <h2 className="card-title text-lg">Query</h2>
+                  <div className="card-actions">
                     <button
                       onClick={executeQuery}
                       disabled={isLoading}
-                      className="execute-btn"
+                      className="btn btn-primary btn-sm"
                     >
-                      {isLoading ? "Executing..." : "Execute (Ctrl+Enter)"}
+                      {isLoading ? (
+                        <>
+                          <span className="loading loading-spinner loading-xs"></span>
+                          Executing...
+                        </>
+                      ) : (
+                        "Execute (Ctrl+Enter)"
+                      )}
                     </button>
                   </div>
                 </div>
-                <QueryEditor
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={handleQueryKeyDown}
-                  language={queryType}
-                  placeholder={`Enter your ${queryType === 'xquery' ? 'XQuery' : queryType === 'sparql' ? 'SPARQL' : 'JavaScript'} query here...`}
-                  disabled={isLoading}
-                  theme={monacoTheme}
-                />
               </div>
 
-              <div className="results-section">
-                <div className="results-header">
-                  <h2>Results</h2>
-                  <div className="results-controls">
+              {/* Fixed/controlled height + overflow hidden so Monaco can't grow infinitely */}
+              <div
+                className="card-body p-0 overflow-hidden"
+                style={{ height: '40vh', minHeight: '260px' }}
+              >
+                <div className="h-full w-full min-w-0">
+                  {/* key forces clean re-measure when sidebar toggles */}
+                  <QueryEditor
+                    key={showHistory ? 'withHistory' : 'withoutHistory'}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={handleQueryKeyDown}
+                    language={getMonacoLanguageFromQueryType(queryType)}
+                    placeholder={`Enter your ${queryType === 'xquery' ? 'XQuery' : queryType === 'sparql' ? 'SPARQL' : 'JavaScript'} query here...`}
+                    disabled={isLoading}
+                    theme={monacoTheme}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Results (fills the remaining vertical space) */}
+            <div className="card bg-base-100 shadow-sm border border-base-300 flex-1 flex flex-col min-w-0">
+              <div className="card-header bg-base-200 px-4 py-3 border-b border-base-300">
+                <div className="flex items-center justify-between">
+                  <h2 className="card-title text-lg">Results</h2>
+                  <div className="card-actions flex items-center gap-2">
                     <select 
                       value={viewMode} 
                       onChange={(e) => setViewMode(e.target.value)}
-                      className="view-mode-select"
+                      className="select select-bordered select-sm w-32"
                     >
                       <option value="table">Table View</option>
                       <option value="parsed">Parsed Text</option>
                       <option value="raw">Raw Output</option>
                     </select>
                     {viewMode === "table" && hasRecords && (
-                      <div className="record-navigation">
-                        <div className="nav-arrows">
+                      <div className="flex items-center gap-2">
+                        <div className="join">
                           <button 
                             onClick={goToPrevRecord} 
                             disabled={activeRecordIndex <= 0}
-                            className="nav-arrow"
+                            className="btn btn-sm btn-outline join-item"
                             title="Previous record (Ctrl+↑)"
                           >
                             ↑
@@ -936,171 +603,228 @@ function App() {
                           <button 
                             onClick={goToNextRecord} 
                             disabled={activeRecordIndex >= tableData.length - 1}
-                            className="nav-arrow"
+                            className="btn btn-sm btn-outline join-item"
                             title="Next record (Ctrl+↓)"
                           >
                             ↓
                           </button>
                         </div>
-                        <span className="record-counter">
+                        <span className="text-sm text-base-content/70">
                           {activeRecordIndex + 1} of {tableData.length}
                         </span>
                       </div>
                     )}
                   </div>
                 </div>
-                {error && <div className="error-message">{error}</div>}
-                <div className="results-output" ref={resultsOutputRef}>
+              </div>
+              <div className="card-body p-0 flex-1 min-w-0">
+                {error && (
+                  <div className="alert alert-error m-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{error}</span>
+                  </div>
+                )}
+                <div className="results-output flex-1 min-w-0" ref={resultsOutputRef}>
                   {isLoading ? (
-                    <div className="loading">Executing query...</div>
+                    <div className="flex items-center justify-center h-full">
+                      <div className="flex flex-col items-center gap-4">
+                        <span className="loading loading-spinner loading-lg"></span>
+                        <span className="text-lg">Executing query...</span>
+                      </div>
+                    </div>
                   ) : viewMode === "table" ? (
-                    <div className="table-view">
+                    <div className="overflow-x-auto">
                       {tableData.length > 0 ? (
-                        tableData.map((record, index) => {
-                          // Create truly unique identifier using index + URI + content hash
-                          const contentHash = record.content?.substring(0, 50)?.replace(/\W+/g, '') || 'empty';
-                          const stableId = `record-${index}-${record.uri || 'no-uri'}-${contentHash}`;
-                          const recordId = `record-${index}`;
-                          
-                          return (
-                            <div 
-                              key={stableId} 
-                              className={`table-record ${index === activeRecordIndex ? 'active-record' : ''}`}
-                              ref={(el) => {
-                                if (el) {
-                                  recordRefs.current[recordId] = el;
-                                } else {
-                                  delete recordRefs.current[recordId];
-                                }
-                              }}
-                              id={recordId}
-                            >
-                              <div className="record-header" style={{ 
-                                height: '85%', 
-                                backgroundColor: '#1e3a8a',
-                                color: 'white',
-                                padding: '8px 12px',
-                                borderRadius: '4px 4px 0 0',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                fontSize: '14px',
-                                fontWeight: '500'
-                              }}>
-                                <span className="record-number">#{index + 1}</span>
-                                <span className="record-uri">{record.uri || 'No URI'}</span>
+                        <div className="space-y-4 p-4">
+                          {tableData.map((record, index) => {
+                            const contentHash = record.content?.substring(0, 50)?.replace(/\W+/g, '') || 'empty';
+                            const stableId = `record-${index}-${record.uri || 'no-uri'}-${contentHash}`;
+                            const recordId = `record-${index}`;
+                            return (
+                              <div 
+                                key={stableId} 
+                                className={`card bg-base-100 shadow-sm border ${index === activeRecordIndex ? 'border-primary ring-2 ring-primary/20' : 'border-base-300'}`}
+                                ref={(el) => {
+                                  if (el) recordRefs.current[recordId] = el;
+                                  else delete recordRefs.current[recordId];
+                                }}
+                                id={recordId}
+                              >
+                                <div className="card-header bg-primary text-primary-content px-4 py-2">
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-medium">#{index + 1}</span>
+                                    <span className="text-sm opacity-90">{record.uri || 'No URI'}</span>
+                                  </div>
+                                </div>
+                                <div className="card-body p-4">
+                                  <div className="flex flex-wrap gap-4 text-sm text-base-content/70 mb-4">
+                                    <span><strong>Content Type:</strong> {record.contentType || 'Not available'}</span>
+                                    <span><strong>Datatype:</strong> {record.primitive || 'Not available'}</span>
+                                    {record.path && <span><strong>XPath:</strong> {record.path}</span>}
+                                  </div>
+                                  <div className="border border-base-300 rounded-lg overflow-hidden">
+                                    <MemoMonacoEditor 
+                                      content={getRawContent(record)}
+                                      language={getMonacoLanguageFromContentType(record.contentType)}
+                                      readOnly={true}
+                                      height="300px"
+                                      path={stableId}
+                                    />
+                                  </div>
+                                </div>
                               </div>
-                              <div className="record-metadata">
-                                <span><strong>Content Type:</strong> {record.contentType || 'Not available'}</span>
-                                <span style={{ margin: '0 10px' }}><strong>Datatype:</strong> {record.primitive || 'Not available'}</span>
-                                {record.path && <span style={{ margin: '0 10px' }}><strong>XPath:</strong> {record.path}</span>}
-                              </div>
-                              <div className="record-content">
-                                <MemoMonacoEditor 
-                                  content={getRawContent(record)}
-                                  language={getMonacoLanguageFromContentType(record.contentType)}
-                                  readOnly={true}
-                                  height="300px"
-                                  path={stableId}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })
+                            );
+                          })}
+                        </div>
                       ) : (
-                        <div className="no-results">No results to display</div>
+                        <div className="flex items-center justify-center h-32 text-base-content/50">
+                          <div className="text-center">
+                            <svg className="mx-auto h-12 w-12 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <p className="mt-2">No results to display</p>
+                          </div>
+                        </div>
                       )}
                     </div>
                   ) : (
-                    <MonacoEditor 
-                      content={results}
-                      language="plaintext"
-                      readOnly={true}
-                      height="400px"
-                    />
+                    <div className="p-4">
+                      <MonacoEditor 
+                        content={results}
+                        language="plaintext"
+                        readOnly={true}
+                        height="400px"
+                      />
+                    </div>
                   )}
                 </div>
               </div>
-            </div>
-
-            <div className="query-history-panel">
-              <div className="history-header">
-                <h2>Query History</h2>
-                <div className="history-controls">
-                  <button 
-                    onClick={() => setShowHistory(prev => !prev)}
-                    className="refresh-btn"
-                  >
-                    {showHistory ? '« Collapse' : '» Expand'}
-                  </button>
-                  <button 
-                    onClick={() => loadQueryHistory()}
-                    className="refresh-btn"
-                    disabled={historyLoading}
-                  >
-                    {historyLoading ? "Loading..." : "Refresh"}
-                  </button>
-                </div>
-              </div>
-              {showHistory && (
-                <div className="history-list">
-                  {historyLoading ? (
-                    <div className="loading">Loading history...</div>
-                  ) : queryHistory.length > 0 ? (
-                    queryHistory.map((historyItem) => (
-                      <div 
-                        key={historyItem.id} 
-                        className="history-item"
-                        onClick={() => loadQueryFromHistory(historyItem.id)}
-                      >
-                        <div className="history-item-header">
-                          <div className="history-item-info">
-                            <span className="history-item-type">{historyItem.queryType.toUpperCase()}</span>
-                            <span className="history-item-time">
-                              {new Date(historyItem.createdAt).toLocaleTimeString()}
-                            </span>
-                          </div>
-                          <button 
-                            className="history-delete-btn"
-                            onClick={(e) => deleteQueryFromHistory(historyItem.id, e)}
-                            title="Delete query"
-                          >
-                            ×
-                          </button>
-                        </div>
-                        <div className="history-item-preview">
-                          {historyItem.preview}
-                        </div>
-                        <div className="history-item-meta">
-                          <span className="history-item-database">
-                            {historyItem.databaseName}
-                            {historyItem.modulesDatabase && historyItem.modulesDatabase !== historyItem.databaseName && 
-                              ` (${historyItem.modulesDatabase})`
-                            }
-                          </span>
-                          {historyItem.executionTimeMs && (
-                            <span className="history-item-duration">{historyItem.executionTimeMs}ms</span>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="no-history">No query history yet</div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
-        ) : activeTab === 'test' ? (
-          <TestHarness serverUrl={serverUrl} username={username} password={password} />
-        ) : activeTab === 'settings' ? (
-          <div className="settings-layout">
-            <h2>Settings</h2>
-            <div className="settings-section">
-              <div className="settings-group">
-                <label htmlFor="settings-server">Server:</label>
+
+          {/* RIGHT COLUMN: History */}
+          {showHistory && (
+            <div className="card bg-base-100 shadow-sm border border-base-300 w-80 flex flex-col">
+              <div className="card-header bg-base-200 px-4 py-3 border-b border-base-300">
+                <div className="flex items-center justify-between">
+                  <h2 className="card-title text-lg">Query History</h2>
+                  <div className="card-actions flex gap-1">
+                    <button 
+                      onClick={() => setShowHistory(false)}
+                      className="btn btn-ghost btn-sm btn-square"
+                      title="Collapse history panel"
+                    >
+                      ←
+                    </button>
+                    <button 
+                      onClick={() => loadQueryHistory()}
+                      className="btn btn-ghost btn-sm btn-square"
+                      disabled={historyLoading}
+                      title="Refresh history"
+                    >
+                      {historyLoading ? <span className="loading loading-spinner loading-xs"></span> : "↻"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="card-body p-0 flex-1 overflow-y-auto">
+                {historyLoading ? (
+                  <div className="flex items-center justify-center h-32">
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="loading loading-spinner loading-md"></span>
+                      <span className="text-sm">Loading history...</span>
+                    </div>
+                  </div>
+                ) : queryHistory.length > 0 ? (
+                  <div className="space-y-2 p-2">
+                    {queryHistory.map((historyItem) => (
+                      <div 
+                        key={historyItem.id} 
+                        className="card bg-base-100 border border-base-300 hover:border-primary/50 cursor-pointer transition-colors"
+                        onClick={() => loadQueryFromHistory(historyItem.id)}
+                      >
+                        <div className="card-body p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="badge badge-primary badge-sm">{historyItem.queryType.toUpperCase()}</span>
+                              <span className="text-xs text-base-content/60">
+                                {new Date(historyItem.createdAt).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            <button 
+                              className="btn btn-ghost btn-xs btn-square"
+                              onClick={(e) => deleteQueryFromHistory(historyItem.id, e)}
+                              title="Delete query"
+                            >
+                              ×
+                            </button>
+                          </div>
+                          <div className="text-sm text-base-content/80 font-mono mb-2">
+                            {historyItem.preview}
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-base-content/60">
+                            <span>
+                              {historyItem.databaseName}
+                              {historyItem.modulesDatabase && historyItem.modulesDatabase !== historyItem.databaseName && 
+                                ` (${historyItem.modulesDatabase})`
+                              }
+                            </span>
+                            {historyItem.executionTimeMs && (
+                              <span className="badge badge-outline badge-xs">{historyItem.executionTimeMs}ms</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-32 text-base-content/50">
+                    <div className="text-center">
+                      <svg className="mx-auto h-8 w-8 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="mt-2 text-sm">No query history yet</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!showHistory && (
+            <button 
+              onClick={() => setShowHistory(true)}
+              className="btn btn-ghost btn-sm btn-square"
+              title="Expand history panel"
+            >
+              →
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    if (activeTab === 'test') {
+      return <TestHarness serverUrl={serverUrl} username={username} password={password} />;
+    }
+
+    if (activeTab === 'settings') {
+      return (
+        <div className="max-w-2xl mx-auto p-6">
+          <div className="card bg-base-100 shadow-sm border border-base-300">
+            <div className="card-header bg-base-200 px-6 py-4 border-b border-base-300">
+              <h2 className="card-title text-xl">Settings</h2>
+            </div>
+            <div className="card-body p-6 space-y-6">
+              <div className="form-control">
+                <label className="label" htmlFor="settings-server">
+                  <span className="label-text font-medium">Server</span>
+                </label>
                 <select
                   id="settings-server"
+                  className="select select-bordered"
                   value={server}
                   onChange={(e) => setServer(e.target.value)}
                 >
@@ -1108,32 +832,41 @@ function App() {
                 </select>
               </div>
 
-              <div className="settings-group">
-                <label htmlFor="settings-username">Username:</label>
+              <div className="form-control">
+                <label className="label" htmlFor="settings-username">
+                  <span className="label-text font-medium">Username</span>
+                </label>
                 <input
                   id="settings-username"
                   type="text"
+                  className="input input-bordered"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="admin"
                 />
               </div>
 
-              <div className="settings-group">
-                <label htmlFor="settings-password">Password:</label>
+              <div className="form-control">
+                <label className="label" htmlFor="settings-password">
+                  <span className="label-text font-medium">Password</span>
+                </label>
                 <input
                   id="settings-password"
                   type="password"
+                  className="input input-bordered"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="admin"
                 />
               </div>
               
-              <div className="settings-group">
-                <label htmlFor="settings-monaco-theme">Monaco Editor Theme:</label>
+              <div className="form-control">
+                <label className="label" htmlFor="settings-monaco-theme">
+                  <span className="label-text font-medium">Monaco Editor Theme</span>
+                </label>
                 <select
                   id="settings-monaco-theme"
+                  className="select select-bordered"
                   value={monacoTheme}
                   onChange={(e) => setMonacoTheme(e.target.value)}
                 >
@@ -1142,10 +875,18 @@ function App() {
                   <option value="hc-black">High Contrast Black</option>
                   <option value="hc-light">High Contrast Light</option>
                 </select>
-                <small style={{ display: 'block', marginTop: '4px', color: 'var(--text-secondary)' }}>
-                  Choose your preferred color scheme for code editors
-                </small>
-                <div style={{ marginTop: '8px', border: '1px solid var(--border-color)', borderRadius: '4px' }}>
+                <label className="label">
+                  <span className="label-text-alt text-base-content/60">
+                    Choose your preferred color scheme for code editors
+                  </span>
+                </label>
+              </div>
+              
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-medium">Theme Preview</span>
+                </label>
+                <div className="border border-base-300 rounded-lg overflow-hidden">
                   <MonacoEditor 
                     content={`// Monaco Editor Theme Preview
 const greeting = "Hello, World!";
@@ -1164,7 +905,110 @@ function example() {
               </div>
             </div>
           </div>
-        ) : null}
+        </div>
+      );
+    }
+
+    return null;
+  };
+  // ---------- end renderer ----------
+
+  return (
+    <div className="min-h-screen bg-base-100 text-base-content" data-theme={theme}>
+      <header className="navbar bg-base-200 border-b border-base-300">
+        <div className="navbar-start">
+          <h1 className="text-xl font-bold">ML Console</h1>
+        </div>
+        <div className="navbar-center">
+          <div className="flex items-center gap-4">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-sm font-medium">Query Type</span>
+              </label>
+              <select
+                className="select select-bordered select-sm w-32"
+                value={queryType}
+                onChange={(e) => setQueryType(e.target.value)}
+              >
+                <option value="xquery">XQuery</option>
+                <option value="javascript">JavaScript</option>
+                <option value="sparql">SPARQL</option>
+              </select>
+            </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-sm font-medium">Database</span>
+              </label>
+              <select
+                className="select select-bordered select-sm w-64"
+                value={selectedDatabaseConfig.id}
+                onChange={(e) => {
+                  const config = databaseConfigs.find(c => c.id === e.target.value);
+                  if (config) setSelectedDatabaseConfig(config);
+                }}
+                disabled={databaseConfigs.length === 0}
+              >
+                {databaseConfigs.length === 0 ? (
+                  <option value="">No databases available - check connection</option>
+                ) : (
+                  databaseConfigs.map((config, index) => (
+                    <option key={`db-${index}-${config.id}`} value={config.id}>
+                      {config.name} ({config.modulesDatabase})
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div className="navbar-end">
+          <div className="flex items-center gap-3">
+            <div className="tooltip" data-tip={
+              connectionStatus === "connected" ? "Connected" :
+              connectionStatus === "error" ? "Connection Error" :
+              connectionStatus === "connecting" ? "Connecting..." : "Ready"
+            }>
+              <div className={`w-3 h-3 rounded-full ${
+                connectionStatus === "connected" ? "bg-success" :
+                connectionStatus === "error" ? "bg-error" :
+                connectionStatus === "connecting" ? "bg-warning animate-pulse" :
+                "bg-base-300"
+              }`}></div>
+            </div>
+            <button 
+              className="btn btn-ghost btn-sm"
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+            >
+              {theme === 'light' ? '🌙' : '☀️'}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="tabs tabs-boxed bg-base-200 mx-4 mt-4">
+        <button 
+          className={`tab ${activeTab === 'console' ? 'tab-active' : ''}`}
+          onClick={() => setActiveTab('console')}
+        >
+          Query Console
+        </button>
+        <button 
+          className={`tab ${activeTab === 'test' ? 'tab-active' : ''}`}
+          onClick={() => setActiveTab('test')}
+        >
+          Test Harness
+        </button>
+        <button 
+          className={`tab ${activeTab === 'settings' ? 'tab-active' : ''}`}
+          onClick={() => setActiveTab('settings')}
+        >
+          Settings
+        </button>
+      </div>
+
+      <main className="flex-1 p-4">
+        {renderMainContent()}
       </main>
     </div>
   );

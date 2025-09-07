@@ -1,320 +1,154 @@
-import React, { useCallback, useEffect, useRef } from 'react';
-import Editor, { useMonaco } from '@monaco-editor/react';
-import { defineCustomMonacoThemes, getEnhancedTheme } from '../utils/monacoThemes';
+import React, { useEffect, useRef } from "react";
+import Editor from "@monaco-editor/react";
+import { defineCustomMonacoThemes, getEnhancedTheme } from "../utils/monacoThemes";
 
-// XQuery language configuration
-const xqueryConfig = {
-  keywords: [
-    'xquery', 'version', 'encoding', 'declare', 'function', 'variable', 'option', 'import', 'module',
-    'namespace', 'boundary-space', 'default', 'collation', 'base-uri', 'construction', 'ordering',
-    'empty', 'greatest', 'least', 'preserve', 'no-preserve', 'inherit', 'no-inherit', 'strip',
-    'for', 'let', 'where', 'order', 'by', 'return', 'if', 'then', 'else', 'some', 'every', 'in',
-    'satisfies', 'to', 'div', 'idiv', 'mod', 'union', 'intersect', 'except', 'instance', 'of',
-    'treat', 'as', 'castable', 'cast', 'eq', 'ne', 'lt', 'le', 'gt', 'ge', 'is', 'isnot',
-    'and', 'or', 'not', 'typeswitch', 'case', 'try', 'catch', 'switch', 'validate', 'text',
-    'node', 'comment', 'processing-instruction', 'document-node', 'element', 'attribute',
-    'schema-element', 'schema-attribute', 'empty-sequence', 'item', 'document', 'ascending',
-    'descending', 'stable', 'external', 'at', 'child', 'descendant', 'attribute', 'self',
-    'descendant-or-self', 'following-sibling', 'following', 'parent', 'ancestor',
-    'preceding-sibling', 'preceding', 'ancestor-or-self'
-  ],
-  operators: [
-    '=', '!=', '<', '<=', '>', '>=', '+', '-', '*', 'div', 'idiv', 'mod', 'eq', 'ne', 'lt', 'le', 'gt', 'ge',
-    'is', 'isnot', 'and', 'or', 'not', 'union', '|', 'intersect', 'except', 'to', 'instance of',
-    'treat as', 'castable as', 'cast as'
-  ],
-  brackets: [
-    ['{', '}', 'delimiter.curly'],
-    ['[', ']', 'delimiter.bracket'],
-    ['(', ')', 'delimiter.parenthesis']
-  ],
-  tokenizer: {
-    root: [
-      // XQuery version declaration
-      [/xquery\s+version\s+"[^"]*"/, 'keyword.version'],
-      
-      // Comments
-      [/\(:/, 'comment', '@comment'],
-      
-      // Strings
-      [/"([^"\\]|\\.)*"/, 'string'],
-      [/'([^'\\]|\\.)*'/, 'string'],
-      
-      // Numbers
-      [/\d*\.\d+([eE][\-+]?\d+)?/, 'number.float'],
-      [/\d+/, 'number'],
-      
-      // Keywords
-      [/[a-zA-Z_][\w]*/, {
-        cases: {
-          '@keywords': 'keyword',
-          '@default': 'identifier'
-        }
-      }],
-      
-      // XPath axes
-      [/(child|descendant|attribute|self|descendant-or-self|following-sibling|following|parent|ancestor|preceding-sibling|preceding|ancestor-or-self)::/,'keyword.axis'],
-      
-      // Operators
-      [/[=!<>]=?/, 'operator'],
-      [/[+\-*]/, 'operator'],
-      [/\bor\b|\band\b|\bnot\b/, 'operator'],
-      
-      // Delimiters
-      [/[{}()\[\]]/, '@brackets'],
-      [/[;,.]/, 'delimiter'],
-      
-      // Whitespace
-      [/\s+/, 'white'],
-    ],
-    
-    comment: [
-      [/[^(:)]+/, 'comment'],
-      [/:\)/, 'comment', '@pop'],
-      [/[(:)]/, 'comment']
-    ],
-  },
-};
-
-// SPARQL language configuration
-const sparqlConfig = {
-  keywords: [
-    'BASE', 'PREFIX', 'SELECT', 'DISTINCT', 'REDUCED', 'CONSTRUCT', 'DESCRIBE', 'ASK',
-    'FROM', 'NAMED', 'WHERE', 'ORDER', 'BY', 'ASC', 'DESC', 'LIMIT', 'OFFSET',
-    'UNION', 'OPTIONAL', 'GRAPH', 'FILTER', 'EXISTS', 'NOT', 'BIND', 'VALUES',
-    'MINUS', 'SERVICE', 'SILENT', 'UNDEF', 'DEFAULT', 'ALL', 'WITH', 'USING',
-    'INSERT', 'DELETE', 'DATA', 'LOAD', 'CLEAR', 'CREATE', 'DROP', 'COPY',
-    'MOVE', 'ADD', 'TO', 'INTO', 'DT', 'LANG', 'LANGMATCHES', 'DATATYPE',
-    'BOUND', 'IRI', 'URI', 'BNODE', 'RAND', 'ABS', 'CEIL', 'FLOOR', 'ROUND',
-    'CONCAT', 'SUBSTR', 'STRLEN', 'REPLACE', 'UCASE', 'LCASE', 'ENCODE_FOR_URI',
-    'CONTAINS', 'STRSTARTS', 'STRENDS', 'STRBEFORE', 'STRAFTER', 'YEAR', 'MONTH',
-    'DAY', 'HOURS', 'MINUTES', 'SECONDS', 'TIMEZONE', 'TZ', 'NOW', 'UUID',
-    'STRUUID', 'MD5', 'SHA1', 'SHA256', 'SHA384', 'SHA512', 'COALESCE', 'IF',
-    'STRLANG', 'STRDT', 'SAMETERM', 'ISIRI', 'ISURI', 'ISBLANK', 'ISLITERAL',
-    'ISNUMERIC', 'REGEX', 'true', 'false'
-  ],
-  operators: [
-    '=', '!=', '<', '<=', '>', '>=', '+', '-', '*', '/', '&&', '||', '!', 'IN', 'NOT IN'
-  ],
-  brackets: [
-    ['{', '}', 'delimiter.curly'],
-    ['[', ']', 'delimiter.bracket'],
-    ['(', ')', 'delimiter.parenthesis']
-  ],
-  tokenizer: {
-    root: [
-      // Comments
-      [/#.*$/, 'comment'],
-      
-      // IRIs and URIs
-      [/<[^<>\s]*>/, 'string.iri'],
-      
-      // Prefixed names
-      [/[a-zA-Z_][\w\-]*:[a-zA-Z_][\w\-]*/, 'string.prefixed'],
-      
-      // Strings
-      [/"([^"\\]|\\.)*"/, 'string'],
-      [/'([^'\\]|\\.)*'/, 'string'],
-      [/"""[^]*?"""/, 'string'], // Triple quoted strings
-      [/'''[^]*?'''/, 'string'], // Triple quoted strings
-      
-      // Numbers
-      [/\d*\.\d+([eE][\-+]?\d+)?/, 'number.float'],
-      [/\d+/, 'number'],
-      
-      // Keywords (case-insensitive)
-      [/[a-zA-Z_][\w]*/, {
-        cases: {
-          '@keywords': 'keyword',
-          '@default': 'identifier'
-        }
-      }],
-      
-      // Variables
-      [/\?[a-zA-Z_][\w]*/, 'variable'],
-      [/\$[a-zA-Z_][\w]*/, 'variable'],
-      
-      // Operators
-      [/[=!<>]=?/, 'operator'],
-      [/[+\-*/]/, 'operator'],
-      [/&&|\|\||!/, 'operator'],
-      
-      // Delimiters
-      [/[{}()\[\]]/, '@brackets'],
-      [/[;,.]/, 'delimiter'],
-      
-      // Whitespace
-      [/\s+/, 'white'],
-    ],
-  },
-};
-
-function QueryEditor({ 
-  value, 
-  onChange, 
-  onKeyDown, 
-  language = 'javascript', 
-  placeholder = 'Enter your query here...', 
+export default function QueryEditor({
+  value = "",
+  onChange,
+  onKeyDown,            // expects a textarea-like event
+  language = "plaintext",
   disabled = false,
-  theme = 'vs'
+  theme = "vs",
+  placeholder = "",
 }) {
-  const monaco = useMonaco();
+  const containerRef = useRef(null);
   const editorRef = useRef(null);
+  const monacoRef = useRef(null);
 
-  // Register custom languages when Monaco is available
-  useEffect(() => {
-    if (monaco) {
-      // Ensure custom themes are registered before editor tries to apply them
-      defineCustomMonacoThemes(monaco);
+  // Bridge monaco change -> textarea-like onChange
+  const handleChange = (val) => {
+    if (onChange) onChange({ target: { value: val ?? "" } });
+  };
 
-      // Register XQuery
-      if (!monaco.languages.getLanguages().find(lang => lang.id === 'xquery')) {
-        monaco.languages.register({ id: 'xquery' });
-        monaco.languages.setMonarchTokensProvider('xquery', xqueryConfig);
-        monaco.languages.setLanguageConfiguration('xquery', {
-          comments: {
-            blockComment: ['(:', ':)']
-          },
-          brackets: xqueryConfig.brackets,
-          autoClosingPairs: [
-            { open: '{', close: '}' },
-            { open: '[', close: ']' },
-            { open: '(', close: ')' },
-            { open: '"', close: '"' },
-            { open: "'", close: "'" },
-          ],
-          surroundingPairs: [
-            { open: '{', close: '}' },
-            { open: '[', close: ']' },
-            { open: '(', close: ')' },
-            { open: '"', close: '"' },
-            { open: "'", close: "'" },
-          ],
-        });
-      }
-
-      // Register SPARQL
-      if (!monaco.languages.getLanguages().find(lang => lang.id === 'sparql')) {
-        monaco.languages.register({ id: 'sparql' });
-        monaco.languages.setMonarchTokensProvider('sparql', sparqlConfig);
-        monaco.languages.setLanguageConfiguration('sparql', {
-          comments: {
-            lineComment: '#'
-          },
-          brackets: sparqlConfig.brackets,
-          autoClosingPairs: [
-            { open: '{', close: '}' },
-            { open: '[', close: ']' },
-            { open: '(', close: ')' },
-            { open: '"', close: '"' },
-            { open: "'", close: "'" },
-            { open: '<', close: '>' },
-          ],
-          surroundingPairs: [
-            { open: '{', close: '}' },
-            { open: '[', close: ']' },
-            { open: '(', close: ')' },
-            { open: '"', close: '"' },
-            { open: "'", close: "'" },
-            { open: '<', close: '>' },
-          ],
-        });
-      }
-    }
-  }, [monaco]);
-
-  // Map query types to Monaco language IDs
-  const getMonacoLanguage = useCallback((queryType) => {
-    switch (queryType) {
-      case 'xquery': return 'xquery';
-      case 'javascript': return 'javascript';
-      case 'sparql': return 'sparql';
-      default: return 'plaintext';
-    }
-  }, []);
-
-  const handleEditorMount = useCallback((editor, monaco) => {
+  const handleMount = (editor, monaco) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
 
-    // Define custom themes with proper selection highlighting
+    // Ensure our custom themes exist
     defineCustomMonacoThemes(monaco);
 
-    // Add Ctrl+Enter keyboard shortcut
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-      if (onKeyDown) {
-        onKeyDown({ key: 'Enter', ctrlKey: true, preventDefault: () => {} });
-      }
-    });
-  }, [onKeyDown]);
+    // Forward keydown to consumer in a textarea-like shape
+    editor.onKeyDown((e) => {
+      if (!onKeyDown) return;
 
-  const handleEditorChange = useCallback((value) => {
-    if (onChange) {
-      onChange({ target: { value: value || '' } });
+      const model = editor.getModel();
+      if (!model) return;
+
+      const sel = editor.getSelection();
+      const start = model.getOffsetAt(sel.getStartPosition());
+      const end = model.getOffsetAt(sel.getEndPosition());
+
+      const syntheticEvent = {
+        key: e.browserEvent.key,
+        ctrlKey: e.browserEvent.ctrlKey || e.browserEvent.metaKey, // support Cmd on macOS
+        preventDefault: () => e.preventDefault(),
+        target: {
+          value: model.getValue(),
+          selectionStart: start,
+          selectionEnd: end,
+          focus: () => editor.focus(),
+          setSelectionRange: (s, en) => {
+            const sPos = model.getPositionAt(s);
+            const ePos = model.getPositionAt(en);
+            editor.setSelection({
+              selectionStartLineNumber: sPos.lineNumber,
+              selectionStartColumn: sPos.column,
+              positionLineNumber: ePos.lineNumber,
+              positionColumn: ePos.column,
+            });
+          },
+        },
+      };
+
+      onKeyDown(syntheticEvent);
+    });
+
+    // Optional placeholder (shows as a decoration when empty)
+    if (placeholder && !value) {
+      try {
+        const domNode = editor.getDomNode();
+        if (domNode) {
+          domNode.setAttribute("data-placeholder", placeholder);
+        }
+      } catch {
+        /* noop */
+      }
     }
-  }, [onChange]);
+
+    // First layout pass
+    requestAnimationFrame(() => editor.layout());
+  };
+
+  // Keep Monaco sized to container via ResizeObserver
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      if (editorRef.current) editorRef.current.layout();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Also relayout on window resizes (e.g., sidebar toggle emits resize)
+  useEffect(() => {
+    const fn = () => editorRef.current && editorRef.current.layout();
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
 
   return (
-    <div className="query-editor">
+    <div
+      ref={containerRef}
+      className="h-full w-full min-w-0"
+      style={{ position: "relative", overflow: "hidden" }}
+    >
       <Editor
-        height="200px"
-        language={getMonacoLanguage(language)}
         value={value}
-        onChange={handleEditorChange}
-        onMount={handleEditorMount}
+        language={language}
+        onChange={handleChange}
+        onMount={handleMount}
+        theme={getEnhancedTheme(theme)}
+        width="100%"
+        height="100%"               // <-- critical: fill the container we control
         options={{
+          readOnly: !!disabled,
+          automaticLayout: false,   // we drive layout via ResizeObserver
           minimap: { enabled: false },
           scrollBeyondLastLine: false,
-          wordWrap: 'on',
-          fontSize: 13,
-          fontFamily: "'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
-          lineNumbers: 'on',
+          wordWrap: "on",
+          renderLineHighlight: "none",
+          fontSize: 12,
+          lineNumbers: "on",
           folding: true,
-          foldingStrategy: 'indentation',
-          showFoldingControls: 'mouseover',
+          foldingStrategy: "indentation",
+          showFoldingControls: "mouseover",
           lineDecorationsWidth: 10,
           lineNumbersMinChars: 3,
-          renderLineHighlight: 'none',
-          selectOnLineNumbers: true,
+          renderWhitespace: "selection",
           selectionHighlight: true,
           occurrencesHighlight: true,
-          renderWhitespace: 'selection',
-          showUnused: true,
-          multiCursorModifier: 'alt',
-          multiCursorMergeOverlapping: true,
-          automaticLayout: true,
-          tabSize: 2,
           insertSpaces: true,
+          tabSize: 2,
           detectIndentation: true,
           formatOnPaste: true,
           formatOnType: false,
-          readOnly: disabled,
-          placeholder: placeholder,
-          suggestOnTriggerCharacters: true,
-          acceptSuggestionOnCommitCharacter: true,
-          acceptSuggestionOnEnter: 'on',
-          quickSuggestions: true,
-          parameterHints: { enabled: true },
-          // Ensure selection is always visible
-          hideCursorInOverviewRuler: false,
-          overviewRulerBorder: false,
-          // Enable bracket matching
-          matchBrackets: 'always',
-          // Auto closing brackets
-          autoClosingBrackets: 'always',
-          autoClosingQuotes: 'always',
-          autoSurround: 'languageDefined',
-          // Enable proper text selection
+          contextmenu: true,
           dragAndDrop: true,
-          // Ensure Ctrl+A works properly
-          find: {
-            autoFindInSelection: 'never',
-            seedSearchStringFromSelection: 'never'
-          }
         }}
-        theme={getEnhancedTheme(theme)}
       />
+      {/* optional placeholder styling */}
+      <style>{`
+        .monaco-editor[data-placeholder]:empty::before,
+        .monaco-editor[data-placeholder] .inputarea:empty::before {
+          content: attr(data-placeholder);
+          position: absolute;
+          left: 12px;
+          top: 10px;
+          opacity: 0.5;
+          pointer-events: none;
+        }
+      `}</style>
     </div>
   );
 }
-
-export default QueryEditor;
