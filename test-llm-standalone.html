@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Test Standalone</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .test-container {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .test-query {
+            width: 100%;
+            height: 100px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        
+        .test-button {
+            margin: 5px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+        }
+        
+        .test-summarization { background-color: #007bff; }
+        .test-classification { background-color: #17a2b8; }
+        .test-integration { background-color: #28a745; }
+        .test-electron { background-color: #ffc107; color: black; }
+        
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .result.success { background-color: #d4edda; color: #155724; }
+        .result.error { background-color: #f8d7da; color: #721c24; }
+        .result.loading { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🧪 LLM Test Component - Standalone</h1>
+    
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Mock the LLM functions for testing without Electron
+        const mockSummarizeQuery = async (query) => {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return {
+                summary: `Mock summary of: ${query.substring(0, 50)}...`,
+                confidence: 0.85,
+                model: 'Mock-Model'
+            };
+        };
+
+        const mockClassifyQuery = async (query) => {
+            await new Promise(resolve => setTimeout(resolve, 800));
+            return {
+                label: 'xquery',
+                score: 0.92
+            };
+        };
+
+        const mockTestLLMIntegration = async () => {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            return {
+                success: true,
+                message: 'Mock LLM integration test passed',
+                backend: 'mock-wasm'
+            };
+        };
+
+        function LLMTestStandalone() {
+            const [testQuery, setTestQuery] = useState('xquery version "1.0-ml"; (//*[not(*)])[1 to 3]');
+            const [result, setResult] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+
+            const handleTest = async (testFunction, testName) => {
+                setLoading(true);
+                setError(null);
+                setResult(null);
+
+                try {
+                    console.log(`Testing ${testName} with query:`, testQuery);
+                    const testResult = await testFunction(testQuery);
+                    setResult({ type: testName, data: testResult });
+                    console.log(`${testName} Result:`, testResult);
+                } catch (err) {
+                    console.error(`${testName} Error:`, err);
+                    setError(`${testName} failed: ${err.message}`);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleElectronTest = async () => {
+                setLoading(true);
+                setError(null);
+                setResult(null);
+
+                try {
+                    if (window.electronAPI?.llm?.test) {
+                        const result = await window.electronAPI.llm.test(testQuery);
+                        setResult({ type: 'Electron Test', data: result });
+                    } else {
+                        setError('Not running in Electron environment - electronAPI not available');
+                    }
+                } catch (err) {
+                    setError(`Electron test failed: ${err.message}`);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="test-container">
+                    <h2>🧠 LLM Test Component</h2>
+                    
+                    <div>
+                        <label htmlFor="test-query">Test Query:</label>
+                        <textarea
+                            id="test-query"
+                            className="test-query"
+                            value={testQuery}
+                            onChange={(e) => setTestQuery(e.target.value)}
+                            placeholder="Enter your test query here..."
+                        />
+                    </div>
+
+                    <div>
+                        <button 
+                            className="test-button test-summarization"
+                            onClick={() => handleTest(mockSummarizeQuery, 'LLM Summarization')}
+                            disabled={loading}
+                        >
+                            Test LLM Summarization
+                        </button>
+
+                        <button 
+                            className="test-button test-classification"
+                            onClick={() => handleTest(mockClassifyQuery, 'Classification')}
+                            disabled={loading}
+                        >
+                            Test Classification
+                        </button>
+
+                        <button 
+                            className="test-button test-integration"
+                            onClick={() => handleTest(mockTestLLMIntegration, 'Integration Test')}
+                            disabled={loading}
+                        >
+                            Integration Test
+                        </button>
+
+                        <button 
+                            className="test-button test-electron"
+                            onClick={handleElectronTest}
+                            disabled={loading}
+                        >
+                            Electron Test
+                        </button>
+                    </div>
+
+                    {loading && (
+                        <div className="result loading">
+                            <strong>Testing...</strong> Please wait while the test runs.
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="result error">
+                            <strong>Error:</strong> {error}
+                        </div>
+                    )}
+
+                    {result && (
+                        <div className="result success">
+                            <strong>{result.type} Result:</strong>
+                            <pre>{JSON.stringify(result.data, null, 2)}</pre>
+                        </div>
+                    )}
+
+                    <div style={{ marginTop: '20px', fontSize: '14px', color: '#666' }}>
+                        <strong>Instructions:</strong>
+                        <ul>
+                            <li><strong>Mock Tests:</strong> The first 3 buttons use mock functions to test the UI</li>
+                            <li><strong>Electron Test:</strong> Only works when running in the actual Electron app</li>
+                            <li><strong>Real LLM Tests:</strong> To test actual LLM integration, use the Settings tab in the main app</li>
+                        </ul>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<LLMTestStandalone />, document.getElementById('root'));
+    </script>
+</body>
+</html>
