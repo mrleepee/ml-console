@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, Suspense } from "react";
+import React, { useEffect, useRef, Suspense, useCallback } from "react";
 // Lazy-load Monaco editor to keep initial bundle size small
 const Editor = React.lazy(() => import("@monaco-editor/react"));
 
@@ -8,11 +8,30 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
   const containerRef = useRef(null);
   const editorRef = useRef(null);
 
+  const formatContent = useCallback(async () => {
+    if (
+      editorRef.current &&
+      value &&
+      (language === "json" || language === "xml" || language === "html")
+    ) {
+      try {
+        await new Promise((r) => setTimeout(r, 100));
+        const action = editorRef.current.getAction("editor.action.formatDocument");
+        if (action) await action.run();
+      } catch (err) {
+        console.debug("Auto-format failed:", err);
+      }
+    }
+  }, [value, language]);
+
   const handleMount = (editor, monaco) => {
     editorRef.current = editor;
     defineCustomMonacoThemes(monaco);
     // First layout after mount
-    requestAnimationFrame(() => editor.layout());
+    requestAnimationFrame(async () => {
+      editor.layout();
+      await formatContent();
+    });
   };
 
   // Keep editor sized to container via ResizeObserver when available
@@ -32,6 +51,10 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
     window.addEventListener("resize", fn);
     return () => window.removeEventListener("resize", fn);
   }, []);
+
+  useEffect(() => {
+    formatContent();
+  }, [formatContent]);
 
   return (
     <div
