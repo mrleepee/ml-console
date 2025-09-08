@@ -5,6 +5,10 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   httpRequest: (options) => ipcRenderer.invoke('http-request', options),
   evalStream: (options) => ipcRenderer.invoke('eval-stream', options),
+  // Stream response to disk and get an index
+  streamToDisk: (options) => ipcRenderer.invoke('http-request-stream-to-disk', options),
+  // Read a page of streamed parts from disk
+  readStreamParts: (dir, start, count) => ipcRenderer.invoke('read-stream-parts', dir, start, count),
   onEvalStreamProgress: (callback) => {
     const handler = (_event, total) => callback(total);
     ipcRenderer.on('eval-stream-progress', handler);
