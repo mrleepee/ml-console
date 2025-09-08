@@ -1,7 +1,7 @@
 import React from "react";
 import MonacoViewer from "./MonacoViewer";
 
-// Map MIME type to Monaco language
+// Map MIME type to a Monaco language id
 function getLanguageFromMimeType(mimeType) {
   if (!mimeType) return "plaintext";
   const type = mimeType.toLowerCase();
@@ -12,11 +12,15 @@ function getLanguageFromMimeType(mimeType) {
   return "plaintext";
 }
 
-export default function StreamedResultViewer({ content = "", mimeType }) {
-  const language = getLanguageFromMimeType(mimeType);
+// Accept either a full part object or raw content/mimeType props
+export default function StreamedResultViewer({ part, content = "", mimeType }) {
+  const actualContent = part?.content ?? content ?? "";
+  const type = part?.mimeType || part?.contentType || mimeType;
+  const language = getLanguageFromMimeType(type);
+
   return (
     <div className="h-full w-full">
-      <MonacoViewer value={content} language={language} />
+      <MonacoViewer value={actualContent} language={language} />
     </div>
   );
 }

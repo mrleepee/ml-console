@@ -2,17 +2,19 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
-// Polyfill ResizeObserver for the jsdom environment
-class ResizeObserver {
-  constructor(callback) {
-    // store callback but never invoke in tests
-    this.callback = callback;
+// Polyfill ResizeObserver for the jsdom environment if missing
+if (typeof global.ResizeObserver === "undefined") {
+  class ResizeObserver {
+    constructor(callback) {
+      // store callback but never invoke in tests
+      this.callback = callback;
+    }
+    observe() {}
+    unobserve() {}
+    disconnect() {}
   }
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+  global.ResizeObserver = ResizeObserver;
 }
-global.ResizeObserver = ResizeObserver;
 
 // Mock Monaco Editor to prevent issues in jsdom
 vi.mock('@monaco-editor/react', () => ({
