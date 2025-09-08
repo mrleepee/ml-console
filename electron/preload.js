@@ -4,6 +4,12 @@ const { contextBridge, ipcRenderer } = require('electron');
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
   httpRequest: (options) => ipcRenderer.invoke('http-request', options),
+  evalStream: (options) => ipcRenderer.invoke('eval-stream', options),
+  onEvalStreamProgress: (callback) => {
+    const handler = (_event, total) => callback(total);
+    ipcRenderer.on('eval-stream-progress', handler);
+    return () => ipcRenderer.removeListener('eval-stream-progress', handler);
+  },
   
   // Command execution
   runCommand: (options) => ipcRenderer.invoke('run-command', options),
