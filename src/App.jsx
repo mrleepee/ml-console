@@ -33,6 +33,7 @@ function App() {
 
   const [query, setQuery] = useState('xquery version "1.0-ml";\n\n(//*[not(*)])[1 to 3]');
   const [results, setResults] = useState("");
+  const [streamProgress, setStreamProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [queryType, setQueryType] = useState("xquery");
@@ -61,9 +62,20 @@ function App() {
   const [monacoTheme, setMonacoTheme] = useState("vs");
   const recordRefs = useRef({});
   const resultsOutputRef = useRef(null);
-  
+
   // Server configuration
   const serverUrl = `http://${server}:8000`;
+
+  // Listen for streamed eval progress from main process
+  useEffect(() => {
+    const handler = (total) => setStreamProgress(total);
+    if (window.electronAPI?.onEvalStreamProgress) {
+      window.electronAPI.onEvalStreamProgress(handler);
+      return () => {
+        window.electronAPI.removeEvalStreamProgressListener?.(handler);
+      };
+    }
+  }, []);
 
   // Record navigation functions
   const scrollToRecord = (index) => {
@@ -632,6 +644,9 @@ function App() {
                       <div className="flex flex-col items-center gap-4">
                         <span className="loading loading-spinner loading-lg"></span>
                         <span className="text-lg">Executing query...</span>
+                        {streamProgress > 0 && (
+                          <span className="text-sm">{streamProgress} bytes received</span>
+                        )}
                       </div>
                     </div>
                   ) : viewMode === "table" ? (
