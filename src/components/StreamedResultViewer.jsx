@@ -46,7 +46,6 @@ export default function StreamedResultViewer({
 
   const parts = index?.parts || [];
   const totalBytes = parts.reduce((sum, p) => sum + (p.bytes || 0), 0);
-
   const actualContent = part?.content ?? content ?? "";
   const type = part?.mimeType || part?.contentType || mimeType;
   const language = getLanguageFromMimeType(type);

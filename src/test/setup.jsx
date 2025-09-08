@@ -21,6 +21,16 @@ if (typeof global.ResizeObserver === 'undefined') {
 }
 
 // Mock Monaco Editor to prevent issues in jsdom
+// Provide a lightweight ResizeObserver mock for components relying on it
+class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+global.ResizeObserver = ResizeObserver;
+window.ResizeObserver = ResizeObserver;
+
+// Mock Monaco Editor to prevent issues in jsdom  
 vi.mock('@monaco-editor/react', () => ({
   default: vi.fn(({ value, language, height }) => {
     return vi.fn().mockReturnValue(null)();

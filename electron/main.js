@@ -6,6 +6,7 @@ const { URL } = require('url');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const QueryRepository = require('./database');
+const evalStream = require('./eval-stream');
 
 let mainWindow;
 let queryRepository;
@@ -481,4 +482,14 @@ ipcMain.handle('run-command', async (event, options) => {
       reject(new Error('Command timeout'));
     }, 300000); // 5 minutes timeout
   });
+});
+
+ipcMain.handle('eval-stream', async (event, options) => {
+  return evalStream(options);
+});
+
+ipcMain.on('eval-stream-progress', (event, total) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('eval-stream-progress', total);
+  }
 });
