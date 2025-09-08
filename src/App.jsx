@@ -50,6 +50,11 @@ function App() {
   const [rawResults, setRawResults] = useState("");
   const [viewMode, setViewMode] = useState("table"); // "table", "parsed", "raw"
   const [tableData, setTableData] = useState([]);
+  // Streaming-to-disk pagination state
+  const [streamIndex, setStreamIndex] = useState(null); // { dir, parts: [...] }
+  const [totalRecords, setTotalRecords] = useState(0);
+  const pageSize = 50;
+  const [pageStart, setPageStart] = useState(0); // start index of current page
   const [activeRecordIndex, setActiveRecordIndex] = useState(0);
   const hasRecords = tableData && tableData.length > 0;
   const activeRecord = hasRecords ? tableData[Math.min(Math.max(activeRecordIndex,0), tableData.length-1)] : null;
@@ -84,6 +89,35 @@ function App() {
 
   const goToPrevRecord = () => scrollToRecord(Math.max(activeRecordIndex - 1, 0));
   const goToNextRecord = () => scrollToRecord(Math.min(activeRecordIndex + 1, tableData.length - 1));
+
+  // Load a page of records from disk when using streaming index
+  const loadPage = useCallback(async (start) => {
+    if (!streamIndex || !window.electronAPI?.readStreamParts) return;
+    const s = Math.max(0, start);
+    const result = await window.electronAPI.readStreamParts(streamIndex.dir, s, pageSize);
+    if (result.success) {
+      setTableData(result.records || []);
+      setPageStart(s);
+      setActiveRecordIndex(0);
+    } else {
+      console.error('Failed to read stream parts:', result.error);
+      setTableData([]);
+    }
+  }, [streamIndex]);
+
+  const nextPage = async () => {
+    const nextStart = pageStart + pageSize;
+    if (streamIndex && nextStart < totalRecords) {
+      await loadPage(nextStart);
+    }
+  };
+
+  const prevPage = async () => {
+    const prevStart = Math.max(0, pageStart - pageSize);
+    if (streamIndex && prevStart !== pageStart) {
+      await loadPage(prevStart);
+    }
+  };
 
   // Simple HTTP request helper (works in both Electron and web)
   const makeRequest = useCallback(async (options) => {
@@ -423,14 +457,16 @@ function App() {
 
   // View mode change
   useEffect(() => {
-    if (rawResults) {
+    if (!rawResults) return;
+    // Only apply parsed/raw when not using streamed index (single/small responses)
+    if (!streamIndex) {
       if (viewMode === "raw") setResults(rawResults);
       else if (viewMode === "parsed") {
         const cleanedResults = parseMultipartResponse(rawResults);
         setResults(cleanedResults || "Query executed successfully (no results)");
       }
     }
-  }, [viewMode, rawResults, parseMultipartResponse]);
+  }, [viewMode, rawResults, parseMultipartResponse, streamIndex]);
 
   async function executeQuery() {
     if (!query.trim()) { setError("Please enter a query"); return; }
@@ -439,6 +475,7 @@ function App() {
       return;
     }
     setIsLoading(true); setError(""); setResults("");
+    setRawResults(""); setStreamIndex(null); setTableData([]); setTotalRecords(0); setPageStart(0);
     const executionStartTime = Date.now();
     try {
       const url = `${serverUrl.replace(/\/+$/, "")}/v1/eval`;
@@ -463,23 +500,35 @@ function App() {
         contentType = "application/x-www-form-urlencoded";
       }
 
-      const response = await makeRequest({
-        url, method: "POST",
-        headers: { "Content-Type": contentType },
-        body, username, password,
-      });
-
-      if (response.status < 200 || response.status >= 300) {
-        throw new Error(`HTTP ${response.status}: ${response.body || 'Unknown error'}`);
+      // Prefer streaming to disk via Electron to avoid loading full dataset into the renderer
+      if (window.electronAPI?.streamToDisk) {
+        const { success, index, error: streamError } = await window.electronAPI.streamToDisk({
+          url, method: 'POST', headers: { 'Content-Type': contentType }, body, username, password,
+        });
+        if (!success) throw new Error(streamError || 'Stream failed');
+        setStreamIndex(index);
+        const total = (index?.parts || []).length;
+        setTotalRecords(total);
+        // Load first page (50 records)
+        await loadPage(0);
+        setConnectionStatus('connected');
+        setViewMode('table');
+      } else {
+        // Fallback to in-memory request in non-Electron environments
+        const response = await makeRequest({
+          url, method: 'POST', headers: { 'Content-Type': contentType }, body, username, password,
+        });
+        if (response.status < 200 || response.status >= 300) {
+          throw new Error(`HTTP ${response.status}: ${response.body || 'Unknown error'}`);
+        }
+        const rawResponse = response.body || '';
+        setRawResults(rawResponse);
+        const parsedTableData = parseMultipartToTableData(rawResponse);
+        setTableData(parsedTableData);
+        const cleanedResults = parseMultipartResponse(rawResponse);
+        setResults(cleanedResults || 'Query executed successfully (no results)');
+        setConnectionStatus('connected');
       }
-
-      const rawResponse = response.body || "";
-      setRawResults(rawResponse);
-      const parsedTableData = parseMultipartToTableData(rawResponse);
-      setTableData(parsedTableData);
-      const cleanedResults = parseMultipartResponse(rawResponse);
-      setResults(cleanedResults || "Query executed successfully (no results)");
-      setConnectionStatus("connected");
       await saveQueryToHistory(query, queryType, selectedDatabaseConfig, Date.now() - executionStartTime, 'executed');
     } catch (err) {
       console.error("Query execution error:", err);
@@ -589,6 +638,29 @@ function App() {
                       <option value="parsed">Parsed Text</option>
                       <option value="raw">Raw Output</option>
                     </select>
+                    {viewMode === 'table' && streamIndex && (
+                      <div className="flex items-center gap-2">
+                        <button 
+                          className="btn btn-sm"
+                          onClick={prevPage}
+                          disabled={pageStart === 0}
+                          title="Previous 50"
+                        >
+                          Previous 50
+                        </button>
+                        <button 
+                          className="btn btn-sm"
+                          onClick={nextPage}
+                          disabled={pageStart + pageSize >= totalRecords}
+                          title="Next 50"
+                        >
+                          Next 50
+                        </button>
+                        <span className="text-sm text-base-content/70">
+                          {Math.min(pageStart + 1, totalRecords)}–{Math.min(pageStart + pageSize, totalRecords)} of {totalRecords}
+                        </span>
+                      </div>
+                    )}
                     {viewMode === "table" && hasRecords && (
                       <div className="flex items-center gap-2">
                         <div className="join">
@@ -639,9 +711,10 @@ function App() {
                       {tableData.length > 0 ? (
                         <div className="space-y-4 p-4">
                           {tableData.map((record, index) => {
+                            const globalIndex = typeof record.index === 'number' ? record.index : (pageStart + index);
                             const contentHash = record.content?.substring(0, 50)?.replace(/\W+/g, '') || 'empty';
-                            const stableId = `record-${index}-${record.uri || 'no-uri'}-${contentHash}`;
-                            const recordId = `record-${index}`;
+                            const stableId = `record-${globalIndex}-${record.uri || 'no-uri'}-${contentHash}`;
+                            const recordId = `record-${globalIndex}`;
                             return (
                               <div 
                                 key={stableId} 
@@ -654,7 +727,7 @@ function App() {
                               >
                                 <div className="card-header bg-primary text-primary-content px-4 py-2">
                                   <div className="flex justify-between items-center">
-                                    <span className="font-medium">#{index + 1}</span>
+                                    <span className="font-medium">#{globalIndex + 1}</span>
                                     <span className="text-sm opacity-90">{record.uri || 'No URI'}</span>
                                   </div>
                                 </div>
@@ -691,12 +764,20 @@ function App() {
                     </div>
                   ) : (
                     <div className="p-4">
-                      <MonacoEditor 
-                        content={results}
-                        language="plaintext"
-                        readOnly={true}
-                        height="400px"
-                      />
+                      {streamIndex ? (
+                        <div className="flex items-center justify-center h-32 text-base-content/60">
+                          <div className="text-center">
+                            <p className="text-sm">Large result streamed to disk. Use Table view with pagination to browse records.</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <MonacoEditor 
+                          content={results}
+                          language="plaintext"
+                          readOnly={true}
+                          height="400px"
+                        />
+                      )}
                     </div>
                   )}
                 </div>

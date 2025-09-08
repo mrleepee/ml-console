@@ -5,6 +5,8 @@ const http = require('http');
 const { URL } = require('url');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
+const fs = require('fs');
+const fsp = require('fs/promises');
 const QueryRepository = require('./database');
 const evalStream = require('./eval-stream');
 
@@ -491,5 +493,215 @@ ipcMain.handle('eval-stream', async (event, options) => {
 ipcMain.on('eval-stream-progress', (event, total) => {
   if (mainWindow) {
     mainWindow.webContents.send('eval-stream-progress', total);
+  }
+});
+
+// --- Helpers for streaming to disk ---
+function parseHeadersBlock(raw) {
+  const headers = {};
+  raw.split(/\r?\n/).forEach((line) => {
+    const idx = line.indexOf(':');
+    if (idx > -1) {
+      const key = line.slice(0, idx).trim().toLowerCase();
+      const value = line.slice(idx + 1).trim();
+      headers[key] = value;
+    }
+  });
+  return headers;
+}
+
+function extractBoundary(contentType) {
+  if (!contentType) return null;
+  const m = /boundary=([^;\s]+)/i.exec(contentType);
+  return m ? m[1].trim() : null;
+}
+
+async function writeMultipartToDisk(bodyText, contentType) {
+  const boundary = extractBoundary(contentType);
+  const userDataDir = app.getPath('userData');
+  const streamDir = path.join(userDataDir, 'streams', String(Date.now()));
+  await fsp.mkdir(streamDir, { recursive: true });
+
+  const index = { dir: streamDir, parts: [] };
+
+  if (!boundary) {
+    // Single part fallback
+    const fileName = 'part-0.txt';
+    await fsp.writeFile(path.join(streamDir, fileName), bodyText, 'utf8');
+    index.parts.push({
+      contentType: (contentType || '').toString(),
+      primitive: '',
+      uri: '',
+      path: '',
+      bytes: Buffer.byteLength(bodyText),
+      file: fileName,
+    });
+    await fsp.writeFile(path.join(streamDir, 'index.json'), JSON.stringify(index, null, 2), 'utf8');
+    return index;
+  }
+
+  const escaped = boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const segments = bodyText.split(new RegExp(`--${escaped}(?:--)?\\s*`, 'g'));
+  let partNum = 0;
+  for (const seg of segments) {
+    const part = seg.trim();
+    if (!part) continue;
+    const m = /\r?\n\r?\n/.exec(part);
+    if (!m) continue;
+    const rawHeaders = part.slice(0, m.index);
+    const content = part.slice(m.index + m[0].length);
+    const headers = parseHeadersBlock(rawHeaders);
+    const fileName = `part-${partNum}.txt`;
+    await fsp.writeFile(path.join(streamDir, fileName), content, 'utf8');
+    index.parts.push({
+      contentType: headers['content-type'] || '',
+      primitive: headers['x-primitive'] || '',
+      uri: headers['x-uri'] || '',
+      path: headers['x-path'] || '',
+      bytes: Buffer.byteLength(content),
+      file: fileName,
+    });
+    partNum += 1;
+  }
+  await fsp.writeFile(path.join(streamDir, 'index.json'), JSON.stringify(index, null, 2), 'utf8');
+  return index;
+}
+
+async function httpRequestWithDigest(options) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(options.url);
+    const isHttps = url.protocol === 'https:';
+    const httpModule = isHttps ? https : http;
+
+    const requestOptions = {
+      hostname: url.hostname,
+      port: url.port || (isHttps ? 443 : 80),
+      path: url.pathname + url.search,
+      method: options.method || 'GET',
+      headers: options.headers || {},
+      rejectUnauthorized: false,
+      timeout: options.timeout || 300000,
+    };
+
+    const firstRequest = httpModule.request(requestOptions, (res) => {
+      let data = '';
+      res.on('data', (chunk) => (data += chunk));
+      res.on('end', () => {
+        if (res.statusCode === 401 && options.username && options.password) {
+          const authHeader = res.headers['www-authenticate'];
+          if (authHeader && authHeader.startsWith('Digest')) {
+            const authParams = parseWWWAuthenticate(authHeader);
+            const nc = '00000001';
+            const cnonce = crypto.randomBytes(16).toString('hex');
+            const qop = authParams.qop || 'auth';
+            const digestResponse = createDigestResponse(
+              options.username,
+              options.password,
+              options.method || 'GET',
+              url.pathname + url.search,
+              authParams.realm,
+              authParams.nonce,
+              qop,
+              nc,
+              cnonce
+            );
+            const authorizationHeader = `Digest username="${options.username}", realm="${authParams.realm}", nonce="${authParams.nonce}", uri="${url.pathname + url.search}", qop=${qop}, nc=${nc}, cnonce="${cnonce}", response="${digestResponse}"`;
+            const secondRequestOptions = { ...requestOptions, headers: { ...requestOptions.headers, Authorization: authorizationHeader } };
+            const secondRequest = httpModule.request(secondRequestOptions, (authRes) => {
+              let authData = '';
+              authRes.on('data', (chunk) => (authData += chunk));
+              authRes.on('end', () => {
+                resolve({ status: authRes.statusCode, headers: authRes.headers, body: authData });
+              });
+            });
+            secondRequest.on('error', reject);
+            secondRequest.on('timeout', () => {
+              secondRequest.destroy();
+              reject(new Error('Request timeout'));
+            });
+            if (options.body) secondRequest.write(options.body);
+            secondRequest.end();
+          } else {
+            reject(new Error('Digest authentication required but not supported by server'));
+          }
+        } else {
+          resolve({ status: res.statusCode, headers: res.headers, body: data });
+        }
+      });
+    });
+    firstRequest.on('error', reject);
+    firstRequest.on('timeout', () => {
+      firstRequest.destroy();
+      reject(new Error('Request timeout'));
+    });
+    if (options.body) firstRequest.write(options.body);
+    firstRequest.end();
+  });
+}
+
+ipcMain.handle('http-request-stream-to-disk', async (event, options) => {
+  // Support MOCK_HTTP path by reusing existing mock construction above
+  if (process.env.MOCK_HTTP === '1') {
+    const boundary = 'mockboundary123';
+    const parts = [
+      [
+        `--${boundary}`,
+        'Content-Type: application/xml',
+        'X-Primitive: element()',
+        'X-URI: pathway/mock-1',
+        'X-Path: /pathway[1]',
+        '',
+        '<pathway><pathway-uri>pathway/mock-1</pathway-uri><pathway-status>active</pathway-status><id>1</id></pathway>'
+      ].join('\r\n'),
+      [
+        `--${boundary}`,
+        'Content-Type: application/json',
+        'X-Primitive: object-node()',
+        'X-URI: product/mock-2',
+        'X-Path: /product[1]',
+        '',
+        '{"id": 2, "name": "Test Product", "status": "available", "price": 29.99}'
+      ].join('\r\n'),
+      [
+        `--${boundary}`,
+        'Content-Type: text/plain',
+        'X-Primitive: xs:string',
+        'X-URI: text/mock-3',
+        'X-Path: /text()[1]',
+        '',
+        'This is a simple text record for testing pagination.'
+      ].join('\r\n')
+    ];
+    const body = `${parts.join('\r\n')}\r\n--${boundary}--`;
+    const index = await writeMultipartToDisk(body, `multipart/mixed; boundary=${boundary}`);
+    return { success: true, index };
+  }
+
+  const resp = await httpRequestWithDigest(options);
+  if (resp.status < 200 || resp.status >= 300) {
+    return { success: false, error: `HTTP ${resp.status}` };
+  }
+  const contentType = resp.headers['content-type'] || resp.headers['Content-Type'] || '';
+  const index = await writeMultipartToDisk(resp.body || '', contentType);
+  return { success: true, index };
+});
+
+ipcMain.handle('read-stream-parts', async (event, dir, start, count) => {
+  try {
+    const idxPath = path.join(dir, 'index.json');
+    if (!fs.existsSync(idxPath)) return { success: false, error: 'Index not found' };
+    const index = JSON.parse(await fsp.readFile(idxPath, 'utf8'));
+    const s = Math.max(0, parseInt(start || 0, 10));
+    const c = Math.max(0, parseInt(count || 0, 10));
+    const end = Math.min(index.parts.length, s + c);
+    const slice = [];
+    for (let i = s; i < end; i++) {
+      const p = index.parts[i];
+      const content = await fsp.readFile(path.join(dir, p.file), 'utf8');
+      slice.push({ index: i, contentType: p.contentType, primitive: p.primitive, uri: p.uri, path: p.path, content });
+    }
+    return { success: true, records: slice, total: index.parts.length };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 });
