@@ -2,6 +2,25 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+// Polyfill ResizeObserver for the jsdom environment if missing
+if (typeof global.ResizeObserver === 'undefined') {
+  class ResizeObserver {
+    constructor(callback) {
+      // store callback but never invoke in tests
+      this.callback = callback;
+    }
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  global.ResizeObserver = ResizeObserver;
+  // ensure browser-like global also has it
+  if (typeof window !== 'undefined') {
+    window.ResizeObserver = ResizeObserver;
+  }
+}
+
+// Mock Monaco Editor to prevent issues in jsdom
 // Provide a lightweight ResizeObserver mock for components relying on it
 class ResizeObserver {
   observe() {}
