@@ -15,10 +15,10 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
     requestAnimationFrame(() => editor.layout());
   };
 
-  // Keep editor sized to container via ResizeObserver
+  // Keep editor sized to container via ResizeObserver when available
   useEffect(() => {
     const el = containerRef.current;
-    if (!el) return;
+    if (!el || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(() => {
       if (editorRef.current) editorRef.current.layout();
     });

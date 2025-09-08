@@ -2,7 +2,19 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
-// Mock Monaco Editor to prevent issues in jsdom  
+// Polyfill ResizeObserver for the jsdom environment
+class ResizeObserver {
+  constructor(callback) {
+    // store callback but never invoke in tests
+    this.callback = callback;
+  }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+global.ResizeObserver = ResizeObserver;
+
+// Mock Monaco Editor to prevent issues in jsdom
 vi.mock('@monaco-editor/react', () => ({
   default: vi.fn(({ value, language, height }) => {
     return vi.fn().mockReturnValue(null)();
