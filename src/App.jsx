@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Editor from '@monaco-editor/react';
-import parseHeaders from 'parse-headers';
+import { getLanguageFromContentType, getLanguageFromQueryType } from "./utils/languageUtils";
+import { parseMultipartToTableData, parseMultipartResponse } from "./utils/responseUtils";
+import { getRawContent } from "./utils/formatUtils";
 import TestHarness from "./TestHarness";
 import QueryEditor from "./components/QueryEditor";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
@@ -10,26 +12,6 @@ import "./App.css";
 function App() {
   console.log("🚀 App component loaded - React code is running!");
   
-  // Content-Type to Monaco language mapping
-  function getMonacoLanguageFromContentType(contentType) {
-    if (!contentType) return 'plaintext';
-    const type = contentType.toLowerCase();
-    if (type.includes('json')) return 'json';
-    if (type.includes('xml')) return 'xml';
-    if (type.includes('html')) return 'html';
-    if (type.includes('javascript') || type.includes('js')) return 'javascript';
-    return 'plaintext';
-  }
-
-  // Query type to Monaco language mapping
-  function getMonacoLanguageFromQueryType(queryType) {
-    switch (queryType) {
-      case 'javascript': return 'javascript';
-      case 'xquery': return 'xml'; // XQuery is similar to XML
-      case 'sparql': return 'sql'; // SPARQL is similar to SQL
-      default: return 'plaintext';
-    }
-  }
 
   const [query, setQuery] = useState('xquery version "1.0-ml";\n\n(//*[not(*)])[1 to 3]');
   const [results, setResults] = useState("");
@@ -229,81 +211,7 @@ function App() {
     }
   }
 
-  // Utility
-  function escapeRegExp(str) {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
 
-  // New header parsing function using parse-headers library
-  function parseResponse(responseText) {
-    const txt = responseText.replace(/^\uFEFF/, '');
-    const m = /\r?\n\r?\n/.exec(txt);
-    if (!m) return [{ contentType: '', primitive: '', uri: '', path: '', content: txt }];
-    const rawHeaders = txt.slice(0, m.index);
-    const content = txt.slice(m.index + m[0].length);
-    const h = parseHeaders(rawHeaders);
-    return [{ contentType: h['content-type'] || '', primitive: h['x-primitive'] || '', uri: h['x-uri'] || '', path: h['x-path'] || '', content }];
-  }
-
-  function parseMultipartToTableData(responseText) {
-    if (!responseText) return [];
-    const results = [];
-    const boundaryMatch = responseText.match(/^--([^\r\n-]+)(?:--)?\s*$/m);
-    if (!boundaryMatch) return parseResponse(responseText);
-    const boundary = boundaryMatch[1];
-    const escapedBoundary = escapeRegExp(boundary);
-    const parts = responseText.split(new RegExp(`--${escapedBoundary}(?:--)?\\s*`, 'g'));
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i].trim();
-      if (!part) continue;
-      const parsedRecords = parseResponse(part);
-      results.push(...parsedRecords);
-    }
-    return results;
-  }
-
-  const parseMultipartResponse = useCallback((responseText) => {
-    const tableData = parseMultipartToTableData(responseText);
-    return tableData.map(record => record.content).join('\n');
-  }, []);
-
-  // Pretty printers
-  function formatXmlPretty(rawText) {
-    try {
-      const tokens = rawText.replace(/>\s+</g, '><').split(/(<[^>]+>)/g).filter(Boolean);
-      let indentLevel = 0;
-      const indentUnit = '  ';
-      const lines = [];
-      for (const token of tokens) {
-        const isTag = token.startsWith('<') && token.endsWith('>');
-        if (isTag) {
-          const t = token.trim();
-          const isClosing = /^<\//.test(t);
-          const isSelfClosing = /\/>$/.test(t) || /^<\?/.test(t) || /^<!/.test(t);
-          if (isClosing) indentLevel = Math.max(indentLevel - 1, 0);
-          lines.push(`${indentUnit.repeat(indentLevel)}${t}`);
-          if (!isClosing && !isSelfClosing) indentLevel += 1;
-        } else {
-          const text = token.trim();
-          if (text) lines.push(`${indentUnit.repeat(indentLevel)}${text}`);
-        }
-      }
-      return lines.join('\n');
-    } catch {
-      return rawText;
-    }
-  }
-
-  function getRawContent(record) {
-    const content = record.content || '';
-    const contentType = (record.contentType || '').toLowerCase();
-    if (contentType.includes('json')) {
-      try { return JSON.stringify(JSON.parse(content), null, 2); }
-      catch { return content; }
-    }
-    if (contentType.includes('xml')) return formatXmlPretty(content);
-    return content;
-  }
 
   // Monaco editor for record content (read-only viewer)
   function MonacoEditor({ content, language, readOnly = true, height = "200px", path }) {
@@ -466,7 +374,7 @@ function App() {
         setResults(cleanedResults || "Query executed successfully (no results)");
       }
     }
-  }, [viewMode, rawResults, parseMultipartResponse, streamIndex]);
+  }, [viewMode, rawResults, streamIndex]);
 
   async function executeQuery() {
     if (!query.trim()) { setError("Please enter a query"); return; }
@@ -614,7 +522,7 @@ function App() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={handleQueryKeyDown}
-                    language={getMonacoLanguageFromQueryType(queryType)}
+                    language={getLanguageFromQueryType(queryType)}
                     placeholder={`Enter your ${queryType === 'xquery' ? 'XQuery' : queryType === 'sparql' ? 'SPARQL' : 'JavaScript'} query here...`}
                     disabled={isLoading}
                     theme={monacoTheme}
@@ -740,7 +648,7 @@ function App() {
                                   <div className="border border-base-300 rounded-lg overflow-hidden">
                                     <MemoMonacoEditor 
                                       content={getRawContent(record)}
-                                      language={getMonacoLanguageFromContentType(record.contentType)}
+                                      language={getLanguageFromContentType(record.contentType)}
                                       readOnly={true}
                                       height="300px"
                                       path={stableId}
