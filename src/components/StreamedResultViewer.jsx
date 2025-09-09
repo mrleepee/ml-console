@@ -1,16 +1,7 @@
 import React, { useEffect, useState } from "react";
 import MonacoViewer from "./MonacoViewer";
+import { getLanguageFromContentType } from "../utils/languageUtils";
 
-// Map MIME type to a Monaco language id
-function getLanguageFromMimeType(mimeType) {
-  if (!mimeType) return "plaintext";
-  const type = mimeType.toLowerCase();
-  if (type.includes("json")) return "json";
-  if (type.includes("xml")) return "xml";
-  if (type.includes("html")) return "html";
-  if (type.includes("javascript") || type.includes("js")) return "javascript";
-  return "plaintext";
-}
 
 /**
  * Display streamed evaluation results showing per-part byte sizes and
@@ -48,7 +39,7 @@ export default function StreamedResultViewer({
   const totalBytes = parts.reduce((sum, p) => sum + (p.bytes || 0), 0);
   const actualContent = part?.content ?? content ?? "";
   const type = part?.mimeType || part?.contentType || mimeType;
-  const language = getLanguageFromMimeType(type);
+  const language = getLanguageFromContentType(type);
 
   return (
     <div className="streamed-result-viewer h-full w-full">
