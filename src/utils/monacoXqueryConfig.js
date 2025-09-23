@@ -1,3 +1,5 @@
+import { getMarkLogicXQueryLanguageConfig } from './marklogicConfigLoader';
+
 const baseKeywords = [
   'xquery', 'version', 'module', 'namespace', 'import', 'schema', 'element',
   'function', 'variable', 'option', 'declare', 'default', 'collation', 'boundary-space',
@@ -11,21 +13,9 @@ const baseKeywords = [
 
 const baseBuiltins = ['fn', 'xs', 'map', 'array', 'math', 'json'];
 
-const markLogicKeywords = ['xdmp', 'cts'];
-
-const markLogicBuiltins = [
-  'xdmp', 'cts', 'sem', 'geo', 'spell', 'thsr', 'alert', 'cpf', 'op', 'temporal'
-];
-
 const defaultConfig = {
   keywords: baseKeywords,
   builtins: baseBuiltins,
-  completionItems: []
-};
-
-const markLogicConfig = {
-  keywords: markLogicKeywords,
-  builtins: markLogicBuiltins,
   completionItems: []
 };
 
@@ -33,7 +23,7 @@ const uniq = (items) => Array.from(new Set(items.filter(Boolean)));
 
 export const buildXQueryLanguageConfig = ({ overrides = {}, includeMarkLogic = true } = {}) => {
   const configs = [defaultConfig];
-  if (includeMarkLogic) configs.push(markLogicConfig);
+  if (includeMarkLogic) configs.push(getMarkLogicXQueryLanguageConfig());
   if (overrides && Object.keys(overrides).length > 0) configs.push(overrides);
 
   const merged = configs.reduce((acc, cfg) => {
@@ -52,4 +42,4 @@ export const buildXQueryLanguageConfig = ({ overrides = {}, includeMarkLogic = t
 };
 
 export const defaultXQueryLanguageConfig = defaultConfig;
-export const markLogicXQueryLanguageConfig = markLogicConfig;
+export const markLogicXQueryLanguageConfig = () => getMarkLogicXQueryLanguageConfig();
