@@ -1,6 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { buildXQueryLanguageConfig } from './monacoXqueryConfig';
 import { registerXQueryLanguage, __resetXQueryRegistrationForTests, XQUERY_LANGUAGE } from './monacoXquery';
+
+vi.mock('./marklogicConfigLoader', () => ({
+  getMarkLogicXQueryLanguageConfig: vi.fn(() => ({
+    keywords: ['xdmp', 'cts'],
+    builtins: ['cts:search'],
+    completionItems: [],
+  })),
+}));
 
 const createMonacoStub = () => {
   const registered = [];
@@ -38,7 +46,7 @@ describe('buildXQueryLanguageConfig', () => {
   it('includes MarkLogic defaults by default', () => {
     const config = buildXQueryLanguageConfig();
     expect(config.keywords).toContain('xdmp');
-    expect(config.builtins).toContain('cts');
+    expect(config.builtins).toContain('cts:search');
   });
 
   it('merges overrides without duplicates', () => {

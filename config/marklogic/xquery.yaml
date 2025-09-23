@@ -1,0 +1,13 @@
+keywords:
+  - try
+  - catch
+
+builtins:
+  - xdmp:log
+  - xdmp:invoke
+  - cts:search
+  - sem:sparql
+completionItems:
+  - label: xdmp:log
+    insertText: "xdmp:log(${1:message})"
+    kind: function
