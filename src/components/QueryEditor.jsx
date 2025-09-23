@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import { defineCustomMonacoThemes, getEnhancedTheme } from "../utils/monacoThemes";
+import { registerXQueryLanguage } from "../utils/monacoXquery";
 
 export default function QueryEditor({
   value = "",
@@ -26,6 +27,7 @@ export default function QueryEditor({
 
     // Ensure our custom themes exist
     defineCustomMonacoThemes(monaco);
+    registerXQueryLanguage(monaco);
 
     // Forward keydown to consumer in a textarea-like shape
     editor.onKeyDown((e) => {

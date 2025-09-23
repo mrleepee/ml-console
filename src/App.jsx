@@ -5,6 +5,7 @@ import TestHarness from "./TestHarness";
 import QueryEditor from "./components/QueryEditor";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
 import { defineCustomMonacoThemes, getEnhancedTheme } from "./utils/monacoThemes";
+import { registerXQueryLanguage, XQUERY_LANGUAGE } from "./utils/monacoXquery";
 import "./App.css";
 
 function App() {
@@ -25,7 +26,7 @@ function App() {
   function getMonacoLanguageFromQueryType(queryType) {
     switch (queryType) {
       case 'javascript': return 'javascript';
-      case 'xquery': return 'xml'; // XQuery is similar to XML
+      case 'xquery': return XQUERY_LANGUAGE;
       case 'sparql': return 'sql'; // SPARQL is similar to SQL
       default: return 'plaintext';
     }
@@ -326,6 +327,7 @@ function App() {
       editorRef.current = editor;
       setEditorMounted(true);
       defineCustomMonacoThemes(monaco);
+      registerXQueryLanguage(monaco);
     }, []);
 
     useEffect(() => { if (editorMounted && content) formatContent(); }, [editorMounted, content, formatContent]);
