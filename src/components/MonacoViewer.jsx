@@ -3,6 +3,7 @@ import React, { useEffect, useRef, Suspense, useCallback } from "react";
 const Editor = React.lazy(() => import("@monaco-editor/react"));
 
 import { defineCustomMonacoThemes, getEnhancedTheme } from "../utils/monacoThemes";
+import { registerXQueryLanguage } from "../utils/monacoXquery";
 
 export default function MonacoViewer({ value = "", language = "plaintext", theme = "vs" }) {
   const containerRef = useRef(null);
@@ -27,6 +28,7 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
   const handleMount = (editor, monaco) => {
     editorRef.current = editor;
     defineCustomMonacoThemes(monaco);
+    registerXQueryLanguage(monaco);
     // First layout after mount
     requestAnimationFrame(async () => {
       editor.layout();

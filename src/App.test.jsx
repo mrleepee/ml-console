@@ -156,7 +156,7 @@ describe('App Component Rendering', () => {
     })
     
     const consoleTab = screen.getByRole('button', { name: /query console/i })
-    expect(consoleTab).toHaveClass('active')
+    expect(consoleTab).toHaveClass('tab-active')
   })
 
   it('should show execute button', async () => {
@@ -171,31 +171,41 @@ describe('App Component Rendering', () => {
 
 describe('Query Execution Logic', () => {
   it('should call executeQuery when button is clicked', async () => {
-    // Mock the electronAPI
+    const originalElectronAPI = window.electronAPI
+    const httpRequest = vi.fn().mockImplementation((options) => {
+      if (options.url.includes('/v1/eval')) {
+        return Promise.resolve({
+          status: 200,
+          headers: { 'content-type': 'multipart/mixed' },
+          body: '--test\nContent-Type: text/plain\n\nTest result\n--test--'
+        })
+      }
+      return originalElectronAPI.httpRequest(options)
+    })
+
     window.electronAPI = {
-      httpRequest: vi.fn().mockResolvedValue({
-        status: 200,
-        headers: { 'content-type': 'multipart/mixed' },
-        body: '--test\nContent-Type: text/plain\n\nTest result\n--test--'
-      })
+      ...originalElectronAPI,
+      httpRequest
     }
 
-    await act(async () => {
-      render(<App />)
-    })
-    
-    const executeButton = screen.getByRole('button', { name: /execute/i })
-    
-    await act(async () => {
-      fireEvent.click(executeButton)
-    })
-    
-    // Check if executeQuery function was triggered by looking for our logging
-    await waitFor(() => {
-      const hasExecuteLog = global.mockConsoleCapture.logs.some(log => 
-        log.join(' ').includes('EXECUTEQUERY FUNCTION CALLED')
-      )
-      expect(hasExecuteLog).toBe(true)
-    }, { timeout: 1000 })
+    try {
+      await act(async () => {
+        render(<App />)
+      })
+      
+      const executeButton = screen.getByRole('button', { name: /execute/i })
+      
+      await act(async () => {
+        fireEvent.click(executeButton)
+      })
+      
+      await waitFor(() => {
+        expect(httpRequest).toHaveBeenCalledWith(expect.objectContaining({
+          url: expect.stringContaining('/v1/eval')
+        }))
+      })
+    } finally {
+      window.electronAPI = originalElectronAPI
+    }
   })
 })
