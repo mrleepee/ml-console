@@ -209,10 +209,7 @@ test('Settings tab integration with existing functionality', async () => {
   const usernameInput = win.locator('#settings-username');
   await usernameInput.clear();
   await usernameInput.fill('newuser');
-  
-  // Go to Test Harness tab to verify settings are passed correctly
-  await win.getByText('Test Harness').click();
-  await win.waitForTimeout(1000);
+  await expect(usernameInput).toHaveValue('newuser');
   
   // Return to Query Console to verify integration
   await win.getByText('Query Console').click();

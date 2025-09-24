@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Editor from '@monaco-editor/react';
 import parseHeaders from 'parse-headers';
-import TestHarness from "./TestHarness";
 import QueryEditor from "./components/QueryEditor";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
 import { defineCustomMonacoThemes, getEnhancedTheme } from "./utils/monacoThemes";
@@ -891,14 +890,6 @@ function App() {
       );
     }
 
-    if (activeTab === 'test') {
-      return (
-        <div className="flex-1 overflow-auto">
-          <TestHarness serverUrl={serverUrl} username={username} password={password} />
-        </div>
-      );
-    }
-
     if (activeTab === 'settings') {
       return (
         <div className="flex-1 overflow-auto">
@@ -1083,12 +1074,6 @@ function example() {
           onClick={() => setActiveTab('console')}
         >
           Query Console
-        </button>
-        <button 
-          className={`tab ${activeTab === 'test' ? 'tab-active' : ''}`}
-          onClick={() => setActiveTab('test')}
-        >
-          Test Harness
         </button>
         <button 
           className={`tab ${activeTab === 'settings' ? 'tab-active' : ''}`}
