@@ -106,13 +106,6 @@ Monitor your connection status via the indicator dot in the top-right corner:
 - Green indicates successful connection
 - Red shows connection errors
 
-### Test Harness
-Switch to the "Test Harness" tab to:
-- Validate server connectivity
-- Test authentication methods  
-- Debug endpoint responses
-- Monitor request/response timing
-
 ## 🏗️ Architecture
 
 ### Project Structure
@@ -121,8 +114,7 @@ ml-console/
 ├── src/
 │   ├── App.jsx              # Main React component
 │   ├── App.css              # Global styles
-│   ├── TestHarness.jsx      # Testing interface
-│   └── TestHarness.css      # Test styles
+│   └── components/          # Reusable UI components
 ├── electron/
 │   ├── main.js              # Electron main process
 │   └── preload.js           # IPC security bridge
@@ -138,7 +130,6 @@ ml-console/
 
 #### Frontend (React)
 - **App.jsx**: Main application with query console interface
-- **TestHarness.jsx**: Comprehensive testing component for MarkLogic endpoints
 
 #### Backend (Electron)
 - **main.js**: Handles HTTP requests and digest authentication
@@ -170,8 +161,7 @@ npm run e2e:electron # Run Electron-specific E2E tests
 1. **Frontend Development**: Vite dev server runs on `localhost:1420`
 2. **Hot Reload**: Changes automatically refresh the Electron app
 3. **Debugging**: Chrome DevTools available in development mode
-4. **Testing**: Use the built-in Test Harness for endpoint validation
-5. **E2E Testing**: Playwright tests validate Electron app functionality
+4. **E2E Testing**: Playwright tests validate Electron app functionality
 
 ### Configuration
 - **Server URL**: Fixed to `http://localhost:8000` (modify in App.jsx)
