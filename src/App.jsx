@@ -577,9 +577,9 @@ function App() {
   const renderMainContent = () => {
     if (activeTab === 'console') {
       return (
-        <div className="flex h-full gap-4">
+        <div className="flex flex-1 h-full gap-4 min-h-0 overflow-hidden">
           {/* LEFT COLUMN: Query + Results stacked; min-w-0 avoids horizontal overflow */}
-          <div className="flex-1 flex flex-col gap-4 min-w-0">
+          <div className="flex-1 flex flex-col gap-4 min-w-0 min-h-0 overflow-hidden">
             {/* Query (bounded height) */}
             <div className="card bg-base-100 shadow-sm border border-base-300">
               <div className="card-header bg-base-200 px-4 py-3 border-b border-base-300">
@@ -626,7 +626,7 @@ function App() {
             </div>
 
             {/* Results (fills the remaining vertical space) */}
-            <div className="card bg-base-100 shadow-sm border border-base-300 flex-1 flex flex-col min-w-0">
+            <div className="card bg-base-100 shadow-sm border border-base-300 flex-1 flex flex-col min-w-0 overflow-hidden">
               <div className="card-header bg-base-200 px-4 py-3 border-b border-base-300">
                 <div className="flex items-center justify-between">
                   <h2 className="card-title text-lg">Results</h2>
@@ -691,7 +691,7 @@ function App() {
                   </div>
                 </div>
               </div>
-              <div className="card-body p-0 flex-1 min-w-0">
+              <div className="card-body p-0 flex-1 min-w-0 overflow-hidden">
                 {error && (
                   <div className="alert alert-error m-4">
                     <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
@@ -700,88 +700,90 @@ function App() {
                     <span>{error}</span>
                   </div>
                 )}
-                <div className="results-output flex-1 min-w-0" ref={resultsOutputRef}>
-                  {isLoading ? (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="flex flex-col items-center gap-4">
-                        <span className="loading loading-spinner loading-lg"></span>
-                        <span className="text-lg">Executing query...</span>
+                <div className="results-output flex-1 min-w-0 overflow-hidden" ref={resultsOutputRef}>
+                  <div className="h-full w-full overflow-y-auto">
+                    {isLoading ? (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="flex flex-col items-center gap-4">
+                          <span className="loading loading-spinner loading-lg"></span>
+                          <span className="text-lg">Executing query...</span>
+                        </div>
                       </div>
-                    </div>
-                  ) : viewMode === "table" ? (
-                    <div className="overflow-x-auto">
-                      {tableData.length > 0 ? (
-                        <div className="space-y-4 p-4">
-                          {tableData.map((record, index) => {
-                            const globalIndex = typeof record.index === 'number' ? record.index : (pageStart + index);
-                            const contentHash = record.content?.substring(0, 50)?.replace(/\W+/g, '') || 'empty';
-                            const stableId = `record-${globalIndex}-${record.uri || 'no-uri'}-${contentHash}`;
-                            const recordId = `record-${globalIndex}`;
-                            return (
-                              <div 
-                                key={stableId} 
-                                className={`card bg-base-100 shadow-sm border ${index === activeRecordIndex ? 'border-primary ring-2 ring-primary/20' : 'border-base-300'}`}
-                                ref={(el) => {
-                                  if (el) recordRefs.current[recordId] = el;
-                                  else delete recordRefs.current[recordId];
-                                }}
-                                id={recordId}
-                              >
-                                <div className="card-header bg-primary text-primary-content px-4 py-2">
-                                  <div className="flex justify-between items-center">
-                                    <span className="font-medium">#{globalIndex + 1}</span>
-                                    <span className="text-sm opacity-90">{record.uri || 'No URI'}</span>
+                    ) : viewMode === "table" ? (
+                      <div className="overflow-x-auto">
+                        {tableData.length > 0 ? (
+                          <div className="space-y-4 p-4">
+                            {tableData.map((record, index) => {
+                              const globalIndex = typeof record.index === 'number' ? record.index : (pageStart + index);
+                              const contentHash = record.content?.substring(0, 50)?.replace(/\W+/g, '') || 'empty';
+                              const stableId = `record-${globalIndex}-${record.uri || 'no-uri'}-${contentHash}`;
+                              const recordId = `record-${globalIndex}`;
+                              return (
+                                <div 
+                                  key={stableId} 
+                                  className={`card bg-base-100 shadow-sm border ${index === activeRecordIndex ? 'border-primary ring-2 ring-primary/20' : 'border-base-300'}`}
+                                  ref={(el) => {
+                                    if (el) recordRefs.current[recordId] = el;
+                                    else delete recordRefs.current[recordId];
+                                  }}
+                                  id={recordId}
+                                >
+                                  <div className="card-header bg-primary text-primary-content px-4 py-2">
+                                    <div className="flex justify-between items-center">
+                                      <span className="font-medium">#{globalIndex + 1}</span>
+                                      <span className="text-sm opacity-90">{record.uri || 'No URI'}</span>
+                                    </div>
+                                  </div>
+                                  <div className="card-body p-4">
+                                    <div className="flex flex-wrap gap-4 text-sm text-base-content/70 mb-4">
+                                      <span><strong>Content Type:</strong> {record.contentType || 'Not available'}</span>
+                                      <span><strong>Datatype:</strong> {record.primitive || 'Not available'}</span>
+                                      {record.path && <span><strong>XPath:</strong> {record.path}</span>}
+                                    </div>
+                                    <div className="border border-base-300 rounded-lg overflow-hidden">
+                                      <MemoMonacoEditor 
+                                        content={getRawContent(record)}
+                                        language={getMonacoLanguageFromContentType(record.contentType)}
+                                        readOnly={true}
+                                        height="300px"
+                                        path={stableId}
+                                      />
+                                    </div>
                                   </div>
                                 </div>
-                                <div className="card-body p-4">
-                                  <div className="flex flex-wrap gap-4 text-sm text-base-content/70 mb-4">
-                                    <span><strong>Content Type:</strong> {record.contentType || 'Not available'}</span>
-                                    <span><strong>Datatype:</strong> {record.primitive || 'Not available'}</span>
-                                    {record.path && <span><strong>XPath:</strong> {record.path}</span>}
-                                  </div>
-                                  <div className="border border-base-300 rounded-lg overflow-hidden">
-                                    <MemoMonacoEditor 
-                                      content={getRawContent(record)}
-                                      language={getMonacoLanguageFromContentType(record.contentType)}
-                                      readOnly={true}
-                                      height="300px"
-                                      path={stableId}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center h-32 text-base-content/50">
-                          <div className="text-center">
-                            <svg className="mx-auto h-12 w-12 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <p className="mt-2">No results to display</p>
+                              );
+                            })}
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="p-4">
-                      {streamIndex ? (
-                        <div className="flex items-center justify-center h-32 text-base-content/60">
-                          <div className="text-center">
-                            <p className="text-sm">Large result streamed to disk. Use Table view with pagination to browse records.</p>
+                        ) : (
+                          <div className="flex items-center justify-center h-32 text-base-content/50">
+                            <div className="text-center">
+                              <svg className="mx-auto h-12 w-12 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <p className="mt-2">No results to display</p>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <MonacoEditor 
-                          content={results}
-                          language="plaintext"
-                          readOnly={true}
-                          height="400px"
-                        />
-                      )}
-                    </div>
-                  )}
+                        )}
+                      </div>
+                    ) : (
+                      <div className="p-4">
+                        {streamIndex ? (
+                          <div className="flex items-center justify-center h-32 text-base-content/60">
+                            <div className="text-center">
+                              <p className="text-sm">Large result streamed to disk. Use Table view with pagination to browse records.</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <MonacoEditor 
+                            content={results}
+                            language="plaintext"
+                            readOnly={true}
+                            height="400px"
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -789,7 +791,7 @@ function App() {
 
           {/* RIGHT COLUMN: History */}
           {showHistory && (
-            <div className="card bg-base-100 shadow-sm border border-base-300 w-80 flex flex-col">
+            <div className="card bg-base-100 shadow-sm border border-base-300 w-80 flex flex-col h-full overflow-hidden">
               <div className="card-header bg-base-200 px-4 py-3 border-b border-base-300">
                 <div className="flex items-center justify-between">
                   <h2 className="card-title text-lg">Query History</h2>
@@ -812,7 +814,7 @@ function App() {
                   </div>
                 </div>
               </div>
-              <div className="card-body p-0 flex-1 overflow-y-auto">
+              <div className="card-body p-0 flex-1 overflow-y-auto min-h-0">
                 {historyLoading ? (
                   <div className="flex items-center justify-center h-32">
                     <div className="flex flex-col items-center gap-2">
@@ -890,88 +892,93 @@ function App() {
     }
 
     if (activeTab === 'test') {
-      return <TestHarness serverUrl={serverUrl} username={username} password={password} />;
+      return (
+        <div className="flex-1 overflow-auto">
+          <TestHarness serverUrl={serverUrl} username={username} password={password} />
+        </div>
+      );
     }
 
     if (activeTab === 'settings') {
       return (
-        <div className="max-w-2xl mx-auto p-6">
-          <div className="card bg-base-100 shadow-sm border border-base-300">
-            <div className="card-header bg-base-200 px-6 py-4 border-b border-base-300">
-              <h2 className="card-title text-xl">Settings</h2>
-            </div>
-            <div className="card-body p-6 space-y-6">
-              <div className="form-control">
-                <label className="label" htmlFor="settings-server">
-                  <span className="label-text font-medium">Server</span>
-                </label>
-                <select
-                  id="settings-server"
-                  className="select select-bordered"
-                  value={server}
-                  onChange={(e) => setServer(e.target.value)}
-                >
-                  <option value="localhost">localhost</option>
-                </select>
+        <div className="flex-1 overflow-auto">
+          <div className="max-w-2xl mx-auto p-6">
+            <div className="card bg-base-100 shadow-sm border border-base-300">
+              <div className="card-header bg-base-200 px-6 py-4 border-b border-base-300">
+                <h2 className="card-title text-xl">Settings</h2>
               </div>
+              <div className="card-body p-6 space-y-6">
+                <div className="form-control">
+                  <label className="label" htmlFor="settings-server">
+                    <span className="label-text font-medium">Server</span>
+                  </label>
+                  <select
+                    id="settings-server"
+                    className="select select-bordered"
+                    value={server}
+                    onChange={(e) => setServer(e.target.value)}
+                  >
+                    <option value="localhost">localhost</option>
+                  </select>
+                </div>
 
-              <div className="form-control">
-                <label className="label" htmlFor="settings-username">
-                  <span className="label-text font-medium">Username</span>
-                </label>
-                <input
-                  id="settings-username"
-                  type="text"
-                  className="input input-bordered"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin"
-                />
-              </div>
+                <div className="form-control">
+                  <label className="label" htmlFor="settings-username">
+                    <span className="label-text font-medium">Username</span>
+                  </label>
+                  <input
+                    id="settings-username"
+                    type="text"
+                    className="input input-bordered"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="admin"
+                  />
+                </div>
 
-              <div className="form-control">
-                <label className="label" htmlFor="settings-password">
-                  <span className="label-text font-medium">Password</span>
-                </label>
-                <input
-                  id="settings-password"
-                  type="password"
-                  className="input input-bordered"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="admin"
-                />
-              </div>
-              
-              <div className="form-control">
-                <label className="label" htmlFor="settings-monaco-theme">
-                  <span className="label-text font-medium">Monaco Editor Theme</span>
-                </label>
-                <select
-                  id="settings-monaco-theme"
-                  className="select select-bordered"
-                  value={monacoTheme}
-                  onChange={(e) => setMonacoTheme(e.target.value)}
-                >
-                  <option value="vs">Light (Visual Studio)</option>
-                  <option value="vs-dark">Dark (Visual Studio Dark)</option>
-                  <option value="hc-black">High Contrast Black</option>
-                  <option value="hc-light">High Contrast Light</option>
-                </select>
-                <label className="label">
-                  <span className="label-text-alt text-base-content/60">
-                    Choose your preferred color scheme for code editors
-                  </span>
-                </label>
-              </div>
-              
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-medium">Theme Preview</span>
-                </label>
-                <div className="border border-base-300 rounded-lg overflow-hidden">
-                  <MonacoEditor 
-                    content={`// Monaco Editor Theme Preview
+                <div className="form-control">
+                  <label className="label" htmlFor="settings-password">
+                    <span className="label-text font-medium">Password</span>
+                  </label>
+                  <input
+                    id="settings-password"
+                    type="password"
+                    className="input input-bordered"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="admin"
+                  />
+                </div>
+
+                <div className="form-control">
+                  <label className="label" htmlFor="settings-monaco-theme">
+                    <span className="label-text font-medium">Monaco Editor Theme</span>
+                  </label>
+                  <select
+                    id="settings-monaco-theme"
+                    className="select select-bordered"
+                    value={monacoTheme}
+                    onChange={(e) => setMonacoTheme(e.target.value)}
+                  >
+                    <option value="vs">Light (Visual Studio)</option>
+                    <option value="vs-dark">Dark (Visual Studio Dark)</option>
+                    <option value="hc-black">High Contrast Black</option>
+                    <option value="hc-light">High Contrast Light</option>
+                  </select>
+                  <label className="label">
+                    <span className="label-text-alt text-base-content/60">
+                      Choose your preferred color scheme for code editors
+                    </span>
+                  </label>
+                </div>
+
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text font-medium">Theme Preview</span>
+                  </label>
+                  <div className="border border-base-300 rounded-lg overflow-hidden">
+                    <MonacoEditor 
+                      content={`// Monaco Editor Theme Preview
 const greeting = "Hello, World!";
 console.log(greeting);
 
@@ -980,10 +987,11 @@ console.log(greeting);
 function example() {
   return { theme: "${monacoTheme}" };
 }`}
-                    language="javascript"
-                    readOnly={true}
-                    height="120px"
-                  />
+                      language="javascript"
+                      readOnly={true}
+                      height="120px"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -997,7 +1005,7 @@ function example() {
   // ---------- end renderer ----------
 
   return (
-    <div className="min-h-screen bg-base-100 text-base-content" data-theme={theme}>
+    <div className="h-screen bg-base-100 text-base-content flex flex-col overflow-hidden" data-theme={theme}>
       <header className="navbar bg-base-200 border-b border-base-300">
         <div className="navbar-start">
           <h1 className="text-xl font-bold">ML Console</h1>
@@ -1090,7 +1098,7 @@ function example() {
         </button>
       </div>
 
-      <main className="flex-1 p-4">
+      <main className="flex-1 p-4 flex flex-col min-h-0 overflow-hidden">
         {renderMainContent()}
       </main>
     </div>
