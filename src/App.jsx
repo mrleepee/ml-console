@@ -8,7 +8,7 @@ import { registerXQueryLanguage, XQUERY_LANGUAGE } from "./utils/monacoXquery";
 import "./App.css";
 
 function App() {
-  console.log("🚀 App component loaded - React code is running!");
+  // console.log("🚀 App component loaded - React code is running!");
   
   // Content-Type to Monaco language mapping
   function getMonacoLanguageFromContentType(contentType) {
@@ -66,6 +66,7 @@ function App() {
   const [monacoTheme, setMonacoTheme] = useState("vs");
   const recordRefs = useRef({});
   const resultsOutputRef = useRef(null);
+  const currentDatabaseConfigRef = useRef(null);
   
   // Server configuration
   const serverUrl = `http://${server}:8000`;
@@ -89,6 +90,21 @@ function App() {
 
   const goToPrevRecord = () => scrollToRecord(Math.max(activeRecordIndex - 1, 0));
   const goToNextRecord = () => scrollToRecord(Math.min(activeRecordIndex + 1, tableData.length - 1));
+
+  // Load a page of records from disk with explicit index (avoids race conditions)
+  const loadPageWithIndex = useCallback(async (start, index) => {
+    if (!index || !window.electronAPI?.readStreamParts) return;
+    const s = Math.max(0, start);
+    const result = await window.electronAPI.readStreamParts(index.dir, s, pageSize);
+    if (result.success) {
+      setTableData(result.records || []);
+      setPageStart(s);
+      setActiveRecordIndex(0);
+    } else {
+      console.error('Failed to read stream parts:', result.error);
+      setTableData([]);
+    }
+  }, []);
 
   // Load a page of records from disk when using streaming index
   const loadPage = useCallback(async (start) => {
@@ -407,35 +423,64 @@ function App() {
     }
   }, [server, username, password, makeRequest]);
 
-  // Build DB configs
-  const getDatabaseConfigs = useCallback(async () => {
-    try {      
+  // Build DB configs with cancellation support
+  const getDatabaseConfigs = useCallback(async (signal) => {
+    try {
       const [serversData, databasesData] = await Promise.all([
         getServers(server, username, password, makeRequest),
         getDatabases(server, username, password, makeRequest)
       ]);
+
+      // Check if cancelled before proceeding
+      if (signal?.aborted) return;
+
       const configs = parseDatabaseConfigs(serversData, databasesData);
       setDatabaseConfigs(configs);
-      const currentIsValid = configs.some(c => c.name === selectedDatabaseConfig.name && c.id === selectedDatabaseConfig.id);
-      if (!currentIsValid && configs.length > 0) setSelectedDatabaseConfig(configs[0]);
+
+      // Use functional update to avoid stale closure issues
+      setSelectedDatabaseConfig(currentConfig => {
+        const currentIsValid = configs.some(c => c.name === currentConfig.name && c.id === currentConfig.id);
+        if (!currentIsValid && configs.length > 0) {
+          // Also update the ref immediately
+          currentDatabaseConfigRef.current = configs[0];
+          return configs[0];
+        }
+        // Update ref with current valid config
+        currentDatabaseConfigRef.current = currentConfig;
+        console.log('✅ Keeping current config:', currentConfig.name, 'id:', currentConfig.id);
+        console.log('✅ Ref updated to:', currentDatabaseConfigRef.current?.name, 'id:', currentDatabaseConfigRef.current?.id);
+        return currentConfig;
+      });
     } catch (err) {
+      if (err.name === 'AbortError' || signal?.aborted) {
+        console.log('Database config loading was cancelled');
+        return;
+      }
       console.error("Get database configs error:", err);
       setError(`Failed to get database configurations: ${err.message}. Please check your server connection and credentials.`);
       setConnectionStatus("error");
       setDatabaseConfigs([]);
       setSelectedDatabaseConfig({ name: "", id: "", modulesDatabase: "", modulesDatabaseId: "" });
     }
-  }, [server, username, password, makeRequest, selectedDatabaseConfig.name, selectedDatabaseConfig.id]);
+  }, [server, username, password, makeRequest]);
 
   useEffect(() => {
-    if (username && password && server) {
-      getDatabaseConfigs();
-    }
+    if (!username || !password || !server) return;
+
+    const controller = new AbortController();
+    getDatabaseConfigs(controller.signal);
+
+    return () => controller.abort();
   }, [username, password, server, getDatabaseConfigs]);
 
   useEffect(() => { loadQueryHistory(); }, []);
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
   useEffect(() => { if (monacoTheme === 'vs' && theme === 'dark') setMonacoTheme('vs-dark'); }, []);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    currentDatabaseConfigRef.current = selectedDatabaseConfig;
+  }, [selectedDatabaseConfig]);
 
   // Force Monaco to relayout when the sidebar opens/closes
   useEffect(() => {
@@ -469,9 +514,13 @@ function App() {
     }
   }, [viewMode, rawResults, parseMultipartResponse, streamIndex]);
 
-  async function executeQuery() {
+  async function executeQuery(databaseConfigOverride = null) {
     if (!query.trim()) { setError("Please enter a query"); return; }
-    if (!selectedDatabaseConfig.id || databaseConfigs.length === 0) {
+
+    // Use the provided override, current ref value, or fall back to current state
+    const dbConfig = databaseConfigOverride || currentDatabaseConfigRef.current || selectedDatabaseConfig;
+
+    if (!dbConfig.id || databaseConfigs.length === 0) {
       setError("Please select a database. Check your server connection and credentials.");
       return;
     }
@@ -482,21 +531,21 @@ function App() {
       const url = `${serverUrl.replace(/\/+$/, "")}/v1/eval`;
       let body; let contentType;
       if (queryType === "xquery") {
-        const wrappedQuery = selectedDatabaseConfig.modulesDatabaseId !== '0' 
-          ? `xdmp:eval-in("${query.replace(/"/g, '""')}", ${selectedDatabaseConfig.id}, (), ${selectedDatabaseConfig.modulesDatabaseId})`
-          : `xdmp:eval-in("${query.replace(/"/g, '""')}", ${selectedDatabaseConfig.id})`;
+        const wrappedQuery = dbConfig.modulesDatabaseId !== '0'
+          ? `xdmp:eval-in("${query.replace(/"/g, '""')}", ${dbConfig.id}, (), ${dbConfig.modulesDatabaseId})`
+          : `xdmp:eval-in("${query.replace(/"/g, '""')}", ${dbConfig.id})`;
         body = `xquery=${encodeURIComponent(wrappedQuery)}`;
         contentType = "application/x-www-form-urlencoded";
       } else if (queryType === "javascript") {
-        const modulesPart = selectedDatabaseConfig.modulesDatabaseId !== '0' 
-          ? `&modules=${encodeURIComponent(selectedDatabaseConfig.modulesDatabaseId)}`
+        const modulesPart = dbConfig.modulesDatabaseId !== '0'
+          ? `&modules=${encodeURIComponent(dbConfig.modulesDatabaseId)}`
           : '';
-        body = `javascript=${encodeURIComponent(query)}&database=${encodeURIComponent(selectedDatabaseConfig.id)}${modulesPart}`;
+        body = `javascript=${encodeURIComponent(query)}&database=${encodeURIComponent(dbConfig.id)}${modulesPart}`;
         contentType = "application/x-www-form-urlencoded";
       } else if (queryType === "sparql") {
-        const wrappedQuery = selectedDatabaseConfig.modulesDatabaseId !== '0' 
-          ? `xdmp:eval-in("${query.replace(/"/g, '""')}", ${selectedDatabaseConfig.id}, (), ${selectedDatabaseConfig.modulesDatabaseId})`
-          : `xdmp:eval-in("${query.replace(/"/g, '""')}", ${selectedDatabaseConfig.id})`;
+        const wrappedQuery = dbConfig.modulesDatabaseId !== '0'
+          ? `xdmp:eval-in("${query.replace(/"/g, '""')}", ${dbConfig.id}, (), ${dbConfig.modulesDatabaseId})`
+          : `xdmp:eval-in("${query.replace(/"/g, '""')}", ${dbConfig.id})`;
         body = `xquery=${encodeURIComponent(wrappedQuery)}`;
         contentType = "application/x-www-form-urlencoded";
       }
@@ -510,8 +559,8 @@ function App() {
         setStreamIndex(index);
         const total = (index?.parts || []).length;
         setTotalRecords(total);
-        // Load first page (50 records)
-        await loadPage(0);
+        // Load first page (50 records) - pass index directly to avoid race condition
+        await loadPageWithIndex(0, index);
         setConnectionStatus('connected');
         setViewMode('table');
       } else {
@@ -530,7 +579,7 @@ function App() {
         setResults(cleanedResults || 'Query executed successfully (no results)');
         setConnectionStatus('connected');
       }
-      await saveQueryToHistory(query, queryType, selectedDatabaseConfig, Date.now() - executionStartTime, 'executed');
+      await saveQueryToHistory(query, queryType, dbConfig, Date.now() - executionStartTime, 'executed');
     } catch (err) {
       console.error("Query execution error:", err);
       setError(`Error: ${err.message || "Unknown error occurred"}`);
@@ -586,7 +635,7 @@ function App() {
                   <h2 className="card-title text-lg">Query</h2>
                   <div className="card-actions">
                     <button
-                      onClick={executeQuery}
+                      onClick={() => executeQuery()}
                       disabled={isLoading}
                       className="btn btn-primary btn-sm"
                     >
@@ -1026,7 +1075,10 @@ function example() {
                 value={selectedDatabaseConfig.id}
                 onChange={(e) => {
                   const config = databaseConfigs.find(c => c.id === e.target.value);
-                  if (config) setSelectedDatabaseConfig(config);
+                  if (config) {
+                    setSelectedDatabaseConfig(config);
+                    currentDatabaseConfigRef.current = config;
+                  }
                 }}
                 disabled={databaseConfigs.length === 0}
               >
