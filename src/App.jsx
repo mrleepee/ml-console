@@ -233,7 +233,7 @@ function App() {
   }
 
   // Monaco editor for record content (read-only viewer)
-  function MonacoEditor({ content, language, readOnly = true, height = "200px", path }) {
+  function MonacoEditor({ content, language, readOnly = true, height = "200px", path, theme = "vs" }) {
     const [editorMounted, setEditorMounted] = useState(false);
     const editorRef = useRef(null);
 
@@ -301,7 +301,7 @@ function App() {
             overviewRulerBorder: false,
             find: { autoFindInSelection: 'never', seedSearchStringFromSelection: 'never' }
           }}
-          theme={getEnhancedTheme(monacoTheme)}
+          theme={getEnhancedTheme(theme)}
         />
       </div>
     );
@@ -312,7 +312,8 @@ function App() {
     prev.language === next.language &&
     prev.readOnly === next.readOnly &&
     prev.height === next.height &&
-    prev.path === next.path
+    prev.path === next.path &&
+    prev.theme === next.theme
   );
 
 
@@ -597,12 +598,13 @@ function App() {
                                       {record.path && <span><strong>XPath:</strong> {record.path}</span>}
                                     </div>
                                     <div className="border border-base-300 rounded-lg overflow-hidden">
-                                      <MemoMonacoEditor 
-                                      content={formatRecordContent(record)}
+                                      <MemoMonacoEditor
+                                        content={formatRecordContent(record)}
                                         language={getMonacoLanguageFromContentType(record.contentType)}
                                         readOnly={true}
                                         height="300px"
                                         path={stableId}
+                                        theme={monacoTheme}
                                       />
                                     </div>
                                   </div>
@@ -630,11 +632,12 @@ function App() {
                             </div>
                           </div>
                         ) : (
-                          <MonacoEditor 
+                          <MonacoEditor
                             content={results}
                             language="plaintext"
                             readOnly={true}
                             height="400px"
+                            theme={monacoTheme}
                           />
                         )}
                       </div>
@@ -825,7 +828,7 @@ function App() {
                     <span className="label-text font-medium">Theme Preview</span>
                   </label>
                   <div className="border border-base-300 rounded-lg overflow-hidden">
-                    <MonacoEditor 
+                    <MonacoEditor
                       content={`// Monaco Editor Theme Preview
 const greeting = "Hello, World!";
 console.log(greeting);
@@ -838,6 +841,7 @@ function example() {
                       language="javascript"
                       readOnly={true}
                       height="120px"
+                      theme={monacoTheme}
                     />
                   </div>
                 </div>
