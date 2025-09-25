@@ -10,18 +10,47 @@ import { checkConnection } from '../ipc/queryClient';
  * - Available database configurations
  * - Selected database configuration
  * - Connection status and health checking
+ * - Database selection persistence (if localStorage is available)
  *
  * @param {Object} options Configuration options
  * @param {string} options.initialServer Initial server hostname
  * @param {string} options.initialUsername Initial username
  * @param {string} options.initialPassword Initial password
+ * @param {boolean} options.persistConfig Whether to persist selected database in localStorage
  * @returns {Object} Database configuration state and controls
  */
 export default function useDatabaseConfig({
   initialServer = 'localhost',
   initialUsername = 'admin',
-  initialPassword = 'admin'
+  initialPassword = 'admin',
+  persistConfig = true
 } = {}) {
+
+  // Load persisted database config from localStorage if available
+  const getStoredDatabaseConfig = useCallback(() => {
+    if (!persistConfig || typeof window === 'undefined' || !window.localStorage) {
+      return { name: '', id: '', modulesDatabase: '', modulesDatabaseId: '' };
+    }
+    try {
+      const stored = window.localStorage.getItem('ml-console-selected-database');
+      return stored ? JSON.parse(stored) : { name: '', id: '', modulesDatabase: '', modulesDatabaseId: '' };
+    } catch (error) {
+      console.warn('Failed to load database config from localStorage:', error);
+      return { name: '', id: '', modulesDatabase: '', modulesDatabaseId: '' };
+    }
+  }, [persistConfig]);
+
+  // Save database config to localStorage
+  const saveDatabaseConfig = useCallback((config) => {
+    if (!persistConfig || typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
+    try {
+      window.localStorage.setItem('ml-console-selected-database', JSON.stringify(config));
+    } catch (error) {
+      console.warn('Failed to save database config to localStorage:', error);
+    }
+  }, [persistConfig]);
 
   // Connection configuration
   const [server, setServer] = useState(initialServer);
@@ -29,13 +58,8 @@ export default function useDatabaseConfig({
   const [password, setPassword] = useState(initialPassword);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
 
-  // Database configuration state
-  const [selectedDatabaseConfig, setSelectedDatabaseConfig] = useState({
-    name: '',
-    id: '',
-    modulesDatabase: '',
-    modulesDatabaseId: ''
-  });
+  // Database configuration state - initialize with persisted value
+  const [selectedDatabaseConfig, setSelectedDatabaseConfig] = useState(getStoredDatabaseConfig);
   const [databaseConfigs, setDatabaseConfigs] = useState([]);
 
   // Ref for immediate access (avoiding React batching issues)
@@ -103,14 +127,18 @@ export default function useDatabaseConfig({
       // Use functional update to avoid stale closure issues
       setSelectedDatabaseConfig(currentConfig => {
         const currentIsValid = configs.some(c => c.name === currentConfig.name && c.id === currentConfig.id);
+        let newConfig;
         if (!currentIsValid && configs.length > 0) {
+          newConfig = configs[0];
           // Also update the ref immediately
-          currentDatabaseConfigRef.current = configs[0];
-          return configs[0];
+          currentDatabaseConfigRef.current = newConfig;
+          saveDatabaseConfig(newConfig);
+          return newConfig;
         }
         // Update ref with current valid config
-        currentDatabaseConfigRef.current = currentConfig;
-        return currentConfig;
+        newConfig = currentConfig;
+        currentDatabaseConfigRef.current = newConfig;
+        return newConfig;
       });
     } catch (err) {
       if (err.name === 'AbortError' || signal?.aborted) {
@@ -142,16 +170,18 @@ export default function useDatabaseConfig({
     if (config) {
       setSelectedDatabaseConfig(config);
       currentDatabaseConfigRef.current = config;
+      saveDatabaseConfig(config);
     }
-  }, [databaseConfigs]);
+  }, [databaseConfigs, saveDatabaseConfig]);
 
   // Select database by config object
   const selectDatabaseConfig = useCallback((config) => {
     if (config) {
       setSelectedDatabaseConfig(config);
       currentDatabaseConfigRef.current = config;
+      saveDatabaseConfig(config);
     }
-  }, []);
+  }, [saveDatabaseConfig]);
 
   // Refresh database configurations
   const refresh = useCallback(async () => {
@@ -200,5 +230,9 @@ export default function useDatabaseConfig({
     isConnected: connectionStatus === 'connected',
     hasConfigs: databaseConfigs.length > 0,
     hasValidSelection: selectedDatabaseConfig.id && databaseConfigs.length > 0,
+
+    // Configuration info
+    persistConfig,
+    hasLocalStorage: typeof window !== 'undefined' && !!window.localStorage,
   };
 }

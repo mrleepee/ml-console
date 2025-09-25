@@ -50,6 +50,16 @@ export default function useTheme({
   const [theme, setTheme] = useState(getStoredTheme);
   const [monacoTheme, setMonacoTheme] = useState(getStoredMonacoTheme);
 
+  // Ensure themes are loaded from localStorage after mount
+  useEffect(() => {
+    const storedTheme = getStoredTheme();
+    const storedMonacoTheme = getStoredMonacoTheme();
+
+    // Use functional updates to avoid dependency issues
+    setTheme(currentTheme => storedTheme !== currentTheme ? storedTheme : currentTheme);
+    setMonacoTheme(currentMonacoTheme => storedMonacoTheme !== currentMonacoTheme ? storedMonacoTheme : currentMonacoTheme);
+  }, [getStoredTheme, getStoredMonacoTheme]); // Run when localStorage functions change
+
   // Save theme to localStorage
   const saveTheme = useCallback((newTheme) => {
     if (!persistTheme || typeof window === 'undefined' || !window.localStorage) {
@@ -131,10 +141,8 @@ export default function useTheme({
     }
   }, [theme]);
 
-  // Auto-sync Monaco theme on initialization
-  useEffect(() => {
-    syncMonacoTheme();
-  }, []); // Only run once on initialization
+  // Note: Auto-sync removed to preserve user's Monaco theme preference
+  // Users can manually sync themes if desired via syncMonacoTheme()
 
   // Available theme options
   const themeOptions = [

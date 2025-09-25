@@ -47,10 +47,11 @@ function createWindow() {
         mainWindow.loadURL(devUrl);
       });
     
-    // Enable DevTools for debugging (but not during tests)
-    if (process.env.MOCK_HTTP !== '1') {
-      mainWindow.webContents.openDevTools();
-    }
+    // DevTools can be opened manually with Cmd+Option+I when needed
+    // Commented out to avoid interference with Playwright testing
+    // if (process.env.MOCK_HTTP !== '1') {
+    //   mainWindow.webContents.openDevTools();
+    // }
     
     // Forward console logs from renderer to main process
     mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {

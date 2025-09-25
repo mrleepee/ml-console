@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import Editor from "@monaco-editor/react";
+import Editor, { loader } from "@monaco-editor/react";
 import { defineCustomMonacoThemes, getEnhancedTheme } from "../utils/monacoThemes";
 import { registerXQueryLanguage } from "../utils/monacoXquery";
 
@@ -15,6 +15,14 @@ export default function QueryEditor({
   const containerRef = useRef(null);
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
+
+  // Initialize Monaco themes before editor creation
+  useEffect(() => {
+    loader.init().then(monaco => {
+      defineCustomMonacoThemes(monaco);
+      registerXQueryLanguage(monaco);
+    });
+  }, []);
 
   // Bridge monaco change -> textarea-like onChange
   const handleChange = (val) => {
