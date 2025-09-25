@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Editor from '@monaco-editor/react';
 import {
-  parseMultipartToTableData,
   parseMultipartResponse,
   formatRecordContent,
+  toResultEnvelope,
 } from "./services/responseService";
 import QueryEditor from "./components/QueryEditor";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
 import { defineCustomMonacoThemes, getEnhancedTheme } from "./utils/monacoThemes";
 import { registerXQueryLanguage, XQUERY_LANGUAGE } from "./utils/monacoXquery";
 import "./App.css";
+import useStreamingResults from "./hooks/useStreamingResults";
+import { executeQuery as runQuery } from "./services/queryService";
+import { request as ipcRequest, checkConnection as adapterCheck } from "./ipc/queryClient";
 
 function App() {
   console.log("🚀 App component loaded - React code is running!");
@@ -53,13 +56,20 @@ function App() {
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
   const [rawResults, setRawResults] = useState("");
   const [viewMode, setViewMode] = useState("table"); // "table", "parsed", "raw"
-  const [tableData, setTableData] = useState([]);
-  // Streaming-to-disk pagination state
-  const [streamIndex, setStreamIndex] = useState(null); // { dir, parts: [...] }
-  const [totalRecords, setTotalRecords] = useState(0);
   const pageSize = 50;
-  const [pageStart, setPageStart] = useState(0); // start index of current page
-  const [activeRecordIndex, setActiveRecordIndex] = useState(0);
+  const {
+    state: streamState,
+    reset: resetStreaming,
+    initializeStream,
+    loadStaticRecords,
+    nextPage: nextStreamPage,
+    prevPage: prevStreamPage,
+    goToNextRecord: advanceStreamRecord,
+    goToPrevRecord: rewindStreamRecord,
+    setActiveRecordIndex: setStreamActiveRecordIndex,
+  } = useStreamingResults({ pageSize });
+  const { records: tableData, pagination, totalRecords, activeRecordIndex, mode: streamMode, index: streamIndex } = streamState;
+  const pageStart = pagination.start;
   const hasRecords = tableData && tableData.length > 0;
   const activeRecord = hasRecords ? tableData[Math.min(Math.max(activeRecordIndex,0), tableData.length-1)] : null;
   const [queryHistory, setQueryHistory] = useState([]);
@@ -88,74 +98,33 @@ function App() {
       const elementTop = elementRect.top;
       const targetScroll = currentScroll + (elementTop - containerTop) - 20;
       container.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
-      setActiveRecordIndex(index);
+      setStreamActiveRecordIndex(index);
     }
   };
 
-  const goToPrevRecord = () => scrollToRecord(Math.max(activeRecordIndex - 1, 0));
-  const goToNextRecord = () => scrollToRecord(Math.min(activeRecordIndex + 1, tableData.length - 1));
-
-  // Load a page of records from disk with explicit index (avoids race conditions)
-  const loadPageWithIndex = useCallback(async (start, index) => {
-    if (!index || !window.electronAPI?.readStreamParts) return;
-    const s = Math.max(0, start);
-    const result = await window.electronAPI.readStreamParts(index.dir, s, pageSize);
-    if (result.success) {
-      setTableData(result.records || []);
-      setPageStart(s);
-      setActiveRecordIndex(0);
-    } else {
-      console.error('Failed to read stream parts:', result.error);
-      setTableData([]);
-    }
-  }, []);
-
-  // Load a page of records from disk when using streaming index
-  const loadPage = useCallback(async (start) => {
-    if (!streamIndex || !window.electronAPI?.readStreamParts) return;
-    const s = Math.max(0, start);
-    const result = await window.electronAPI.readStreamParts(streamIndex.dir, s, pageSize);
-    if (result.success) {
-      setTableData(result.records || []);
-      setPageStart(s);
-      setActiveRecordIndex(0);
-    } else {
-      console.error('Failed to read stream parts:', result.error);
-      setTableData([]);
-    }
-  }, [streamIndex]);
+  const goToPrevRecord = () => {
+    if (!hasRecords) return;
+    const target = Math.max(rewindStreamRecord(), 0);
+    scrollToRecord(target);
+  };
+  const goToNextRecord = () => {
+    if (!hasRecords) return;
+    const target = Math.min(advanceStreamRecord(), tableData.length - 1);
+    scrollToRecord(target);
+  };
 
   const nextPage = async () => {
-    const nextStart = pageStart + pageSize;
-    if (streamIndex && nextStart < totalRecords) {
-      await loadPage(nextStart);
-    }
+    await nextStreamPage();
   };
 
   const prevPage = async () => {
-    const prevStart = Math.max(0, pageStart - pageSize);
-    if (streamIndex && prevStart !== pageStart) {
-      await loadPage(prevStart);
-    }
+    await prevStreamPage();
   };
 
-  // Simple HTTP request helper (works in both Electron and web)
+  // Simple HTTP request helper via the IPC adapter
   const makeRequest = useCallback(async (options) => {
     try {
-      if (window.electronAPI && window.electronAPI.httpRequest) {
-        const response = await window.electronAPI.httpRequest(options);
-        return response;
-      } else {
-        const resp = await fetch(options.url, {
-          method: options.method || 'GET',
-          headers: options.headers || {},
-          body: options.body,
-        });
-        const bodyText = await resp.text();
-        const headers = {};
-        resp.headers.forEach((value, key) => { headers[key.toLowerCase()] = value; });
-        return { status: resp.status, headers, body: bodyText };
-      }
+      return await ipcRequest(options);
     } catch (error) {
       console.error('HTTP request failed:', error);
       throw error;
@@ -336,20 +305,18 @@ function App() {
   const checkConnection = useCallback(async () => {
     try {
       setConnectionStatus("connecting");
-      const response = await makeRequest({
+      const response = await adapterCheck({
         url: `http://${server}:7997/LATEST/healthcheck`,
-        method: "GET",
-        headers: {},
-        timeout: 10000,
         username,
-        password
+        password,
+        timeout: 10000,
       });
       if (response.status === 200 || response.status === 204) setConnectionStatus("connected");
       else setConnectionStatus("error");
     } catch {
       setConnectionStatus("error");
     }
-  }, [server, username, password, makeRequest]);
+  }, [server, username, password]);
 
   // Build DB configs with cancellation support
   const getDatabaseConfigs = useCallback(async (signal) => {
@@ -431,16 +398,18 @@ function App() {
 
   // View mode change
   useEffect(() => {
-    if (!rawResults) return;
-    // Only apply parsed/raw when not using streamed index (single/small responses)
-    if (!streamIndex) {
-      if (viewMode === "raw") setResults(rawResults);
-      else if (viewMode === "parsed") {
+    if (!rawResults || streamMode === 'stream') return;
+    if (viewMode === "raw") setResults(rawResults);
+    else if (viewMode === "parsed") {
+      try {
         const cleanedResults = parseMultipartResponse(rawResults);
         setResults(cleanedResults || "Query executed successfully (no results)");
+      } catch (err) {
+        console.error('Failed to parse multipart response:', err);
+        setError(`Error: ${err.message || 'Unable to parse response'}`);
       }
     }
-  }, [viewMode, rawResults, streamIndex]);
+  }, [viewMode, rawResults, streamMode]);
 
   async function executeQuery(databaseConfigOverride = null) {
     if (!query.trim()) { setError("Please enter a query"); return; }
@@ -453,64 +422,37 @@ function App() {
       return;
     }
     setIsLoading(true); setError(""); setResults("");
-    setRawResults(""); setStreamIndex(null); setTableData([]); setTotalRecords(0); setPageStart(0);
+    setRawResults(""); resetStreaming();
     const executionStartTime = Date.now();
     try {
-      const url = `${serverUrl.replace(/\/+$/, "")}/v1/eval`;
-      let body; let contentType;
-      if (queryType === "xquery") {
-        const wrappedQuery = dbConfig.modulesDatabaseId !== '0'
-          ? `xdmp:eval-in("${query.replace(/"/g, '""')}", ${dbConfig.id}, (), ${dbConfig.modulesDatabaseId})`
-          : `xdmp:eval-in("${query.replace(/"/g, '""')}", ${dbConfig.id})`;
-        body = `xquery=${encodeURIComponent(wrappedQuery)}`;
-        contentType = "application/x-www-form-urlencoded";
-      } else if (queryType === "javascript") {
-        const modulesPart = dbConfig.modulesDatabaseId !== '0'
-          ? `&modules=${encodeURIComponent(dbConfig.modulesDatabaseId)}`
-          : '';
-        body = `javascript=${encodeURIComponent(query)}&database=${encodeURIComponent(dbConfig.id)}${modulesPart}`;
-        contentType = "application/x-www-form-urlencoded";
-      } else if (queryType === "sparql") {
-        const wrappedQuery = dbConfig.modulesDatabaseId !== '0'
-          ? `xdmp:eval-in("${query.replace(/"/g, '""')}", ${dbConfig.id}, (), ${dbConfig.modulesDatabaseId})`
-          : `xdmp:eval-in("${query.replace(/"/g, '""')}", ${dbConfig.id})`;
-        body = `xquery=${encodeURIComponent(wrappedQuery)}`;
-        contentType = "application/x-www-form-urlencoded";
-      }
+      const response = await runQuery({
+        query,
+        queryType,
+        databaseConfig: dbConfig,
+        serverUrl,
+        auth: { username, password },
+        preferStream: true,
+      });
 
-      // Prefer streaming to disk via Electron to avoid loading full dataset into the renderer
-      if (window.electronAPI?.streamToDisk) {
-        const { success, index, error: streamError } = await window.electronAPI.streamToDisk({
-          url, method: 'POST', headers: { 'Content-Type': contentType }, body, username, password,
-        });
-        if (!success) throw new Error(streamError || 'Stream failed');
-        setStreamIndex(index);
-        const total = (index?.parts || []).length;
-        setTotalRecords(total);
-        // Load first page (50 records) - pass index directly to avoid race condition
-        await loadPageWithIndex(0, index);
+      if (response.mode === 'stream') {
+        await initializeStream(response.streamIndex);
         setConnectionStatus('connected');
         setViewMode('table');
       } else {
-        // Fallback to in-memory request in non-Electron environments
-        const response = await makeRequest({
-          url, method: 'POST', headers: { 'Content-Type': contentType }, body, username, password,
-        });
-        if (response.status < 200 || response.status >= 300) {
-          throw new Error(`HTTP ${response.status}: ${response.body || 'Unknown error'}`);
-        }
-        const rawResponse = response.body || '';
-        setRawResults(rawResponse);
-        const parsedTableData = parseMultipartToTableData(rawResponse);
-        setTableData(parsedTableData);
-        const cleanedResults = parseMultipartResponse(rawResponse);
-        setResults(cleanedResults || 'Query executed successfully (no results)');
+        const envelope = toResultEnvelope(response);
+        loadStaticRecords(envelope.rows);
+        setRawResults(envelope.rawText);
+        setResults(envelope.formattedText || 'Query executed successfully (no results)');
         setConnectionStatus('connected');
       }
       await saveQueryToHistory(query, queryType, dbConfig, Date.now() - executionStartTime, 'executed');
     } catch (err) {
       console.error("Query execution error:", err);
-      setError(`Error: ${err.message || "Unknown error occurred"}`);
+      if (err?.code === 'RESULT_TOO_LARGE') {
+        setError('Error: Result payload exceeds safe concatenation threshold. Try streaming mode or refine the query.');
+      } else {
+        setError(`Error: ${err.message || "Unknown error occurred"}`);
+      }
       setConnectionStatus("error");
     } finally {
       setIsLoading(false);
