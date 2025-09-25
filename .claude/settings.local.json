@@ -52,7 +52,10 @@
       "Bash(find:*)",
       "Bash(grep:*)",
       "WebFetch(domain:martinfowler.com)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(xargs kill:*)",
+      "mcp__playwright__browser_select_option",
+      "mcp__playwright__browser_wait_for"
     ],
     "deny": [],
     "ask": []

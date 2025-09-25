@@ -3,7 +3,10 @@
 
 // Helper function to get enhanced theme name
 export const getEnhancedTheme = (themeName) => {
-  switch (themeName) {
+  // Normalize theme name by trimming whitespace
+  const normalizedTheme = (themeName || '').trim();
+
+  switch (normalizedTheme) {
     case 'vs':
       return 'vs-enhanced';
     case 'vs-dark':
@@ -13,7 +16,8 @@ export const getEnhancedTheme = (themeName) => {
     case 'hc-light':
       return 'hc-light-enhanced';
     default:
-      return 'vs-enhanced';
+      console.warn(`getEnhancedTheme: Unknown theme '${normalizedTheme}', defaulting to vs-dark-enhanced to preserve dark mode`);
+      return 'vs-dark-enhanced';  // Default to dark theme instead of light
   }
 };
 
