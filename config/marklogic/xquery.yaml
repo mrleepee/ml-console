@@ -1,6 +1,7 @@
 keywords:
   - try
   - catch
+  - xdmp
 
 builtins:
   - xdmp:log
