@@ -13,6 +13,8 @@ import "./App.css";
 import useStreamingResults from "./hooks/useStreamingResults";
 import queryService from "./services/queryService";
 import { request as ipcRequest, checkConnection as adapterCheck } from "./ipc/queryClient";
+import useTheme from "./hooks/useTheme";
+import useDatabaseConfig from "./hooks/useDatabaseConfig";
 
 function App() {
   console.log("🚀 App component loaded - React code is running!");
@@ -43,17 +45,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [queryType, setQueryType] = useState("xquery");
-  const [selectedDatabaseConfig, setSelectedDatabaseConfig] = useState({
-    name: "",
-    id: "",
-    modulesDatabase: "",
-    modulesDatabaseId: ""
-  });
-  const [databaseConfigs, setDatabaseConfigs] = useState([]);
   const [activeTab, setActiveTab] = useState("console");
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin");
-  const [connectionStatus, setConnectionStatus] = useState("disconnected");
   const [rawResults, setRawResults] = useState("");
   const [viewMode, setViewMode] = useState("table"); // "table", "parsed", "raw"
   const pageSize = 50;
@@ -75,15 +67,49 @@ function App() {
   const [queryHistory, setQueryHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(true);
-  const [server, setServer] = useState("localhost");
-  const [theme, setTheme] = useState("light");
-  const [monacoTheme, setMonacoTheme] = useState("vs");
+
+  // Use the existing theme hook with persistence
+  const {
+    theme,
+    monacoTheme,
+    setMonacoTheme,
+    toggleTheme
+  } = useTheme({
+    initialTheme: 'light',
+    initialMonacoTheme: 'vs',
+    persistTheme: true
+  });
+
+  // Use the enhanced database config hook with persistence
+  const {
+    server,
+    username,
+    password,
+    serverUrl,
+    connectionStatus,
+    selectedDatabaseConfig,
+    databaseConfigs,
+    currentDatabaseConfigRef,
+    setServer,
+    setUsername,
+    setPassword,
+    selectDatabase,
+    selectDatabaseConfig,
+    updateConnection,
+    refresh,
+    checkConnectionHealth,
+    isConnected,
+    hasConfigs,
+    hasValidSelection
+  } = useDatabaseConfig({
+    initialServer: 'localhost',
+    initialUsername: 'admin',
+    initialPassword: 'admin',
+    persistConfig: true
+  });
+
   const recordRefs = useRef({});
   const resultsOutputRef = useRef(null);
-  const currentDatabaseConfigRef = useRef(null);
-  
-  // Server configuration
-  const serverUrl = `http://${server}:8000`;
 
   // Record navigation functions
   const scrollToRecord = (index) => {
@@ -121,15 +147,6 @@ function App() {
     await prevStreamPage();
   };
 
-  // Simple HTTP request helper via the IPC adapter
-  const makeRequest = useCallback(async (options) => {
-    try {
-      return await ipcRequest(options);
-    } catch (error) {
-      console.error('HTTP request failed:', error);
-      throw error;
-    }
-  }, []);
 
   // Database helper functions
   async function saveQueryToHistory(content, queryType, databaseConfig, executionTimeMs = null, status = 'executed') {
@@ -190,11 +207,8 @@ function App() {
               modulesDatabaseId: result.query.modulesDatabaseId || '0'
             };
             const existingConfig = databaseConfigs.find(c => c.id === restoredConfig.id);
-            if (existingConfig) setSelectedDatabaseConfig(existingConfig);
-            else {
-              setDatabaseConfigs(prev => [...prev, restoredConfig]);
-              setSelectedDatabaseConfig(restoredConfig);
-            }
+            if (existingConfig) selectDatabaseConfig(existingConfig);
+            else selectDatabaseConfig(restoredConfig);
           }
         } else {
           console.error('Failed to load query:', result.error);
@@ -301,81 +315,8 @@ function App() {
     prev.path === next.path
   );
 
-  // Health check (optional)
-  const checkConnection = useCallback(async () => {
-    try {
-      setConnectionStatus("connecting");
-      const response = await adapterCheck({
-        url: `http://${server}:7997/LATEST/healthcheck`,
-        username,
-        password,
-        timeout: 10000,
-      });
-      if (response.status === 200 || response.status === 204) setConnectionStatus("connected");
-      else setConnectionStatus("error");
-    } catch {
-      setConnectionStatus("error");
-    }
-  }, [server, username, password]);
-
-  // Build DB configs with cancellation support
-  const getDatabaseConfigs = useCallback(async (signal) => {
-    try {
-      const [serversData, databasesData] = await Promise.all([
-        getServers(server, username, password, makeRequest),
-        getDatabases(server, username, password, makeRequest)
-      ]);
-
-      // Check if cancelled before proceeding
-      if (signal?.aborted) return;
-
-      const configs = parseDatabaseConfigs(serversData, databasesData);
-      setDatabaseConfigs(configs);
-
-      // Use functional update to avoid stale closure issues
-      setSelectedDatabaseConfig(currentConfig => {
-        const currentIsValid = configs.some(c => c.name === currentConfig.name && c.id === currentConfig.id);
-        if (!currentIsValid && configs.length > 0) {
-          // Also update the ref immediately
-          currentDatabaseConfigRef.current = configs[0];
-          return configs[0];
-        }
-        // Update ref with current valid config
-        currentDatabaseConfigRef.current = currentConfig;
-        console.log('✅ Keeping current config:', currentConfig.name, 'id:', currentConfig.id);
-        console.log('✅ Ref updated to:', currentDatabaseConfigRef.current?.name, 'id:', currentDatabaseConfigRef.current?.id);
-        return currentConfig;
-      });
-    } catch (err) {
-      if (err.name === 'AbortError' || signal?.aborted) {
-        console.log('Database config loading was cancelled');
-        return;
-      }
-      console.error("Get database configs error:", err);
-      setError(`Failed to get database configurations: ${err.message}. Please check your server connection and credentials.`);
-      setConnectionStatus("error");
-      setDatabaseConfigs([]);
-      setSelectedDatabaseConfig({ name: "", id: "", modulesDatabase: "", modulesDatabaseId: "" });
-    }
-  }, [server, username, password, makeRequest]);
-
-  useEffect(() => {
-    if (!username || !password || !server) return;
-
-    const controller = new AbortController();
-    getDatabaseConfigs(controller.signal);
-
-    return () => controller.abort();
-  }, [username, password, server, getDatabaseConfigs]);
 
   useEffect(() => { loadQueryHistory(); }, []);
-  useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
-  useEffect(() => { if (monacoTheme === 'vs' && theme === 'dark') setMonacoTheme('vs-dark'); }, []);
-
-  // Keep ref in sync with state
-  useEffect(() => {
-    currentDatabaseConfigRef.current = selectedDatabaseConfig;
-  }, [selectedDatabaseConfig]);
 
   // Force Monaco to relayout when the sidebar opens/closes
   useEffect(() => {
@@ -436,14 +377,12 @@ function App() {
 
       if (response.mode === 'stream') {
         await initializeStream(response.streamIndex);
-        setConnectionStatus('connected');
         setViewMode('table');
       } else {
         const envelope = toResultEnvelope(response);
         loadStaticRecords(envelope.rows);
         setRawResults(envelope.rawText);
         setResults(envelope.formattedText || 'Query executed successfully (no results)');
-        setConnectionStatus('connected');
       }
       await saveQueryToHistory(query, queryType, dbConfig, Date.now() - executionStartTime, 'executed');
     } catch (err) {
@@ -453,7 +392,6 @@ function App() {
       } else {
         setError(`Error: ${err.message || "Unknown error occurred"}`);
       }
-      setConnectionStatus("error");
     } finally {
       setIsLoading(false);
     }
@@ -943,13 +881,7 @@ function example() {
               <select
                 className="select select-bordered select-sm w-64"
                 value={selectedDatabaseConfig.id}
-                onChange={(e) => {
-                  const config = databaseConfigs.find(c => c.id === e.target.value);
-                  if (config) {
-                    setSelectedDatabaseConfig(config);
-                    currentDatabaseConfigRef.current = config;
-                  }
-                }}
+                onChange={(e) => selectDatabase(e.target.value)}
                 disabled={databaseConfigs.length === 0}
               >
                 {databaseConfigs.length === 0 ? (
@@ -979,9 +911,9 @@ function example() {
                 "bg-base-300"
               }`}></div>
             </div>
-            <button 
+            <button
               className="btn btn-ghost btn-sm"
-              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              onClick={toggleTheme}
               title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
             >
               {theme === 'light' ? '🌙' : '☀️'}
