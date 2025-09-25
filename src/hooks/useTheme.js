@@ -131,10 +131,8 @@ export default function useTheme({
     }
   }, [theme]);
 
-  // Auto-sync Monaco theme on initialization
-  useEffect(() => {
-    syncMonacoTheme();
-  }, []); // Only run once on initialization
+  // Note: Auto-sync removed to preserve user's Monaco theme preference
+  // Users can manually sync themes if desired via syncMonacoTheme()
 
   // Available theme options
   const themeOptions = [
