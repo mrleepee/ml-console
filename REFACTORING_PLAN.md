@@ -28,9 +28,14 @@
 ## Phase 1: Extract Core Business Logic (Priority: High)
 
 ### 1.1 Query Execution Service
-**Extract to: `src/services/queryService.js`**
+**Stabilize in: `src/services/queryService.js` with IPC adapter**
 
-**Functions to extract:**
+**Boundary to introduce before extraction:**
+- Create `src/ipc/queryClient.js` exporting a minimal interface (`sendQuery`, `cancelQuery`, `checkConnection`).
+- `queryService` must depend only on this adapter (no direct `window.electron`).
+- Adapter encapsulates channel names, payload normalization, and retry semantics.
+
+**Functions to extract or relocate into the service after the boundary exists:**
 - `executeQuery()` - Main query execution logic
 - Database configuration validation
 - Query type processing (xquery, javascript, sparql)
@@ -52,54 +57,50 @@
 - Mocking Electron API calls
 ```
 
-### 1.2 Response Processing Service
-**Extract to: `src/services/responseService.js`**
+### 1.2 Response Processing Service Hardening
+**Enhance existing `src/services/responseService.js`**
 
-**Functions to extract:**
-- `parseMultipartToTableData()` - Parse server responses into table data
-- `parseMultipartResponse()` - Parse responses for display
-- `parseResponse()` - Individual response parsing
-- `formatXmlPretty()` - XML formatting utility
-- `formatJsonPretty()` - JSON formatting utility
-- `escapeRegExp()` - Utility function
+**Maintenance & extension tasks:**
+- Introduce an explicit interface for result shapes consumed by UI (table rows, raw text, metadata) and document it in the module.
+- Tighten boundary handling by centralizing delimiter parsing and validating MIME headers before splitting payloads.
+- Extend formatting utilities with streaming-safe guards (avoid large string concatenation) and expose consistent error objects.
+- Add adapters that convert `queryService` payloads into the normalized structures expected by hooks/components.
 
 **Benefits:**
-- Isolated, testable parsing logic
-- Better error handling for malformed responses
-- Reusable formatting utilities
+- Hardened parsing logic with clearer contracts.
+- Safer consumption from React state without duplicating formatting logic.
+- Smooth hand-off to upcoming streaming hook.
 
-**Tests to create:**
+**Tests to extend:**
 ```javascript
 // src/services/responseService.test.js
-- Multipart response parsing with various boundaries
-- Single response parsing
-- Malformed response handling
-- XML/JSON formatting edge cases
-- Header parsing validation
+- Contract tests covering the documented interface
+- Boundary delimiter edge cases (quoted boundaries, whitespace)
+- Regression tests for formatting guards on large payloads
+- Validation for adapter outputs consumed by UI hooks
 ```
 
-### 1.3 Streaming Data Service
-**Extract to: `src/services/streamingService.js`**
+### 1.3 Streaming Results Hook
+**Design `src/hooks/useStreamingResults.js` as the stateful orchestrator.**
 
-**Functions to extract:**
-- `loadPage()` and `loadPageWithIndex()` - Page loading logic
-- `nextPage()`, `prevPage()` - Pagination controls
-- Stream index management
-- Page size calculations
-- Record navigation (`goToNextRecord`, `goToPrevRecord`)
+**Responsibilities to implement inside the hook:**
+- Coordinate chunk ingestion from `queryService` via cancellable subscriptions.
+- Maintain reducers for `pages`, `activeRecord`, `pagination`, and `streamStatus` rather than ad-hoc `useState` calls.
+- Provide imperative controls (`nextPage`, `prevPage`, `goToNextRecord`, `goToPrevRecord`, `jumpToPage`) that operate on reducer state.
+- Surface lifecycle callbacks (`onStart`, `onChunk`, `onComplete`, `onError`) so components can respond without duplicating state.
 
 **Benefits:**
-- Testable pagination logic
-- Consistent streaming behavior
-- Simplified component state management
+- Centralizes pagination and streaming bookkeeping next to React state requirements.
+- Unlocks deterministic unit tests covering reducer transitions and cancellation.
+- Simplifies `App.jsx` by replacing multiple interdependent hooks with one focused manager.
 
 **Tests to create:**
 ```javascript
-// src/services/streamingService.test.js
-- Page loading with different stream indices
-- Pagination boundary conditions
-- Record navigation logic
-- Error handling for failed stream reads
+// src/hooks/useStreamingResults.test.js
+- Reducer transition table for pagination and record navigation
+- Cancellation flow when a new query starts mid-stream
+- Error propagation to consumers via `onError`
+- Integration with `responseService` adapters for chunk parsing
 ```
 
 ## Phase 2: Extract React Hooks (Priority: Medium)
@@ -109,51 +110,49 @@
 
 #### `useDatabaseConfig.js`
 ```javascript
-// Manages database selection and configuration
-export function useDatabaseConfig() {
-  // State: selectedDatabaseConfig, databaseConfigs, connectionStatus
-  // Functions: getDatabaseConfigs, checkConnection
-  // Returns: { config, configs, status, selectDatabase, refresh }
-}
+// Responsibilities
+- Load configs on mount using `queryClient.checkConnection` via shared `useAsyncEffect` helper.
+- Maintain reducer with states: {status, configs, selectedId, lastError} to avoid stale closures.
+- Expose imperative `selectDatabase(configId)` that persists choice and revalidates connection.
+- Provide `refresh()` for manual reload (debounced, abortable via AbortController).
+- Publish lifecycle callbacks: onConfigLoaded, onConnectionLost.
 ```
 
 #### `useQueryHistory.js`
 ```javascript
-// Manages query history operations
-export function useQueryHistory() {
-  // State: queryHistory, historyLoading
-  // Functions: loadQueryHistory, saveQuery, deleteQuery, loadFromHistory
-  // Returns: { history, loading, save, delete, load, refresh }
-}
+// Responsibilities
+- Own reducer for {entries, filter, status} with actions load/sync/add/remove.
+- Coordinate with IPC adapter for persistence; guarantee cancellation when component unmounts.
+- Provide selectors (`visibleEntries`, `recentEntry`) derived with `useMemo`.
+- Emit onHistoryMutate events for analytics side-effects (optional injection).
 ```
 
 #### `useQueryExecution.js`
 ```javascript
-// Manages query execution state and lifecycle
-export function useQueryExecution(queryService) {
-  // State: isLoading, error, results, rawResults
-  // Functions: execute, cancel, reset
-  // Returns: { loading, error, results, execute, cancel, reset }
-}
+// Responsibilities
+- Wrap `queryService.executeQuery` and enforce single-flight execution with queued cancellations.
+- Track lifecycle via reducer {phase, requestId, error, metrics, rawStream}.
+- Provide `execute(params, {onChunk})` that pipes streaming payloads to `useStreamingResults`.
+- Expose `cancel()` that signals adapter and flips reducer to `cancelled` phase; ensure cleanup in `useEffect` return.
+- Surface stable callbacks for telemetry (onRequestStart, onRequestFinish, onRequestError).
 ```
 
 #### `useTheme.js`
 ```javascript
-// Manages theme and Monaco editor settings
-export function useTheme() {
-  // State: theme, monacoTheme
-  // Functions: setTheme, toggleTheme, setMonacoTheme
-  // Returns: { theme, monacoTheme, setTheme, toggleTheme }
-}
+// Responsibilities
+- Sync theme preference between localStorage, Electron native theme, and Monaco.
+- Use layout effect to update DOM class list before paint to avoid flash.
+- Manage reducer {uiTheme, monacoTheme, prefersDark} with derived memo selectors.
+- Provide `applyMonacoTheme(editorInstance)` helper to coordinate lazy-loaded editor.
 ```
 
 **Tests for hooks:**
 ```javascript
 // src/hooks/__tests__/
-- Hook state management
-- Effect dependencies
-- Error handling
-- Integration with services
+- Reducer transition tables and lifecycle coverage
+- Cancellation/cleanup behavior when components unmount
+- Integration with IPC adapter mocks and response/query services
+- Memoized selector correctness and dependency tracking
 ```
 
 ## Phase 3: Component Decomposition (Priority: Medium)
@@ -216,20 +215,21 @@ export function useTheme() {
 
 ### 4.1 Comprehensive Test Suite
 
-#### Unit Tests
-- **Services**: All business logic functions
-- **Hooks**: State management and side effects
-- **Utilities**: Helper functions and formatters
+#### Vitest (unit) targets
+- `src/services/queryService.test.js` — IPC adapter contract, validation matrix, cancellation paths.
+- `src/services/responseService.test.js` — interface contract, delimiter edge cases, adapter outputs.
+- `src/hooks/useStreamingResults.test.js` — reducer transitions, lifecycle callbacks, cancellation.
+- `src/hooks/__tests__/useDatabaseConfig.test.js` — connection lifecycle, reducer guards.
 
-#### Integration Tests
-- **Component interactions**: How components work together
-- **Service integration**: How services interact with each other
-- **Hook-Service integration**: How hooks consume services
+#### React Testing Library integration targets
+- `src/components/QueryConsole.test.jsx` — execute flow wiring with hooks/services.
+- `src/components/ResultsViewer.test.jsx` — pagination controls and streaming updates.
+- `src/components/QueryHistoryPanel.test.jsx` — persistence integration and filter behavior.
 
-#### E2E Tests
-- **Core workflows**: Query execution, result viewing, history management
-- **Error scenarios**: Network failures, invalid inputs
-- **Cross-browser compatibility**: Electron-specific features
+#### Playwright E2E scenarios (existing `tests/e2e/*.spec.ts`)
+- Extend `tests/e2e/query-execution.spec.ts` for streaming cancel/retry workflow.
+- Add coverage in `tests/e2e/history.spec.ts` for history sync.
+- Create `tests/e2e/theme-toggle.spec.ts` to assert theme persistence across reloads.
 
 #### Mock Strategy
 ```javascript
@@ -237,13 +237,13 @@ export function useTheme() {
 - mockElectronAPI() - Consistent Electron API mocking
 - mockQueryResponses() - Various server response scenarios
 - mockDatabaseConfigs() - Database configuration scenarios
+- createStreamingHarness() - Deterministic chunk sequencing for hooks
 ```
 
-**Coverage Goals:**
-- **Services**: 95%+ (critical business logic)
-- **Hooks**: 90%+ (state management)
-- **Components**: 80%+ (user interactions)
-- **Overall**: 85%+
+**Coverage Goals (suite-specific):**
+- Vitest: ≥95% statements in `src/services`, ≥90% in `src/hooks`.
+- React Testing Library: Interaction suites achieving ≥85% branch coverage for components under test.
+- Playwright: Smoke workflows executed on CI for every PR (pass rate tracked, no coverage metric).
 
 ## Phase 5: Performance Optimizations (Priority: Low)
 
@@ -275,9 +275,9 @@ export function useTheme() {
 ## Implementation Strategy
 
 ### Phase 1 Implementation Order
-1. **Start with Response Service** (least dependencies, high test value)
-2. **Extract Query Service** (core functionality)
-3. **Create Streaming Service** (depends on response parsing)
+1. **Stabilize Query Service + IPC adapter** (establish contract for downstream consumers)
+2. **Harden Response Service** (align outputs to the new contract)
+3. **Introduce Streaming Results Hook** (consume stabilized services)
 
 ### Phase 2 Implementation Order
 1. **Create base hooks** (useDatabaseConfig, useTheme)
