@@ -31,6 +31,12 @@ This document is read by coding agents to learn your repo, conventions, guardrai
 - **Testing policy**
   - Add/extend tests for any behavior change. Keep coverage ≥ existing level.
   - Provide a clear `How to run tests` snippet in your outputs.
+  - Follow Martin Fowler's unit testing principles:
+    * Fast execution (sub-second to few seconds)
+    * Test behavior, not implementation
+    * Use test doubles for external dependencies/non-deterministic resources
+    * Prefer sociable tests but isolate when needed
+    * Write broad stack tests for system integration
 - **Docs**
   - Update `README.md` and module-level docstrings when public APIs change.
   - When creating download links to new versions, append **`-v[n]`** before the file suffix (e.g., `report-v2.pdf`).
