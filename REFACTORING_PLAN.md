@@ -1,14 +1,96 @@
 # ML Console App.jsx Refactoring Plan
 
-## Current State Analysis
+## Implementation Status Review
 
-**App.jsx Complexity:**
+### ✅ COMPLETED WORK
+
+#### Phase 1: Core Business Logic - **PARTIALLY COMPLETE**
+
+**✅ 1.1 Query Execution Service - IMPLEMENTED**
+- **File**: `src/services/queryService.js` ✅
+- **Tests**: `src/services/queryService.test.js` ✅
+- **Features**: Query validation, type processing, request building
+- **Quality**: Well-structured with proper error handling
+
+**✅ 1.2 Response Processing Service - IMPLEMENTED**
+- **File**: `src/services/responseService.js` ✅
+- **Tests**: `src/services/responseService.test.js` ✅
+- **Features**: Multipart parsing, header extraction, result normalization
+- **Quality**: Comprehensive with TypeScript-style JSDoc, error classes
+
+**✅ 1.3 Streaming Results Hook - IMPLEMENTED**
+- **File**: `src/hooks/useStreamingResults.js` ✅
+- **Tests**: `src/hooks/__tests__/useStreamingResults.test.js` ✅
+- **Features**: Reducer-based state, pagination, record navigation
+- **Quality**: Clean reducer pattern with lifecycle management
+
+**✅ IPC Adapter - IMPLEMENTED**
+- **File**: `src/ipc/queryClient.js` ✅
+- **Features**: Electron/browser abstraction, request normalization
+- **Quality**: Good fallback strategy for non-Electron environments
+
+### ❌ CRITICAL GAPS & ISSUES
+
+#### App.jsx Integration - **NOT DONE**
+- **Current State**: App.jsx still **1015 lines** (down from 1160, but target was 200-300)
+- **Issue**: Services and hooks exist but **ARE NOT BEING USED** in App.jsx
+- **Impact**: No actual refactoring benefit - all the old code is still there
+
+#### Missing Components - **NOT STARTED**
+- ❌ `QueryConsole.jsx`
+- ❌ `ResultsViewer.jsx`
+- ❌ `DatabaseSelector.jsx`
+- ❌ `QueryHistoryPanel.jsx`
+- ❌ `ThemeSelector.jsx`
+
+#### Missing Hooks - **NOT STARTED**
+- ❌ `useDatabaseConfig.js`
+- ❌ `useQueryHistory.js`
+- ❌ `useQueryExecution.js`
+- ❌ `useTheme.js`
+
+#### Integration Issues - **CRITICAL**
+- App.jsx still contains **40 React hooks** (vs. plan target of <10)
+- All the old parsing/execution logic is still embedded in App.jsx
+- No evidence that the new services are being imported/used
+
+### 📊 CURRENT VS. TARGET STATE
+
+| Metric | Current | Target | Status |
+|--------|---------|---------|---------|
+| App.jsx lines | 1015 | 200-300 | ❌ |
+| Services | 3/3 | 3/3 | ✅ |
+| Hooks | 1/5 | 5/5 | ❌ |
+| Components | 3/8 | 8/8 | ❌ |
+| App.jsx hooks | 40 | <10 | ❌ |
+| Test coverage | Good for services | 85%+ overall | ⚠️ |
+
+### 🚨 CRITICAL ISSUES
+
+#### 1. **False Success** - Services Exist But Aren't Used
+- Created beautiful, well-tested services but **App.jsx ignores them completely**
+- This is like building a new engine but leaving the old one in the car
+- **Zero practical benefit** from the refactoring work done so far
+
+#### 2. **Plan Execution Failure**
+- Plan clearly stated "Extract core logic FROM App.jsx"
+- Instead, logic was **duplicated** in services while **keeping original**
+- This creates maintenance burden of having two implementations
+
+#### 3. **Missing Integration Strategy**
+- No clear migration path from old App.jsx code to new services
+- Services and App.jsx have different interfaces/patterns
+- Risk of introducing bugs during integration
+
+## Original Analysis (Pre-Implementation)
+
+**App.jsx Complexity (Historical):**
 - **1160 lines** with **80+ functions/methods** and **48 React hooks**
 - Multiple responsibilities: UI rendering, data fetching, response parsing, query execution, history management, theme handling, pagination, streaming, etc.
 - Heavy state management with 20+ useState declarations
 - Complex business logic mixed with presentation logic
 
-**Existing Architecture:**
+**Existing Architecture (Historical):**
 - ✅ Some utilities already extracted to `/src/utils/` (databaseApi.js, monacoThemes.js, etc.)
 - ✅ Some components extracted (QueryEditor.jsx, MonacoViewer.jsx)
 - ✅ **Good test coverage for utils** (3 test files with comprehensive tests)
@@ -25,83 +107,121 @@
 4. **Single Responsibility**: App.jsx violates SRP by handling too many concerns
 5. **Team Development**: Large files create merge conflicts and cognitive overhead
 
-## Phase 1: Extract Core Business Logic (Priority: High)
+## 🎯 REQUIRED NEXT STEPS (Priority Order)
 
-### 1.1 Query Execution Service
-**Stabilize in: `src/services/queryService.js` with IPC adapter**
+### Phase 1A: **Emergency Integration** (1-2 days) - **CRITICAL**
+**Goal**: Make existing services actually useful by integrating them into App.jsx
 
-**Boundary to introduce before extraction:**
-- Create `src/ipc/queryClient.js` exporting a minimal interface (`sendQuery`, `cancelQuery`, `checkConnection`).
-- `queryService` must depend only on this adapter (no direct `window.electron`).
-- Adapter encapsulates channel names, payload normalization, and retry semantics.
+1. **Replace App.jsx query execution** with `queryService.executeQuery()`
+   - Import and use existing queryService
+   - Remove duplicated query execution logic from App.jsx
+   - Maintain exact same functionality/interface
 
-**Functions to extract or relocate into the service after the boundary exists:**
-- `executeQuery()` - Main query execution logic
-- Database configuration validation
-- Query type processing (xquery, javascript, sparql)
-- Request body formatting
-- Error handling and validation
+2. **Replace App.jsx response parsing** with `responseService` functions
+   - Import parseMultipartToTableData, parseMultipartResponse
+   - Remove parsing functions from App.jsx
+   - Ensure same parsing behavior
 
-**Benefits:**
-- Fully unit testable query execution
-- Reusable across different UI components
-- Centralized query logic
+3. **Replace App.jsx streaming logic** with `useStreamingResults` hook
+   - Integrate existing useStreamingResults hook
+   - Remove manual pagination state management
+   - Migrate to reducer pattern
 
-**Tests to create:**
-```javascript
-// src/services/queryService.test.js
-- Query validation edge cases
-- Different query types (xquery, javascript, sparql)
-- Database configuration handling
-- Error scenarios (network failures, invalid queries)
-- Mocking Electron API calls
-```
+4. **Remove duplicated logic** from App.jsx after integration
+   - Delete old functions after successful replacement
+   - Verify no dead code remains
 
-### 1.2 Response Processing Service Hardening
-**Enhance existing `src/services/responseService.js`**
+5. **Verify no functionality regressions**
+   - Test all query types (xquery, javascript, sparql)
+   - Test streaming and non-streaming responses
+   - Test pagination and record navigation
 
-**Maintenance & extension tasks:**
-- Introduce an explicit interface for result shapes consumed by UI (table rows, raw text, metadata) and document it in the module.
-- Tighten boundary handling by centralizing delimiter parsing and validating MIME headers before splitting payloads.
-- Extend formatting utilities with streaming-safe guards (avoid large string concatenation) and expose consistent error objects.
-- Add adapters that convert `queryService` payloads into the normalized structures expected by hooks/components.
+**Success Criteria**:
+- App.jsx reduced to <800 lines
+- Services are actively used (not just created)
+- Zero functionality changes for end users
+- All existing tests still pass
 
-**Benefits:**
-- Hardened parsing logic with clearer contracts.
-- Safer consumption from React state without duplicating formatting logic.
-- Smooth hand-off to upcoming streaming hook.
+### Phase 1B: **Hook Extraction** (2-3 days)
+**Goal**: Replace remaining useState/useEffect with custom hooks
 
-**Tests to extend:**
-```javascript
-// src/services/responseService.test.js
-- Contract tests covering the documented interface
-- Boundary delimiter edge cases (quoted boundaries, whitespace)
-- Regression tests for formatting guards on large payloads
-- Validation for adapter outputs consumed by UI hooks
-```
+1. Create and integrate `useDatabaseConfig`
+   - Extract database selection/configuration logic
+   - Manage connection status and validation
+   - Replace 5-8 useState calls in App.jsx
 
-### 1.3 Streaming Results Hook
-**Design `src/hooks/useStreamingResults.js` as the stateful orchestrator.**
+2. Create and integrate `useQueryExecution`
+   - Wrap queryService with React state management
+   - Handle loading states, errors, cancellation
+   - Replace query execution state logic
 
-**Responsibilities to implement inside the hook:**
-- Coordinate chunk ingestion from `queryService` via cancellable subscriptions.
-- Maintain reducers for `pages`, `activeRecord`, `pagination`, and `streamStatus` rather than ad-hoc `useState` calls.
-- Provide imperative controls (`nextPage`, `prevPage`, `goToNextRecord`, `goToPrevRecord`, `jumpToPage`) that operate on reducer state.
-- Surface lifecycle callbacks (`onStart`, `onChunk`, `onComplete`, `onError`) so components can respond without duplicating state.
+3. Create and integrate `useQueryHistory`
+   - Extract history management from App.jsx
+   - Handle persistence via Electron API
+   - Replace history-related useState calls
 
-**Benefits:**
-- Centralizes pagination and streaming bookkeeping next to React state requirements.
-- Unlocks deterministic unit tests covering reducer transitions and cancellation.
-- Simplifies `App.jsx` by replacing multiple interdependent hooks with one focused manager.
+4. Create and integrate `useTheme`
+   - Extract theme/Monaco theme management
+   - Handle localStorage persistence
+   - Replace theme-related useState calls
 
-**Tests to create:**
-```javascript
-// src/hooks/useStreamingResults.test.js
-- Reducer transition table for pagination and record navigation
-- Cancellation flow when a new query starts mid-stream
-- Error propagation to consumers via `onError`
-- Integration with `responseService` adapters for chunk parsing
-```
+**Success Criteria**:
+- App.jsx reduced to <500 lines
+- Custom hooks replace 15-20 useState calls
+- Hook logic is unit testable
+- App.jsx focuses on orchestration, not state details
+
+### Phase 1C: **Component Decomposition** (3-4 days)
+**Goal**: Break App.jsx into focused, manageable components
+
+1. Extract `QueryConsole` component (~200-250 lines)
+   - Query editor, execute button, type selector
+   - Database selector integration
+   - Uses useQueryExecution hook
+
+2. Extract `ResultsViewer` component (~150-200 lines)
+   - Table/Raw/Parsed view switching
+   - Pagination controls, record navigation
+   - Uses useStreamingResults hook
+
+3. Extract `DatabaseSelector` component (~100-150 lines)
+   - Database dropdown, connection status
+   - Server configuration, credentials
+   - Uses useDatabaseConfig hook
+
+4. Extract `QueryHistoryPanel` component (~100-150 lines)
+   - History list rendering
+   - Load/Delete actions, search/filter
+   - Uses useQueryHistory hook
+
+5. Extract `ThemeSelector` component (~50-75 lines)
+   - Theme dropdown, Monaco integration
+   - Uses useTheme hook
+
+**Success Criteria**:
+- App.jsx reduced to 200-300 lines (orchestration only)
+- 5 focused components with single responsibilities
+- Each component is independently testable
+- Clean prop interfaces between components
+
+## ORIGINAL PHASES (For Reference)
+
+### Phase 1: Extract Core Business Logic (Priority: High) - ✅ COMPLETE
+
+**✅ 1.1 Query Execution Service** - IMPLEMENTED
+- ✅ `src/services/queryService.js` with comprehensive validation
+- ✅ `src/services/queryService.test.js` with full test coverage
+- ✅ IPC adapter integration via `src/ipc/queryClient.js`
+
+**✅ 1.2 Response Processing Service** - IMPLEMENTED
+- ✅ `src/services/responseService.js` with improved boundary parsing
+- ✅ `src/services/responseService.test.js` with edge case coverage
+- ✅ TypeScript-style JSDoc documentation and error classes
+
+**✅ 1.3 Streaming Results Hook** - IMPLEMENTED
+- ✅ `src/hooks/useStreamingResults.js` with reducer pattern
+- ✅ `src/hooks/__tests__/useStreamingResults.test.js` with lifecycle tests
+- ✅ Cancellation support and lifecycle callbacks
 
 ## Phase 2: Extract React Hooks (Priority: Medium)
 
@@ -327,15 +447,25 @@ src/
 5. **Future Growth**: Scalable architecture for new features
 6. **Performance**: Better React optimization opportunities
 
-## Effort Estimation
+## Updated Effort Estimation
 
-- **Phase 1** (Extract Services): ~2-3 days (high impact)
+### Immediate Priority (Based on Current State)
+- **Phase 1A** (Emergency Integration): ~1-2 days (**CRITICAL - must do first**)
+- **Phase 1B** (Hook Extraction): ~2-3 days (high impact)
+- **Phase 1C** (Component Decomposition): ~3-4 days (medium impact)
+- **Phase 4** (Enhanced Testing): ~2-3 days (high value)
+- **Phase 5** (Performance): ~1 day (polish)
+
+**Total Remaining Effort**: ~9-13 days to complete refactoring
+
+### Original Estimation (Pre-Implementation)
+- **Phase 1** (Extract Services): ✅ COMPLETE (~3 days completed)
 - **Phase 2** (Extract Hooks): ~2-3 days (medium impact)
 - **Phase 3** (Component Decomposition): ~2-3 days (medium impact)
 - **Phase 4** (Enhanced Testing): ~2-3 days (high value)
 - **Phase 5** (Performance): ~1 day (polish)
 
-**Total Effort**: ~9-13 days for complete refactoring
+**Original Total**: ~9-13 days for complete refactoring
 
 ## Risk Mitigation
 
@@ -347,9 +477,41 @@ src/
 
 ## Success Metrics
 
-- [ ] App.jsx reduced to <400 lines
+### Phase 1A (Emergency Integration)
+- [ ] queryService.executeQuery() is used in App.jsx (not duplicated logic)
+- [ ] responseService functions are used in App.jsx (parsing logic removed)
+- [ ] useStreamingResults hook is used in App.jsx (manual state removed)
+- [ ] App.jsx reduced to <800 lines
+- [ ] All existing functionality works identically
+- [ ] Services show up in App.jsx imports
+
+### Phase 1B (Hook Extraction)
+- [ ] useDatabaseConfig replaces database-related useState calls
+- [ ] useQueryExecution replaces execution-related useState calls
+- [ ] useQueryHistory replaces history-related useState calls
+- [ ] useTheme replaces theme-related useState calls
+- [ ] App.jsx reduced to <500 lines
+- [ ] React hooks count in App.jsx reduced to <20
+
+### Phase 1C (Component Decomposition)
+- [ ] App.jsx reduced to 200-300 lines (orchestration only)
+- [ ] 5 focused components created and integrated
+- [ ] Each component has single responsibility
+- [ ] Components use appropriate custom hooks
+- [ ] Component interfaces are clean (minimal props)
+
+### Final Success Criteria
 - [ ] All business logic covered by unit tests (>90%)
-- [ ] No functionality regressions
+- [ ] No functionality regressions throughout refactoring
 - [ ] Improved development velocity for new features
 - [ ] Reduced bug reports related to state management
 - [ ] Improved code review speed and quality
+
+## 📋 VERDICT ON CURRENT STATE
+
+**Status**: Refactoring is 30% complete but **0% effective**
+**Issue**: Built great foundations but failed to migrate existing code
+**Priority**: Immediate integration work (Phase 1A) required to realize any benefits
+**Risk**: Current state is worse than original (more complexity, no benefits)
+
+**Next Action**: Execute Phase 1A (Emergency Integration) to make services actually useful

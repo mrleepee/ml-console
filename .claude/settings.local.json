@@ -48,7 +48,11 @@
       "Bash(PREVIEW_PORT=1421 MOCK_HTTP=1 concurrently --kill-others --success first \"vite preview --port 1421\" \"wait-on http://localhost:1421 && playwright test tests/navigation.spec.ts\")",
       "Bash(git add:*)",
       "Bash(git stash:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:martinfowler.com)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []

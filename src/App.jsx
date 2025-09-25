@@ -11,7 +11,7 @@ import { defineCustomMonacoThemes, getEnhancedTheme } from "./utils/monacoThemes
 import { registerXQueryLanguage, XQUERY_LANGUAGE } from "./utils/monacoXquery";
 import "./App.css";
 import useStreamingResults from "./hooks/useStreamingResults";
-import { executeQuery as runQuery } from "./services/queryService";
+import queryService from "./services/queryService";
 import { request as ipcRequest, checkConnection as adapterCheck } from "./ipc/queryClient";
 
 function App() {
@@ -425,7 +425,7 @@ function App() {
     setRawResults(""); resetStreaming();
     const executionStartTime = Date.now();
     try {
-      const response = await runQuery({
+      const response = await queryService.executeQuery({
         query,
         queryType,
         databaseConfig: dbConfig,
