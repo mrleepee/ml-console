@@ -15,6 +15,7 @@ import queryService from "./services/queryService";
 import { request as ipcRequest, checkConnection as adapterCheck } from "./ipc/queryClient";
 import useTheme from "./hooks/useTheme";
 import useDatabaseConfig from "./hooks/useDatabaseConfig";
+import ThemeSelector from "./components/ThemeSelector";
 
 function App() {
   console.log("🚀 App component loaded - React code is running!");
@@ -435,8 +436,8 @@ function App() {
     if (activeTab === 'console') {
       return (
         <div className="flex flex-1 h-full gap-4 min-h-0 overflow-hidden">
-          {/* LEFT COLUMN: Query + Results stacked; min-w-0 avoids horizontal overflow */}
-          <div className="flex-1 flex flex-col gap-4 min-w-0 min-h-0 overflow-hidden">
+            {/* LEFT COLUMN: Query + Results stacked; min-w-0 avoids horizontal overflow */}
+            <div className="flex-1 flex flex-col gap-4 min-w-0 min-h-0 overflow-hidden">
             {/* Query (bounded height) */}
             <div className="card bg-base-100 shadow-sm border border-base-300">
               <div className="card-header bg-base-200 px-4 py-3 border-b border-base-300">
@@ -801,50 +802,14 @@ function App() {
                   />
                 </div>
 
-                <div className="form-control">
-                  <label className="label" htmlFor="settings-monaco-theme">
-                    <span className="label-text font-medium">Monaco Editor Theme</span>
-                  </label>
-                  <select
-                    id="settings-monaco-theme"
-                    className="select select-bordered"
-                    value={monacoTheme}
-                    onChange={(e) => setMonacoTheme(e.target.value)}
-                  >
-                    <option value="vs">Light (Visual Studio)</option>
-                    <option value="vs-dark">Dark (Visual Studio Dark)</option>
-                    <option value="hc-black">High Contrast Black</option>
-                    <option value="hc-light">High Contrast Light</option>
-                  </select>
-                  <label className="label">
-                    <span className="label-text-alt text-base-content/60">
-                      Choose your preferred color scheme for code editors
-                    </span>
-                  </label>
-                </div>
-
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-medium">Theme Preview</span>
-                  </label>
-                  <div className="border border-base-300 rounded-lg overflow-hidden">
-                    <MonacoEditor
-                      content={`// Monaco Editor Theme Preview
-const greeting = "Hello, World!";
-console.log(greeting);
-
-/* Multi-line comment
-   showing syntax highlighting */
-function example() {
-  return { theme: "${monacoTheme}" };
-}`}
-                      language="javascript"
-                      readOnly={true}
-                      height="120px"
-                      theme={monacoTheme}
-                    />
-                  </div>
-                </div>
+                {/* Enhanced Theme Selector */}
+                <ThemeSelector
+                  variant="full"
+                  theme={theme}
+                  onThemeChange={toggleTheme}
+                  monacoTheme={monacoTheme}
+                  onMonacoThemeChange={setMonacoTheme}
+                />
               </div>
             </div>
           </div>
@@ -866,7 +831,7 @@ function example() {
           <div className="flex items-center gap-4">
             <div className="form-control">
               <label className="label">
-                <span className="label-text text-sm font-medium">Query Type</span>
+                <span className="label-text text-sm font-medium mr-4">Query Type</span>
               </label>
               <select
                 className="select select-bordered select-sm w-32"
@@ -880,7 +845,7 @@ function example() {
             </div>
             <div className="form-control">
               <label className="label">
-                <span className="label-text text-sm font-medium">Database</span>
+                <span className="label-text text-sm font-medium mr-4">Database</span>
               </label>
               <select
                 className="select select-bordered select-sm w-64"
@@ -915,13 +880,18 @@ function example() {
                 "bg-base-300"
               }`}></div>
             </div>
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={toggleTheme}
-              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-            >
-              {theme === 'light' ? '🌙' : '☀️'}
-            </button>
+            <div className="flex items-center gap-3">
+              <div className="text-xs text-base-content/60">
+                Editor: {monacoTheme}
+              </div>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={toggleTheme}
+                title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+              >
+                {theme === 'light' ? '🌙' : '☀️'}
+              </button>
+            </div>
           </div>
         </div>
       </header>

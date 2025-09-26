@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from "react";
 import Editor, { loader } from "@monaco-editor/react";
-import { defineCustomMonacoThemes, getEnhancedTheme } from "../utils/monacoThemes";
+import { defineCustomMonacoThemes, getEnhancedTheme, loadAndDefineTheme } from "../utils/monacoThemes";
 import { registerXQueryLanguage } from "../utils/monacoXquery";
+import { isValidTheme } from "../utils/themeLoader";
 
 export default function QueryEditor({
   value = "",
@@ -29,13 +30,25 @@ export default function QueryEditor({
     if (onChange) onChange({ target: { value: val ?? "" } });
   };
 
-  const handleMount = (editor, monaco) => {
+  const handleMount = async (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
 
     // Ensure our custom themes exist
     defineCustomMonacoThemes(monaco);
     registerXQueryLanguage(monaco);
+
+    // Load custom theme if it's not a built-in theme
+    if (isValidTheme(theme)) {
+      try {
+        await loadAndDefineTheme(monaco, theme);
+        // Apply the theme after it's loaded
+        const themeId = getEnhancedTheme(theme);
+        editor.updateOptions({ theme: themeId });
+      } catch (error) {
+        console.warn(`Failed to load custom theme ${theme}:`, error);
+      }
+    }
 
     // Forward keydown to consumer in a textarea-like shape
     editor.onKeyDown((e) => {
@@ -107,6 +120,19 @@ export default function QueryEditor({
     return () => window.removeEventListener("resize", fn);
   }, []);
 
+  // Handle theme changes dynamically
+  useEffect(() => {
+    if (editorRef.current && monacoRef.current && isValidTheme(theme)) {
+      loadAndDefineTheme(monacoRef.current, theme).then(() => {
+        // Apply the theme after it's loaded
+        const themeId = getEnhancedTheme(theme);
+        editorRef.current.updateOptions({ theme: themeId });
+      }).catch(error =>
+        console.warn(`Failed to load theme ${theme} on change:`, error)
+      );
+    }
+  }, [theme]);
+
   return (
     <div
       ref={containerRef}
@@ -118,7 +144,7 @@ export default function QueryEditor({
         language={language}
         onChange={handleChange}
         onMount={handleMount}
-        theme={getEnhancedTheme(theme)}
+        theme={isValidTheme(theme) ? 'vs-dark' : getEnhancedTheme(theme)}
         width="100%"
         height="100%"               // <-- critical: fill the container we control
         options={{
