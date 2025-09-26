@@ -104,9 +104,9 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
     if (editorRef.current) {
       const newOptions = getMonacoOptions({
         readOnly: true,
-        renderLineHighlight: "none",
-        minimap: { enabled: false },
-        dragAndDrop: false,
+        renderLineHighlight: "none", // Keep this specific to viewer
+        minimap: { enabled: false }, // Always disabled for viewer
+        dragAndDrop: false, // Disabled for read-only viewer
       });
       editorRef.current.updateOptions(newOptions);
     }
