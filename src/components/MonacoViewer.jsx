@@ -5,10 +5,14 @@ const Editor = React.lazy(() => import("@monaco-editor/react"));
 import { defineCustomMonacoThemes, getEnhancedTheme, loadAndDefineTheme, preloadPopularThemes } from "../utils/monacoThemes";
 import { registerXQueryLanguage } from "../utils/monacoXquery";
 import { isValidTheme } from "../utils/themeLoader";
+import useEditorPreferences from "../hooks/useEditorPreferences";
 
 export default function MonacoViewer({ value = "", language = "plaintext", theme = "vs" }) {
   const containerRef = useRef(null);
   const editorRef = useRef(null);
+
+  // Get editor preferences for consistent styling
+  const { getMonacoOptions } = useEditorPreferences();
 
   const formatContent = useCallback(async () => {
     if (
@@ -109,31 +113,12 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
           theme={isValidTheme(theme) ? 'vs-dark' : getEnhancedTheme(theme)}
           width="100%"
           height="100%"
-          options={{
+          options={getMonacoOptions({
             readOnly: true,
-            automaticLayout: false,
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            wordWrap: "on",
-            renderLineHighlight: "none",
-            fontSize: 12,
-            lineNumbers: "on",
-            folding: true,
-            foldingStrategy: "indentation",
-            showFoldingControls: "mouseover",
-            lineDecorationsWidth: 10,
-            lineNumbersMinChars: 3,
-            renderWhitespace: "selection",
-            selectionHighlight: true,
-            occurrencesHighlight: true,
-            insertSpaces: true,
-            tabSize: 2,
-            detectIndentation: true,
-            formatOnPaste: true,
-            formatOnType: false,
-            contextmenu: true,
-            dragAndDrop: true,
-          }}
+            renderLineHighlight: "none", // Keep this specific to viewer
+            minimap: { enabled: false }, // Always disabled for viewer
+            dragAndDrop: false, // Disabled for read-only viewer
+          })}
         />
       </Suspense>
     </div>
