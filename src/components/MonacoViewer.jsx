@@ -2,8 +2,9 @@ import React, { useEffect, useRef, Suspense, useCallback } from "react";
 // Lazy-load Monaco editor to keep initial bundle size small
 const Editor = React.lazy(() => import("@monaco-editor/react"));
 
-import { defineCustomMonacoThemes, getEnhancedTheme } from "../utils/monacoThemes";
+import { defineCustomMonacoThemes, getEnhancedTheme, loadAndDefineTheme, preloadPopularThemes } from "../utils/monacoThemes";
 import { registerXQueryLanguage } from "../utils/monacoXquery";
+import { isValidTheme } from "../utils/themeLoader";
 
 export default function MonacoViewer({ value = "", language = "plaintext", theme = "vs" }) {
   const containerRef = useRef(null);
@@ -25,10 +26,28 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
     }
   }, [value, language]);
 
-  const handleMount = (editor, monaco) => {
+  const handleMount = async (editor, monaco) => {
     editorRef.current = editor;
     defineCustomMonacoThemes(monaco);
     registerXQueryLanguage(monaco);
+
+    // Load custom theme if it's not a built-in theme
+    if (isValidTheme(theme)) {
+      try {
+        await loadAndDefineTheme(monaco, theme);
+        // Apply the theme after it's loaded
+        const themeId = getEnhancedTheme(theme);
+        editor.updateOptions({ theme: themeId });
+      } catch (error) {
+        console.warn(`Failed to load custom theme ${theme}:`, error);
+      }
+    }
+
+    // Preload popular themes in the background for better UX
+    preloadPopularThemes(monaco).catch(error =>
+      console.debug('Failed to preload popular themes:', error)
+    );
+
     // First layout after mount
     requestAnimationFrame(async () => {
       editor.layout();
@@ -58,6 +77,24 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
     formatContent();
   }, [formatContent]);
 
+  // Handle theme changes dynamically
+  useEffect(() => {
+    if (editorRef.current && isValidTheme(theme)) {
+      // Get monaco instance from the editor
+      const monaco = window.monaco;
+
+      if (monaco) {
+        loadAndDefineTheme(monaco, theme).then(() => {
+          // Apply the theme after it's loaded and defined
+          const themeId = getEnhancedTheme(theme);
+          editorRef.current.updateOptions({ theme: themeId });
+        }).catch(error =>
+          console.warn(`Failed to load theme ${theme} on change:`, error)
+        );
+      }
+    }
+  }, [theme]);
+
   return (
     <div
       ref={containerRef}
@@ -69,7 +106,7 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
           value={value}
           language={language}
           onMount={handleMount}
-          theme={getEnhancedTheme(theme)}
+          theme={isValidTheme(theme) ? 'vs-dark' : getEnhancedTheme(theme)}
           width="100%"
           height="100%"
           options={{

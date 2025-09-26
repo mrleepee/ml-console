@@ -48,6 +48,10 @@ test('Settings tab can be activated and displays settings form', async () => {
   await expect(win.locator('#settings-server')).toBeVisible();
   await expect(win.locator('#settings-username')).toBeVisible();
   await expect(win.locator('#settings-password')).toBeVisible();
+
+  // Check that enhanced theme selector is present
+  await expect(win.getByText('Application Theme')).toBeVisible();
+  await expect(win.getByText('Monaco Editor Theme')).toBeVisible();
   
   await app.close();
 });
@@ -267,22 +271,128 @@ test('Database configuration is preserved when switching tabs', async () => {
 
 test('Combined database dropdown shows modules database in parentheses', async () => {
   const { app, win } = await launchApp();
-  
+
   // Go to Query Console
   await win.getByText('Query Console').click();
   await win.waitForTimeout(1000);
-  
+
   // Check database dropdown format
   const databaseConfigSelect = win.locator('#database-config');
   await expect(databaseConfigSelect).toBeVisible();
-  
+
   // Get the selected option text and verify it contains parentheses
   // This indicates it's showing "DatabaseName (ModulesDatabase)" format
   const selectedOption = databaseConfigSelect.locator('option:checked');
   const optionText = await selectedOption.textContent();
-  
+
   // Should contain parentheses indicating modules database
   expect(optionText).toMatch(/\(.+\)/);
-  
+
+  await app.close();
+});
+
+test('Enhanced theme selector provides comprehensive theme options', async () => {
+  const { app, win } = await launchApp();
+
+  // Navigate to Settings tab
+  await win.getByText('Settings').click();
+  await win.waitForSelector('h2:has-text("Settings")', { timeout: 10000 });
+
+  // Check that application theme toggle is present
+  await expect(win.getByText('Application Theme')).toBeVisible();
+  const themeToggleButton = win.locator('button[title*="Switch to"]');
+  await expect(themeToggleButton).toBeVisible();
+
+  // Check that Monaco theme selector is present
+  await expect(win.getByText('Monaco Editor Theme')).toBeVisible();
+  await expect(win.getByText('Choose from 55+ professional themes for code editors')).toBeVisible();
+
+  // Open the enhanced theme selector
+  const themeSelector = win.locator('.theme-selector button[aria-haspopup="listbox"]');
+  await expect(themeSelector).toBeVisible();
+  await themeSelector.click();
+
+  // Wait for dropdown to open
+  await win.waitForSelector('input[placeholder="Search themes..."]', { timeout: 5000 });
+
+  // Check search functionality
+  const searchInput = win.locator('input[placeholder="Search themes..."]');
+  await expect(searchInput).toBeVisible();
+
+  // Check category filter
+  const categoryFilter = win.locator('select').nth(1); // Second select is the category filter
+  await expect(categoryFilter).toBeVisible();
+
+  // Check that themes are listed (should see at least some popular ones)
+  const themeItems = win.locator('[role="button"]:has-text("GitHub")');
+  await expect(themeItems.first()).toBeVisible();
+
+  // Test search functionality
+  await searchInput.fill('GitHub');
+  await win.waitForTimeout(500);
+
+  // Should see GitHub-related themes
+  await expect(win.getByText('GitHub Dark', { exact: false })).toBeVisible();
+
+  // Close the dropdown by clicking outside or escape
+  await win.keyboard.press('Escape');
+  await win.waitForTimeout(500);
+
+  // Dropdown should be closed
+  await expect(searchInput).not.toBeVisible();
+
+  await app.close();
+});
+
+test('Theme preview updates when Monaco theme changes', async () => {
+  const { app, win } = await launchApp();
+
+  // Navigate to Settings tab
+  await win.getByText('Settings').click();
+  await win.waitForSelector('h2:has-text("Settings")', { timeout: 10000 });
+
+  // Check that theme preview is present
+  await expect(win.getByText('Theme Preview')).toBeVisible();
+
+  // Check that Monaco editor preview is rendered
+  const monacoPreview = win.locator('.monaco-editor');
+  await expect(monacoPreview).toBeVisible();
+
+  // The preview should contain sample code
+  const previewContent = win.locator('.monaco-editor').first();
+  await expect(previewContent).toBeVisible();
+
+  await app.close();
+});
+
+test('Application theme toggle works correctly', async () => {
+  const { app, win } = await launchApp();
+
+  // Navigate to Settings tab
+  await win.getByText('Settings').click();
+  await win.waitForSelector('h2:has-text("Settings")', { timeout: 10000 });
+
+  // Find the theme toggle button
+  const themeToggleButton = win.locator('button[title*="Switch to"]');
+  await expect(themeToggleButton).toBeVisible();
+
+  // Get current theme indicator
+  const currentTheme = win.getByText(/Current: (Light|Dark)/);
+  await expect(currentTheme).toBeVisible();
+
+  const initialThemeText = await currentTheme.textContent();
+
+  // Click the toggle button
+  await themeToggleButton.click();
+  await win.waitForTimeout(1000);
+
+  // Check that theme indicator has changed
+  const newThemeText = await currentTheme.textContent();
+  expect(newThemeText).not.toBe(initialThemeText);
+
+  // Verify the toggle button title has updated
+  const newTitle = await themeToggleButton.getAttribute('title');
+  expect(newTitle).toContain('Switch to');
+
   await app.close();
 });
