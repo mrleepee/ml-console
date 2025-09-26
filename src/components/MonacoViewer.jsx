@@ -12,7 +12,7 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
   const editorRef = useRef(null);
 
   // Get editor preferences for consistent styling
-  const { getMonacoOptions } = useEditorPreferences();
+  const { getMonacoOptions, preferences } = useEditorPreferences();
 
   const formatContent = useCallback(async () => {
     if (
@@ -98,6 +98,19 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
       }
     }
   }, [theme]);
+
+  // Update Monaco editor options when preferences change
+  useEffect(() => {
+    if (editorRef.current) {
+      const newOptions = getMonacoOptions({
+        readOnly: true,
+        renderLineHighlight: "none", // Keep this specific to viewer
+        minimap: { enabled: false }, // Always disabled for viewer
+        dragAndDrop: false, // Disabled for read-only viewer
+      });
+      editorRef.current.updateOptions(newOptions);
+    }
+  }, [preferences, getMonacoOptions]);
 
   return (
     <div

@@ -20,7 +20,7 @@ export default function QueryEditor({
   const monacoRef = useRef(null);
 
   // Get editor preferences
-  const { getMonacoOptions } = useEditorPreferences();
+  const { getMonacoOptions, preferences } = useEditorPreferences();
 
   // Initialize Monaco themes before editor creation
   useEffect(() => {
@@ -137,6 +137,17 @@ export default function QueryEditor({
       );
     }
   }, [theme]);
+
+  // Update Monaco editor options when preferences change
+  useEffect(() => {
+    if (editorRef.current) {
+      const newOptions = getMonacoOptions({
+        readOnly: !!disabled,
+        renderLineHighlight: "none", // Keep this specific to query editor
+      });
+      editorRef.current.updateOptions(newOptions);
+    }
+  }, [preferences, disabled, getMonacoOptions]);
 
   return (
     <div
