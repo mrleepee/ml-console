@@ -42,3 +42,6 @@ tauri.log
 # Temporary files
 *.tmp
 *.temp
+
+# Playwright debugging artifacts
+.playwright-mcp/
