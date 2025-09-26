@@ -3,6 +3,7 @@ import Editor, { loader } from "@monaco-editor/react";
 import { defineCustomMonacoThemes, getEnhancedTheme, loadAndDefineTheme } from "../utils/monacoThemes";
 import { registerXQueryLanguage } from "../utils/monacoXquery";
 import { isValidTheme } from "../utils/themeLoader";
+import useEditorPreferences from "../hooks/useEditorPreferences";
 
 export default function QueryEditor({
   value = "",
@@ -12,10 +13,14 @@ export default function QueryEditor({
   disabled = false,
   theme = "vs",
   placeholder = "",
+  showControls = false, // new prop to show/hide editor controls
 }) {
   const containerRef = useRef(null);
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
+
+  // Get editor preferences
+  const { getMonacoOptions } = useEditorPreferences();
 
   // Initialize Monaco themes before editor creation
   useEffect(() => {
@@ -147,31 +152,10 @@ export default function QueryEditor({
         theme={isValidTheme(theme) ? 'vs-dark' : getEnhancedTheme(theme)}
         width="100%"
         height="100%"               // <-- critical: fill the container we control
-        options={{
+        options={getMonacoOptions({
           readOnly: !!disabled,
-          automaticLayout: false,   // we drive layout via ResizeObserver
-          minimap: { enabled: false },
-          scrollBeyondLastLine: false,
-          wordWrap: "on",
-          renderLineHighlight: "none",
-          fontSize: 12,
-          lineNumbers: "on",
-          folding: true,
-          foldingStrategy: "indentation",
-          showFoldingControls: "mouseover",
-          lineDecorationsWidth: 10,
-          lineNumbersMinChars: 3,
-          renderWhitespace: "selection",
-          selectionHighlight: true,
-          occurrencesHighlight: true,
-          insertSpaces: true,
-          tabSize: 2,
-          detectIndentation: true,
-          formatOnPaste: true,
-          formatOnType: false,
-          contextmenu: true,
-          dragAndDrop: true,
-        }}
+          renderLineHighlight: "none", // Keep this specific to query editor
+        })}
       />
       {/* optional placeholder styling */}
       <style>{`

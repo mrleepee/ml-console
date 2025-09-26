@@ -6,6 +6,8 @@ import {
   toResultEnvelope,
 } from "./services/responseService";
 import QueryEditor from "./components/QueryEditor";
+import QueryEditorControls from "./components/QueryEditorControls";
+import useEditorPreferences from "./hooks/useEditorPreferences";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
 import { defineCustomMonacoThemes, getEnhancedTheme } from "./utils/monacoThemes";
 import { registerXQueryLanguage, XQUERY_LANGUAGE } from "./utils/monacoXquery";
@@ -80,6 +82,17 @@ function App() {
     initialMonacoTheme: 'vs',
     persistTheme: true
   });
+
+  // Editor preferences hook for Monaco editor customization
+  const {
+    preferences: editorPreferences,
+    updatePreference,
+    increaseFontSize,
+    decreaseFontSize,
+    toggleLineNumbers,
+    toggleWordWrap,
+    toggleMinimap
+  } = useEditorPreferences();
 
   // Use the enhanced database config hook with persistence
   const {
@@ -443,7 +456,19 @@ function App() {
               <div className="card-header bg-base-200 px-4 py-3 border-b border-base-300">
                 <div className="flex items-center justify-between">
                   <h2 className="card-title text-lg">Query</h2>
-                  <div className="card-actions">
+                  <div className="card-actions flex items-center gap-3">
+                    {/* Editor Controls */}
+                    <QueryEditorControls
+                      preferences={editorPreferences}
+                      onUpdatePreference={updatePreference}
+                      increaseFontSize={increaseFontSize}
+                      decreaseFontSize={decreaseFontSize}
+                      toggleLineNumbers={toggleLineNumbers}
+                      toggleWordWrap={toggleWordWrap}
+                      toggleMinimap={toggleMinimap}
+                    />
+
+                    {/* Execute Button */}
                     <button
                       onClick={() => executeQuery()}
                       disabled={isLoading}
