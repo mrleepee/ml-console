@@ -4,6 +4,7 @@ import { defineCustomMonacoThemes, getEnhancedTheme, loadAndDefineTheme } from "
 import { registerXQueryLanguage } from "../utils/monacoXquery";
 import { isValidTheme } from "../utils/themeLoader";
 import { monacoOptimizationManager, useMonacoOptimizations } from "../utils/monacoOptimizations";
+import useEditorPreferences from "../hooks/useEditorPreferences";
 
 export default function QueryEditor({
   value = "",
@@ -13,10 +14,14 @@ export default function QueryEditor({
   disabled = false,
   theme = "vs",
   placeholder = "",
+  showControls = false, // new prop to show/hide editor controls
 }) {
   const containerRef = useRef(null);
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
+
+  // Get editor preferences (includes user-configurable font size, etc.)
+  const { getMonacoOptions, preferences } = useEditorPreferences();
 
   // Performance-optimized editor options based on content size
   const optimizedOptions = useMonacoOptimizations(value, {
@@ -185,6 +190,17 @@ export default function QueryEditor({
     }
   }, [theme]);
 
+  // Update Monaco editor options when preferences change (CRITICAL FIX for font size)
+  useEffect(() => {
+    if (editorRef.current) {
+      const newOptions = getMonacoOptions({
+        readOnly: !!disabled,
+        renderLineHighlight: "line",
+      });
+      editorRef.current.updateOptions(newOptions);
+    }
+  }, [preferences, disabled, getMonacoOptions]);
+
   return (
     <div
       ref={containerRef}
@@ -201,7 +217,10 @@ export default function QueryEditor({
         height="100%"               // <-- critical: fill the container we control
         options={{
           ...optimizedOptions,
-          readOnly: !!disabled,
+          ...getMonacoOptions({
+            readOnly: !!disabled,
+            renderLineHighlight: "line",
+          }),
           automaticLayout: false,   // we drive layout via ResizeObserver
           foldingStrategy: "indentation",
           showFoldingControls: "mouseover",

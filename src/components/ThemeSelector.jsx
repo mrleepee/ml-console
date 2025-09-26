@@ -6,6 +6,7 @@ import {
   getThemeDisplayName
 } from '../utils/themeLoader.js';
 import MonacoViewer from './MonacoViewer.jsx';
+import EditorPreferencesSettings from './EditorPreferencesSettings.jsx';
 
 /**
  * Enhanced theme selector component with search, categories, and preview
@@ -345,6 +346,14 @@ function example() {
           <span className="label-text font-medium">Theme Preview</span>
         </label>
         {renderMonacoPreview()}
+      </div>
+
+      {/* Editor Preferences */}
+      <div className="form-control">
+        <label className="label mt-4 mb-2">
+          <span className="label-text font-medium">Editor Preferences</span>
+        </label>
+        <EditorPreferencesSettings />
       </div>
     </div>
   );
