@@ -56,7 +56,17 @@
       "Bash(xargs kill:*)",
       "mcp__playwright__browser_select_option",
       "mcp__playwright__browser_wait_for",
-      "Bash(git push origin feature/sticky-preferences)"
+      "Bash(git push origin feature/sticky-preferences)",
+      "Bash(git push:*)",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_console_messages",
+      "mcp__github__create_pull_request",
+      "WebFetch(domain:microsoft.github.io)",
+      "mcp__browser-tools__takeScreenshot",
+      "Bash(open http://localhost:3025)",
+      "WebFetch(domain:browsertools.agentdesk.ai)",
+      "mcp__github__create_issue",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []
