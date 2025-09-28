@@ -1,13 +1,96 @@
 keywords:
+  # MarkLogic-specific keywords
   - try
   - catch
   - xdmp
+  - cts
+  - sem
+  - map
+  - json
+  - binary
+  - temporal
+  - alert
+  - cpf
+  - dls
+  - flexrep
+  - geo
+  - kml
+  - math
+  - prof
+  - qconsole
+  - rdf
+  - spell
+  - sql
+  - thsr
+  - tieredstorage
+  - ts
+  - xdmp-internal
+
+  # XQuery 1.0 operators and keywords
+  - eq
+  - ne
+  - lt
+  - le
+  - gt
+  - ge
+  - is
+  - isnot
+  - mod
+  - div
+  - idiv
+  - intersect
+  - union
+  - except
+
+  # Additional XQuery constructs
+  - validate
+  - lax
+  - strict
+  - pragma
+  - extension
 
 builtins:
+  # Core MarkLogic namespaces
+  - xdmp
+  - cts
+  - sem
+  - map
+  - json
+  - fn
+  - xs
+  - math
+  - array
+
+  # Common MarkLogic functions
   - xdmp:log
   - xdmp:invoke
+  - xdmp:eval
+  - xdmp:spawn
+  - xdmp:estimate
+  - xdmp:document-get
+  - xdmp:document-insert
+  - xdmp:document-delete
+  - xdmp:collection
+  - xdmp:collections
+  - xdmp:uri-match
+  - xdmp:directory
   - cts:search
+  - cts:element-range-query
+  - cts:word-query
+  - cts:and-query
+  - cts:or-query
+  - cts:not-query
   - sem:sparql
+  - fn:doc
+  - fn:collection
+  - fn:count
+  - fn:exists
+  - fn:empty
+  - fn:not
+  - fn:concat
+  - fn:contains
+  - fn:starts-with
+  - fn:ends-with
 completionItems:
   - label: xdmp:log
     insertText: "xdmp:log(${1:message})"

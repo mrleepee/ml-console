@@ -1,6 +1,6 @@
 import { buildXQueryLanguageConfig } from './monacoXqueryConfig';
 
-export const XQUERY_LANGUAGE = 'xquery';
+export const XQUERY_LANGUAGE = 'xquery-ml';
 
 let registered = false;
 
@@ -28,8 +28,9 @@ export const registerXQueryLanguage = (monaco, overrides) => {
     if (!existing) {
       monaco.languages.register({
         id: XQUERY_LANGUAGE,
-        extensions: ['.xqy', '.xquery'],
-        aliases: ['XQuery', 'xquery']
+        extensions: ['.xq', '.xql', '.xqm', '.xqy', '.xquery'],
+        aliases: ['XQuery (ML)', 'xquery-ml', 'XQuery', 'xquery'],
+        mimetypes: ['application/xquery']
       });
     }
     registered = true;
@@ -70,9 +71,15 @@ export const registerXQueryLanguage = (monaco, overrides) => {
         [/\(:/, 'comment', '@comment'],
         { include: '@strings' },
         { include: '@numbers' },
+        [/\$[a-zA-Z_][\w\-]*/, 'variable'],
         [/[{}()\[\]]/, '@brackets'],
         [/[;,]/, 'delimiter'],
+        [/:=/, 'operator'],
+        [/\beq\b|\bne\b|\blt\b|\ble\b|\bgt\b|\bge\b/, 'operator'],
+        [/\bis\b|\bisnot\b|\binstance\s+of\b|\btreat\s+as\b/, 'operator'],
+        [/\bto\b|\bmod\b|\bdiv\b|\bidiv\b/, 'operator'],
         [/[<>=!|+\-*/%]/, 'operator'],
+        [/[a-zA-Z_][\w\-]*:[a-zA-Z_][\w\-]*(?=\s*\()/, 'type.identifier'],
         [/@?[a-zA-Z_][\w\-.]*/, {
           cases: {
             '@keywords': 'keyword',

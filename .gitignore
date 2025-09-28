@@ -15,6 +15,9 @@ build/
 .env.test.local
 .env.production.local
 
+# Python virtual environment
+venv/
+
 # IDE files
 .vscode/
 .idea/
