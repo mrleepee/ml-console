@@ -15,6 +15,9 @@ build/
 .env.test.local
 .env.production.local
 
+# Python virtual environment
+venv/
+
 # IDE files
 .vscode/
 .idea/
@@ -45,3 +48,6 @@ tauri.log
 
 # Playwright debugging artifacts
 .playwright-mcp/
+
+# Test coverage reports
+coverage/

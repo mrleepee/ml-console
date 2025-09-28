@@ -1,16 +1,16 @@
 import { buildXQueryLanguageConfig } from './monacoXqueryConfig';
 
-export const XQUERY_LANGUAGE = 'xquery';
+export const XQUERY_LANGUAGE = 'xquery-ml';
 
-let registered = false;
+const registeredInstances = new WeakSet();
 
 const signatureFor = (config) => JSON.stringify({
   keywords: config.keywords,
   builtins: config.builtins,
-  completionItemsLength: config.completionItems?.length ?? 0
+  completionItems: config.completionItems
 });
 
-let lastSignature = null;
+const instanceSignatures = new WeakMap();
 
 export const registerXQueryLanguage = (monaco, overrides) => {
   if (!monaco?.languages) return;
@@ -18,9 +18,10 @@ export const registerXQueryLanguage = (monaco, overrides) => {
   const config = buildXQueryLanguageConfig({ overrides });
   const signature = signatureFor(config);
 
-  if (registered && signature === lastSignature) return;
+  const lastSignature = instanceSignatures.get(monaco);
+  if (registeredInstances.has(monaco) && signature === lastSignature) return;
 
-  if (!registered) {
+  if (!registeredInstances.has(monaco)) {
     const existing = typeof monaco.languages.getLanguages === 'function'
       ? monaco.languages.getLanguages().some((lang) => lang.id === XQUERY_LANGUAGE)
       : false;
@@ -28,11 +29,12 @@ export const registerXQueryLanguage = (monaco, overrides) => {
     if (!existing) {
       monaco.languages.register({
         id: XQUERY_LANGUAGE,
-        extensions: ['.xqy', '.xquery'],
-        aliases: ['XQuery', 'xquery']
+        extensions: ['.xq', '.xql', '.xqm', '.xqy', '.xquery'],
+        aliases: ['XQuery (ML)', 'xquery-ml', 'XQuery', 'xquery'],
+        mimetypes: ['application/xquery']
       });
     }
-    registered = true;
+    registeredInstances.add(monaco);
   }
 
   monaco.languages.setLanguageConfiguration(XQUERY_LANGUAGE, {
@@ -70,9 +72,15 @@ export const registerXQueryLanguage = (monaco, overrides) => {
         [/\(:/, 'comment', '@comment'],
         { include: '@strings' },
         { include: '@numbers' },
+        [/\$[a-zA-Z_][\w\-]*/, 'variable'],
         [/[{}()\[\]]/, '@brackets'],
         [/[;,]/, 'delimiter'],
+        [/:=/, 'operator'],
+        [/\beq\b|\bne\b|\blt\b|\ble\b|\bgt\b|\bge\b/, 'operator'],
+        [/\bis\b|\bisnot\b|\binstance\s+of\b|\btreat\s+as\b/, 'operator'],
+        [/\bto\b|\bmod\b|\bdiv\b|\bidiv\b/, 'operator'],
         [/[<>=!|+\-*/%]/, 'operator'],
+        [/[a-zA-Z_][\w\-]*:[a-zA-Z_][\w\-]*(?=\s*\()/, 'type.identifier'],
         [/@?[a-zA-Z_][\w\-.]*/, {
           cases: {
             '@keywords': 'keyword',
@@ -105,10 +113,12 @@ export const registerXQueryLanguage = (monaco, overrides) => {
     }
   });
 
-  lastSignature = signature;
+  instanceSignatures.set(monaco, signature);
+
+  return config;
 };
 
 export const __resetXQueryRegistrationForTests = () => {
-  registered = false;
-  lastSignature = null;
+  // Clear all per-instance tracking for tests
+  // Note: WeakSet/WeakMap don't have clear() method, but test stubs are recreated each time
 };
