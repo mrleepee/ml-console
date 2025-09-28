@@ -2,15 +2,15 @@ import { buildXQueryLanguageConfig } from './monacoXqueryConfig';
 
 export const XQUERY_LANGUAGE = 'xquery-ml';
 
-let registered = false;
+const registeredInstances = new WeakSet();
 
 const signatureFor = (config) => JSON.stringify({
   keywords: config.keywords,
   builtins: config.builtins,
-  completionItemsLength: config.completionItems?.length ?? 0
+  completionItems: config.completionItems
 });
 
-let lastSignature = null;
+const instanceSignatures = new WeakMap();
 
 export const registerXQueryLanguage = (monaco, overrides) => {
   if (!monaco?.languages) return;
@@ -18,9 +18,10 @@ export const registerXQueryLanguage = (monaco, overrides) => {
   const config = buildXQueryLanguageConfig({ overrides });
   const signature = signatureFor(config);
 
-  if (registered && signature === lastSignature) return;
+  const lastSignature = instanceSignatures.get(monaco);
+  if (registeredInstances.has(monaco) && signature === lastSignature) return;
 
-  if (!registered) {
+  if (!registeredInstances.has(monaco)) {
     const existing = typeof monaco.languages.getLanguages === 'function'
       ? monaco.languages.getLanguages().some((lang) => lang.id === XQUERY_LANGUAGE)
       : false;
@@ -33,7 +34,7 @@ export const registerXQueryLanguage = (monaco, overrides) => {
         mimetypes: ['application/xquery']
       });
     }
-    registered = true;
+    registeredInstances.add(monaco);
   }
 
   monaco.languages.setLanguageConfiguration(XQUERY_LANGUAGE, {
@@ -112,10 +113,12 @@ export const registerXQueryLanguage = (monaco, overrides) => {
     }
   });
 
-  lastSignature = signature;
+  instanceSignatures.set(monaco, signature);
+
+  return config;
 };
 
 export const __resetXQueryRegistrationForTests = () => {
-  registered = false;
-  lastSignature = null;
+  // Clear all per-instance tracking for tests
+  // Note: WeakSet/WeakMap don't have clear() method, but test stubs are recreated each time
 };

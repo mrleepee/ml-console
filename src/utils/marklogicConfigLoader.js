@@ -23,7 +23,15 @@ export const getMarkLogicXQueryLanguageConfig = () => {
     const keywords = normalizeArray(parsed.keywords);
     const builtins = normalizeArray(parsed.builtins);
     const completionItems = Array.isArray(parsed.completionItems)
-      ? parsed.completionItems.filter((item) => item && typeof item.label === 'string')
+      ? parsed.completionItems
+          .filter((item) => item && typeof item.label === 'string' && item.label.trim().length > 0)
+          .map((item) => ({
+            ...item,
+            label: item.label.trim(),
+            ...(item.insertText && typeof item.insertText === 'string' ? { insertText: item.insertText.trim() } : {}),
+            ...(item.detail && typeof item.detail === 'string' ? { detail: item.detail.trim() } : {}),
+            ...(item.documentation && typeof item.documentation === 'string' ? { documentation: item.documentation.trim() } : {})
+          }))
       : [];
     cachedConfig = {
       keywords,

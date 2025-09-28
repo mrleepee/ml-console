@@ -48,3 +48,6 @@ tauri.log
 
 # Playwright debugging artifacts
 .playwright-mcp/
+
+# Test coverage reports
+coverage/
