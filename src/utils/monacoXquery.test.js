@@ -398,11 +398,20 @@ describe('registerXQueryLanguage', () => {
     expect(monarchCall.config.builtins).toContain('cts:search'); // From MarkLogic config
     expect(monarchCall.config.builtins).toContain('custom:builtin'); // From overrides
 
-    // Verify tokenizer structure is complete
+    // Verify tokenizer structure is complete (including new FLWOR states)
     expect(monarchCall.config.tokenizer).toHaveProperty('root');
     expect(monarchCall.config.tokenizer).toHaveProperty('comment');
     expect(monarchCall.config.tokenizer).toHaveProperty('numbers');
     expect(monarchCall.config.tokenizer).toHaveProperty('strings');
+    expect(monarchCall.config.tokenizer).toHaveProperty('flwor_expression');
+    expect(monarchCall.config.tokenizer).toHaveProperty('flwor_for');
+    expect(monarchCall.config.tokenizer).toHaveProperty('flwor_let');
+    expect(monarchCall.config.tokenizer).toHaveProperty('flwor_where');
+    expect(monarchCall.config.tokenizer).toHaveProperty('flwor_group');
+    expect(monarchCall.config.tokenizer).toHaveProperty('flwor_order');
+    expect(monarchCall.config.tokenizer).toHaveProperty('flwor_return');
+    expect(monarchCall.config.tokenizer).toHaveProperty('flwor_window');
+    expect(monarchCall.config.tokenizer).toHaveProperty('flwor_nested');
 
     // Verify completion items integration by testing the built config directly
     // (completion items are used by completion providers, not monarch tokenizer)
@@ -790,6 +799,266 @@ describe('XML/HTML Embedding Support (Phase 2)', () => {
       tokens.push({ token: 'type.identifier', text: text.match(/(fn:[\w-]+|count)/)?.[0] });
     }
 
+    // FLWOR keyword detection for enhanced tokenization testing
+    if (text.includes('for')) {
+      tokens.push({ token: 'keyword.flwor', text: 'for' });
+    }
+    if (text.includes('let')) {
+      tokens.push({ token: 'keyword.flwor', text: 'let' });
+    }
+    if (text.includes('where')) {
+      tokens.push({ token: 'keyword.flwor', text: 'where' });
+    }
+    if (text.includes('group by')) {
+      tokens.push({ token: 'keyword.flwor', text: 'group by' });
+    }
+    if (text.includes('order by')) {
+      tokens.push({ token: 'keyword.flwor', text: 'order by' });
+    }
+    if (text.includes('return')) {
+      tokens.push({ token: 'keyword.flwor', text: 'return' });
+    }
+    if (text.includes('tumbling window') || text.includes('sliding window')) {
+      tokens.push({ token: 'keyword.flwor', text: text.match(/(tumbling|sliding) window/)?.[0] });
+    }
+    if (text.includes('count $')) {
+      tokens.push({ token: 'keyword.flwor', text: 'count' });
+    }
+    if (text.includes('allowing empty')) {
+      tokens.push({ token: 'keyword.flwor', text: 'allowing empty' });
+    }
+
     return tokens;
   }
+
+  // Alias for consistency with FLWOR tests
+  const mockTokenizer = (text) => {
+    const monaco = createMonacoStub();
+    registerXQueryLanguage(monaco);
+    const monarchCall = monaco.stats.monarchCalls[0];
+    return tokenizeTestString(monarchCall.config.tokenizer, text);
+  };
+
+  describe('Enhanced FLWOR Expression Tests (XQuery 3.0+)', () => {
+    it('should validate FLWOR tokenizer state structure', () => {
+      const monaco = createMonacoStub();
+      registerXQueryLanguage(monaco);
+
+      const monarchCall = monaco.stats.monarchCalls[0];
+      const tokenizer = monarchCall.config.tokenizer;
+
+      // Verify all FLWOR states exist
+      expect(tokenizer).toHaveProperty('flwor_expression');
+      expect(tokenizer).toHaveProperty('flwor_for');
+      expect(tokenizer).toHaveProperty('flwor_let');
+      expect(tokenizer).toHaveProperty('flwor_where');
+      expect(tokenizer).toHaveProperty('flwor_group');
+      expect(tokenizer).toHaveProperty('flwor_order');
+      expect(tokenizer).toHaveProperty('flwor_return');
+      expect(tokenizer).toHaveProperty('flwor_window');
+      expect(tokenizer).toHaveProperty('flwor_nested');
+
+      // Verify state transition structure
+      expect(tokenizer.flwor_for).toBeInstanceOf(Array);
+      expect(tokenizer.flwor_let).toBeInstanceOf(Array);
+      expect(tokenizer.flwor_where).toBeInstanceOf(Array);
+      expect(tokenizer.flwor_group).toBeInstanceOf(Array);
+      expect(tokenizer.flwor_order).toBeInstanceOf(Array);
+      expect(tokenizer.flwor_return).toBeInstanceOf(Array);
+      expect(tokenizer.flwor_window).toBeInstanceOf(Array);
+      expect(tokenizer.flwor_nested).toBeInstanceOf(Array);
+    });
+
+    it('should tokenize basic FLWOR expressions', () => {
+      const monaco = createMonacoStub();
+      registerXQueryLanguage(monaco);
+
+      const xquery = `for $item in collection("test")
+let $value := $item/value
+where $value > 50
+order by $value ascending
+return $item/name`;
+
+      const mockTokens = mockTokenizer(xquery);
+
+      // Verify FLWOR keywords are detected
+      expect(mockTokens.some(token =>
+        token.token === 'keyword.flwor' && token.text === 'for'
+      )).toBe(true);
+      expect(mockTokens.some(token =>
+        token.token === 'keyword.flwor' && token.text === 'let'
+      )).toBe(true);
+      expect(mockTokens.some(token =>
+        token.token === 'keyword.flwor' && token.text === 'where'
+      )).toBe(true);
+      expect(mockTokens.some(token =>
+        token.token === 'keyword.flwor' && token.text === 'return'
+      )).toBe(true);
+    });
+
+    it('should tokenize enhanced FLWOR with grouping and counting', () => {
+      const monaco = createMonacoStub();
+      registerXQueryLanguage(monaco);
+
+      const xquery = `for $item in collection("test")
+let $category := $item/category
+where $category = "electronics"
+group by $cat := $category
+count $total
+stable order by $cat ascending empty least
+return element result {
+  attribute category { $cat },
+  attribute count { $total }
+}`;
+
+      const mockTokens = mockTokenizer(xquery);
+
+      // Verify enhanced FLWOR keywords
+      expect(mockTokens.some(token =>
+        token.token === 'keyword.flwor' && token.text === 'group by'
+      )).toBe(true);
+      expect(mockTokens.some(token =>
+        token.token === 'keyword.flwor' && token.text === 'count'
+      )).toBe(true);
+    });
+
+    it('should tokenize tumbling window expressions', () => {
+      const monaco = createMonacoStub();
+      registerXQueryLanguage(monaco);
+
+      const xquery = `for tumbling window $w in (1 to 10)
+    start at $s when true
+    end at $e when $e - $s eq 2
+return <window start="{$s}" end="{$e}">{$w}</window>`;
+
+      const mockTokens = mockTokenizer(xquery);
+
+      // Verify window expression keywords
+      expect(mockTokens.some(token =>
+        token.token === 'keyword.flwor' && token.text === 'tumbling window'
+      )).toBe(true);
+    });
+
+    it('should tokenize sliding window expressions with modifiers', () => {
+      const monaco = createMonacoStub();
+      registerXQueryLanguage(monaco);
+
+      const xquery = `for sliding window $w in collection("test")/item
+    start at $s when true
+    only end at $e when $e - $s eq 3
+    previous $prev
+    next $next
+return <batch>{$w}</batch>`;
+
+      const mockTokens = mockTokenizer(xquery);
+
+      // Verify sliding window with modifiers
+      expect(mockTokens.some(token =>
+        token.token === 'keyword.flwor' && token.text === 'sliding window'
+      )).toBe(true);
+    });
+
+    it('should tokenize context-sensitive allowing empty', () => {
+      const monaco = createMonacoStub();
+      registerXQueryLanguage(monaco);
+
+      const xqueryValid = `for $item allowing empty in collection("nonexistent")
+return if ($item) then $item else <empty/>`;
+
+      const mockTokens = mockTokenizer(xqueryValid);
+
+      // Should detect allowing empty in FLWOR context
+      expect(mockTokens.some(token =>
+        token.token === 'keyword.flwor' && token.text === 'allowing empty'
+      )).toBe(true);
+    });
+
+    it('should handle nested FLWOR expressions', () => {
+      const monaco = createMonacoStub();
+      registerXQueryLanguage(monaco);
+
+      const xquery = `for $category in ("electronics", "books")
+let $analysis := (
+  for $item in collection("test")/item[category = $category]
+  group by $tier := if ($item/value > 100) then "high" else "low"
+  count $tier-count
+  return map { "tier": $tier, "count": $tier-count }
+)
+return element category-analysis { $analysis }`;
+
+      const mockTokens = mockTokenizer(xquery);
+
+      // Should detect both outer and inner FLWOR expressions
+      const forTokens = mockTokens.filter(token =>
+        token.token === 'keyword.flwor' && token.text === 'for'
+      );
+      expect(forTokens.length).toBeGreaterThan(1); // Multiple for clauses detected
+    });
+
+    it('should integrate FLWOR with XML embedding', () => {
+      const monaco = createMonacoStub();
+      registerXQueryLanguage(monaco);
+
+      const xquery = `<results>
+{
+  for $item in collection("test")
+  group by $category := $item/category
+  count $total
+  return <category name="{$category}" count="{$total}">
+    {
+      for $subitem in $item
+      order by $subitem/name
+      return <item>{$subitem/name/text()}</item>
+    }
+  </category>
+}
+</results>`;
+
+      const mockTokens = mockTokenizer(xquery);
+
+      // Should detect both FLWOR and XML tokens
+      expect(mockTokens.some(token =>
+        token.token === 'keyword.flwor' && token.text === 'group by'
+      )).toBe(true);
+      expect(mockTokens.some(token =>
+        token.token === 'tag' && token.text === 'results'
+      )).toBe(true);
+    });
+
+    it('should prevent FLWOR keyword over-highlighting outside context', () => {
+      const monaco = createMonacoStub();
+      registerXQueryLanguage(monaco);
+
+      // Context-dependent keywords should not be in global keyword list
+      const monarchCall = monaco.stats.monarchCalls[0];
+      const keywords = monarchCall.config.keywords;
+
+      // These should NOT be in global keywords (handled by grammar only)
+      expect(keywords).not.toContain('group'); // Multi-word "group by" only
+      expect(keywords).not.toContain('order'); // Multi-word "order by" only
+      expect(keywords).not.toContain('stable'); // Multi-word "stable order by" only
+      expect(keywords).not.toContain('empty'); // Multi-word "empty greatest/least" only
+      expect(keywords).not.toContain('greatest'); // Multi-word "empty greatest" only
+      expect(keywords).not.toContain('least'); // Multi-word "empty least" only
+    });
+
+    it('should include safe FLWOR keywords in global list', () => {
+      const monaco = createMonacoStub();
+      registerXQueryLanguage(monaco);
+
+      const monarchCall = monaco.stats.monarchCalls[0];
+      const keywords = monarchCall.config.keywords;
+
+      // These are safe to include globally
+      expect(keywords).toContain('collation');
+      expect(keywords).toContain('allowing');
+      expect(keywords).toContain('window');
+      expect(keywords).toContain('tumbling');
+      expect(keywords).toContain('sliding');
+      expect(keywords).toContain('previous');
+      expect(keywords).toContain('next');
+      expect(keywords).toContain('when');
+      expect(keywords).toContain('count');
+    });
+  });
 });

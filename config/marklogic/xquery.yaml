@@ -49,6 +49,17 @@ keywords:
   - pragma
   - extension
 
+  # Enhanced FLWOR keywords (XQuery 3.0+) - context-independent only
+  - collation
+  - allowing
+  - window
+  - tumbling
+  - sliding
+  - previous
+  - next
+  - when
+  - count
+
 builtins:
   # Core MarkLogic namespaces
   - xdmp
