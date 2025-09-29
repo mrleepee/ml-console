@@ -1,0 +1,9 @@
+ANTLR XQuery Parser Bundle Size
+Generated: 2025-09-29T21:39:02.638Z
+
+XQueryParser.js: 701.48KB
+XQueryLexer.js: 205.65KB
+XQueryParserListener.js: 45.70KB
+Total: 952.83KB
+
+Assessment: ✅ Under 1MB - acceptable for desktop app

@@ -1,0 +1,49 @@
+{
+  "file": "nested-flwor.xq",
+  "success": true,
+  "parseTime": "33.53ms",
+  "memoryUsed": "-4.04MB",
+  "errors": [],
+  "variables": [
+    {
+      "type": "for",
+      "name": "$doc",
+      "line": 3,
+      "column": 4
+    },
+    {
+      "type": "let",
+      "name": "$id",
+      "line": 4,
+      "column": 4
+    },
+    {
+      "type": "for",
+      "name": "$item",
+      "line": 8,
+      "column": 6
+    },
+    {
+      "type": "let",
+      "name": "$name",
+      "line": 9,
+      "column": 6
+    },
+    {
+      "type": "let",
+      "name": "$value",
+      "line": 10,
+      "column": 6
+    }
+  ],
+  "functions": [],
+  "imports": [],
+  "stats": {
+    "totalVariables": 5,
+    "letBindings": 3,
+    "forBindings": 2,
+    "functionParams": 0,
+    "functions": 0,
+    "imports": 0
+  }
+}

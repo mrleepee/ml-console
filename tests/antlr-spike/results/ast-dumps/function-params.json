@@ -1,0 +1,62 @@
+{
+  "file": "function-params.xq",
+  "success": true,
+  "parseTime": "60.58ms",
+  "memoryUsed": "13.74MB",
+  "errors": [],
+  "variables": [
+    {
+      "type": "let",
+      "name": "$base-value",
+      "line": 4,
+      "column": 6
+    },
+    {
+      "type": "let",
+      "name": "$result",
+      "line": 5,
+      "column": 6
+    },
+    {
+      "type": "let",
+      "name": "$test-item",
+      "line": 16,
+      "column": 4
+    },
+    {
+      "type": "let",
+      "name": "$multiplier",
+      "line": 17,
+      "column": 4
+    },
+    {
+      "type": "let",
+      "name": "$calculated",
+      "line": 18,
+      "column": 4
+    }
+  ],
+  "functions": [
+    {
+      "name": "local:process-item",
+      "params": [],
+      "line": 3,
+      "column": 0
+    },
+    {
+      "name": "local:format-result",
+      "params": [],
+      "line": 9,
+      "column": 0
+    }
+  ],
+  "imports": [],
+  "stats": {
+    "totalVariables": 5,
+    "letBindings": 5,
+    "forBindings": 0,
+    "functionParams": 0,
+    "functions": 2,
+    "imports": 0
+  }
+}

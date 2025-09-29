@@ -1,0 +1,12 @@
+{
+  "name": "antlr-xquery-spike",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Standalone test harness for ANTLR XQuery parser evaluation",
+  "scripts": {
+    "test": "node test-runner.js"
+  },
+  "dependencies": {
+    "antlr4": "^4.13.0"
+  }
+}

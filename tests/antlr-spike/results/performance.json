@@ -1,0 +1,296 @@
+{
+  "timestamp": "2025-09-29T21:39:02.637Z",
+  "summary": {
+    "totalFiles": 5,
+    "successful": 5,
+    "failed": 0,
+    "totalVariables": 22,
+    "totalFunctions": 6,
+    "totalImports": 2,
+    "avgParseTime": "135.17ms",
+    "maxParseTime": "526.56ms",
+    "minParseTime": "16.16ms"
+  },
+  "results": [
+    {
+      "file": "complex-pathway.xq",
+      "success": true,
+      "parseTime": "526.56ms",
+      "memoryUsed": "47.53MB",
+      "errors": [],
+      "variables": [
+        {
+          "type": "let",
+          "name": "$preferred",
+          "line": 6,
+          "column": 6
+        },
+        {
+          "type": "for",
+          "name": "$identifier-node",
+          "line": 16,
+          "column": 8
+        },
+        {
+          "type": "let",
+          "name": "$pathway-uri",
+          "line": 32,
+          "column": 4
+        },
+        {
+          "type": "let",
+          "name": "$pathway-doc",
+          "line": 33,
+          "column": 4
+        },
+        {
+          "type": "for",
+          "name": "$pathway-step-ref",
+          "line": 43,
+          "column": 10
+        },
+        {
+          "type": "let",
+          "name": "$rank",
+          "line": 44,
+          "column": 10
+        },
+        {
+          "type": "let",
+          "name": "$step-uri",
+          "line": 45,
+          "column": 10
+        },
+        {
+          "type": "let",
+          "name": "$step-doc",
+          "line": 46,
+          "column": 10
+        }
+      ],
+      "functions": [
+        {
+          "name": "local:best-step-name",
+          "params": [],
+          "line": 5,
+          "column": 0
+        },
+        {
+          "name": "local:molecule-identifiers",
+          "params": [],
+          "line": 14,
+          "column": 0
+        },
+        {
+          "name": "local:base-molecule-json",
+          "params": [],
+          "line": 24,
+          "column": 0
+        }
+      ],
+      "imports": [
+        {
+          "namespace": "https://pubs.cas.org/modules/lib/common-reference-utils",
+          "prefix": "cru",
+          "line": 3,
+          "column": 0
+        }
+      ],
+      "stats": {
+        "totalVariables": 8,
+        "letBindings": 6,
+        "forBindings": 2,
+        "functionParams": 0,
+        "functions": 3,
+        "imports": 1
+      }
+    },
+    {
+      "file": "function-params.xq",
+      "success": true,
+      "parseTime": "60.58ms",
+      "memoryUsed": "13.74MB",
+      "errors": [],
+      "variables": [
+        {
+          "type": "let",
+          "name": "$base-value",
+          "line": 4,
+          "column": 6
+        },
+        {
+          "type": "let",
+          "name": "$result",
+          "line": 5,
+          "column": 6
+        },
+        {
+          "type": "let",
+          "name": "$test-item",
+          "line": 16,
+          "column": 4
+        },
+        {
+          "type": "let",
+          "name": "$multiplier",
+          "line": 17,
+          "column": 4
+        },
+        {
+          "type": "let",
+          "name": "$calculated",
+          "line": 18,
+          "column": 4
+        }
+      ],
+      "functions": [
+        {
+          "name": "local:process-item",
+          "params": [],
+          "line": 3,
+          "column": 0
+        },
+        {
+          "name": "local:format-result",
+          "params": [],
+          "line": 9,
+          "column": 0
+        }
+      ],
+      "imports": [],
+      "stats": {
+        "totalVariables": 5,
+        "letBindings": 5,
+        "forBindings": 0,
+        "functionParams": 0,
+        "functions": 2,
+        "imports": 0
+      }
+    },
+    {
+      "file": "module-imports.xq",
+      "success": true,
+      "parseTime": "39.02ms",
+      "memoryUsed": "0.10MB",
+      "errors": [],
+      "variables": [
+        {
+          "type": "let",
+          "name": "$rd",
+          "line": 6,
+          "column": 6
+        },
+        {
+          "type": "let",
+          "name": "$source",
+          "line": 7,
+          "column": 6
+        },
+        {
+          "type": "let",
+          "name": "$test-ref",
+          "line": 15,
+          "column": 4
+        }
+      ],
+      "functions": [
+        {
+          "name": "local:process-reference",
+          "params": [],
+          "line": 5,
+          "column": 0
+        }
+      ],
+      "imports": [
+        {
+          "namespace": "https://pubs.cas.org/modules/lib/common-reference-utils",
+          "prefix": "cru",
+          "line": 3,
+          "column": 0
+        }
+      ],
+      "stats": {
+        "totalVariables": 3,
+        "letBindings": 3,
+        "forBindings": 0,
+        "functionParams": 0,
+        "functions": 1,
+        "imports": 1
+      }
+    },
+    {
+      "file": "nested-flwor.xq",
+      "success": true,
+      "parseTime": "33.53ms",
+      "memoryUsed": "-4.04MB",
+      "errors": [],
+      "variables": [
+        {
+          "type": "for",
+          "name": "$doc",
+          "line": 3,
+          "column": 4
+        },
+        {
+          "type": "let",
+          "name": "$id",
+          "line": 4,
+          "column": 4
+        },
+        {
+          "type": "for",
+          "name": "$item",
+          "line": 8,
+          "column": 6
+        },
+        {
+          "type": "let",
+          "name": "$name",
+          "line": 9,
+          "column": 6
+        },
+        {
+          "type": "let",
+          "name": "$value",
+          "line": 10,
+          "column": 6
+        }
+      ],
+      "functions": [],
+      "imports": [],
+      "stats": {
+        "totalVariables": 5,
+        "letBindings": 3,
+        "forBindings": 2,
+        "functionParams": 0,
+        "functions": 0,
+        "imports": 0
+      }
+    },
+    {
+      "file": "simple-let.xq",
+      "success": true,
+      "parseTime": "16.16ms",
+      "memoryUsed": "5.48MB",
+      "errors": [],
+      "variables": [
+        {
+          "type": "let",
+          "name": "$nodes",
+          "line": 3,
+          "column": 4
+        }
+      ],
+      "functions": [],
+      "imports": [],
+      "stats": {
+        "totalVariables": 1,
+        "letBindings": 1,
+        "forBindings": 0,
+        "functionParams": 0,
+        "functions": 0,
+        "imports": 0
+      }
+    }
+  ]
+}

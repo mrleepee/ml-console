@@ -1,0 +1,51 @@
+{
+  "file": "module-imports.xq",
+  "success": true,
+  "parseTime": "39.02ms",
+  "memoryUsed": "0.10MB",
+  "errors": [],
+  "variables": [
+    {
+      "type": "let",
+      "name": "$rd",
+      "line": 6,
+      "column": 6
+    },
+    {
+      "type": "let",
+      "name": "$source",
+      "line": 7,
+      "column": 6
+    },
+    {
+      "type": "let",
+      "name": "$test-ref",
+      "line": 15,
+      "column": 4
+    }
+  ],
+  "functions": [
+    {
+      "name": "local:process-reference",
+      "params": [],
+      "line": 5,
+      "column": 0
+    }
+  ],
+  "imports": [
+    {
+      "namespace": "https://pubs.cas.org/modules/lib/common-reference-utils",
+      "prefix": "cru",
+      "line": 3,
+      "column": 0
+    }
+  ],
+  "stats": {
+    "totalVariables": 3,
+    "letBindings": 3,
+    "forBindings": 0,
+    "functionParams": 0,
+    "functions": 1,
+    "imports": 1
+  }
+}

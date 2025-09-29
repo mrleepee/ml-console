@@ -1,0 +1,93 @@
+{
+  "file": "complex-pathway.xq",
+  "success": true,
+  "parseTime": "526.56ms",
+  "memoryUsed": "47.53MB",
+  "errors": [],
+  "variables": [
+    {
+      "type": "let",
+      "name": "$preferred",
+      "line": 6,
+      "column": 6
+    },
+    {
+      "type": "for",
+      "name": "$identifier-node",
+      "line": 16,
+      "column": 8
+    },
+    {
+      "type": "let",
+      "name": "$pathway-uri",
+      "line": 32,
+      "column": 4
+    },
+    {
+      "type": "let",
+      "name": "$pathway-doc",
+      "line": 33,
+      "column": 4
+    },
+    {
+      "type": "for",
+      "name": "$pathway-step-ref",
+      "line": 43,
+      "column": 10
+    },
+    {
+      "type": "let",
+      "name": "$rank",
+      "line": 44,
+      "column": 10
+    },
+    {
+      "type": "let",
+      "name": "$step-uri",
+      "line": 45,
+      "column": 10
+    },
+    {
+      "type": "let",
+      "name": "$step-doc",
+      "line": 46,
+      "column": 10
+    }
+  ],
+  "functions": [
+    {
+      "name": "local:best-step-name",
+      "params": [],
+      "line": 5,
+      "column": 0
+    },
+    {
+      "name": "local:molecule-identifiers",
+      "params": [],
+      "line": 14,
+      "column": 0
+    },
+    {
+      "name": "local:base-molecule-json",
+      "params": [],
+      "line": 24,
+      "column": 0
+    }
+  ],
+  "imports": [
+    {
+      "namespace": "https://pubs.cas.org/modules/lib/common-reference-utils",
+      "prefix": "cru",
+      "line": 3,
+      "column": 0
+    }
+  ],
+  "stats": {
+    "totalVariables": 8,
+    "letBindings": 6,
+    "forBindings": 2,
+    "functionParams": 0,
+    "functions": 3,
+    "imports": 1
+  }
+}
