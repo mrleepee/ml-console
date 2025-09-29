@@ -17,7 +17,9 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:electron": "PREVIEW_PORT=1421 MOCK_HTTP=1 concurrently --kill-others --success first \"vite preview --port 1421\" \"wait-on http://localhost:1421 && playwright test tests/electron.spec.ts\"",
     "test:ui": "vitest --ui --config vitest.config.js",
-    "test:run": "vitest run --config vitest.config.js"
+    "test:run": "vitest run --config vitest.config.js",
+    "test:themes": "node scripts/test-themes.js",
+    "test:themes:e2e": "playwright test tests/theme-testing.spec.js"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

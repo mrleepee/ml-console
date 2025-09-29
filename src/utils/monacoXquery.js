@@ -1,4 +1,6 @@
 import { buildXQueryLanguageConfig } from './monacoXqueryConfig';
+import { XQueryFoldingProvider } from './xqueryFoldingProvider';
+import { XQueryCommentProvider } from './xqueryCommentProvider';
 
 export const XQUERY_LANGUAGE = 'xquery-ml';
 
@@ -47,7 +49,9 @@ export const registerXQueryLanguage = (monaco, overrides) => {
   }
 
   monaco.languages.setLanguageConfiguration(XQUERY_LANGUAGE, {
-    comments: { blockComment: ['(:', ':)'] },
+    comments: {
+      blockComment: ['(:', ':)']
+    },
     brackets: [['{', '}'], ['[', ']'], ['(', ')']],
     autoClosingPairs: [
       { open: '"', close: '"', notIn: ['string'] },
@@ -63,7 +67,18 @@ export const registerXQueryLanguage = (monaco, overrides) => {
       { open: '(', close: ')' },
       { open: '[', close: ']' },
       { open: '{', close: '}' }
-    ]
+    ],
+    folding: {
+      markers: {
+        start: /^\s*\(\:/,
+        end: /^\s*\:\)/
+      },
+      offSide: false
+    },
+    indentationRules: {
+      increaseIndentPattern: /^\s*(for|let|where|order\s+by|group\s+by|return|\{|<[^/>]*[^/]>)\s*$/,
+      decreaseIndentPattern: /^\s*(\}|<\/[^>]+>|:\))\s*$/
+    }
   });
 
   monaco.languages.setMonarchTokensProvider(XQUERY_LANGUAGE, {
@@ -320,6 +335,88 @@ export const registerXQueryLanguage = (monaco, overrides) => {
   });
 
   instanceSignatures.set(monaco, signature);
+
+  // Register folding provider
+  const foldingProvider = new XQueryFoldingProvider();
+  monaco.languages.registerFoldingRangeProvider(XQUERY_LANGUAGE, foldingProvider);
+
+  // Register comment provider and keybindings
+  const commentProvider = new XQueryCommentProvider();
+
+  // Add Ctrl+/ (Cmd+/) keybinding for line comment toggle
+  if (monaco.editor?.addKeybindingRules) {
+    monaco.editor.addKeybindingRules([{
+      keybinding: monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash,
+      command: 'xquery.comment.toggle',
+      when: `editorLangId == '${XQUERY_LANGUAGE}'`
+    }, {
+      keybinding: monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyA,
+      command: 'xquery.comment.block.toggle',
+      when: `editorLangId == '${XQUERY_LANGUAGE}'`
+    }]);
+  }
+
+  // Register comment toggle commands using actions instead of commands
+  try {
+    monaco.languages.registerCodeActionProvider(XQUERY_LANGUAGE, {
+      provideCodeActions: (model, range, context, token) => {
+        const actions = [];
+
+        // Line comment toggle action
+        actions.push({
+          title: 'Toggle Line Comment',
+          id: 'xquery.comment.toggle',
+          kind: 'quickfix',
+          run: (editor) => {
+            const selection = editor.getSelection();
+            if (!selection) return;
+
+            const lineRange = selection.isEmpty()
+              ? { startLineNumber: selection.startLineNumber, endLineNumber: selection.startLineNumber, startColumn: 1, endColumn: model.getLineMaxColumn(selection.startLineNumber) }
+              : selection;
+
+            const line = model.getLineContent(lineRange.startLineNumber);
+            const isCommented = commentProvider.isLineCommented(line);
+
+            if (isCommented) {
+              const uncommented = commentProvider.uncommentLine(line);
+              commentProvider.replaceLineContent(model, lineRange.startLineNumber, uncommented);
+            } else {
+              const commented = commentProvider.commentLine(line);
+              commentProvider.replaceLineContent(model, lineRange.startLineNumber, commented);
+            }
+          }
+        });
+
+        // Block comment toggle action
+        actions.push({
+          title: 'Toggle Block Comment',
+          id: 'xquery.comment.block.toggle',
+          kind: 'quickfix',
+          run: (editor) => {
+            const selection = editor.getSelection();
+            if (!selection) return;
+
+            const selectedText = model.getValueInRange(selection);
+            const isBlockCommented = commentProvider.isBlockCommented(selectedText);
+
+            const newText = isBlockCommented
+              ? commentProvider.removeBlockComment(selectedText)
+              : commentProvider.addBlockComment(selectedText);
+
+            model.pushEditOperations([], [{
+              range: selection,
+              text: newText
+            }], () => null);
+          }
+        });
+
+        return { actions, dispose: () => {} };
+      }
+    });
+  } catch (error) {
+    console.warn('Failed to register XQuery code actions:', error);
+  }
 
   return config;
 };
