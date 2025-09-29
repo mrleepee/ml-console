@@ -5,13 +5,9 @@ const QUERY_TYPES = ['xquery', 'javascript', 'sparql'];
 
 const sanitizeServerUrl = (serverUrl) => String(serverUrl || '').replace(/\/+$/, '');
 
-const wrapInEval = (query, databaseId, modulesDatabaseId) => {
-  const escaped = String(query ?? '').replace(/"/g, '""');
-  if (modulesDatabaseId && modulesDatabaseId !== '0') {
-    return `xdmp:eval-in("${escaped}", ${databaseId}, (), ${modulesDatabaseId})`;
-  }
-  return `xdmp:eval-in("${escaped}", ${databaseId})`;
-};
+// SECURITY: Removed vulnerable string interpolation approach
+// Query injection vulnerability fixed by using MarkLogic REST API parameters
+// instead of xdmp:eval-in wrapper with string concatenation
 
 const buildRequest = ({ query, queryType, databaseConfig }) => {
   const db = databaseConfig || {};
@@ -30,24 +26,18 @@ const buildRequest = ({ query, queryType, databaseConfig }) => {
     throw new Error(`Unsupported query type: ${queryType}`);
   }
 
-  if (queryType === 'javascript') {
-    const modulesPart = modulesDatabaseId && modulesDatabaseId !== '0'
-      ? `&modules=${encodeURIComponent(modulesDatabaseId)}`
-      : '';
-    const body = `javascript=${encodeURIComponent(query)}&database=${encodeURIComponent(databaseId)}${modulesPart}`;
-    return {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-    };
-  }
+  // Build request body using MarkLogic REST API parameters
+  // SECURITY: Direct parameter passing prevents query injection
+  const modulesPart = modulesDatabaseId && modulesDatabaseId !== '0'
+    ? `&modules=${encodeURIComponent(modulesDatabaseId)}`
+    : '';
 
-  const wrappedQuery = queryType === 'sparql'
-    ? wrapInEval(query, databaseId, modulesDatabaseId)
-    : wrapInEval(query, databaseId, modulesDatabaseId);
+  const queryParam = queryType === 'javascript' ? 'javascript' : 'xquery';
+  const body = `${queryParam}=${encodeURIComponent(query)}&database=${encodeURIComponent(databaseId)}${modulesPart}`;
 
   return {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `${queryType === 'javascript' ? 'javascript' : 'xquery'}=${encodeURIComponent(wrappedQuery)}`,
+    body,
   };
 };
 

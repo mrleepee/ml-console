@@ -67,7 +67,8 @@
       "WebFetch(domain:browsertools.agentdesk.ai)",
       "mcp__github__create_issue",
       "Bash(git restore:*)",
-      "mcp__codex-as-mcp__codex_review"
+      "mcp__codex-as-mcp__codex_review",
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "ask": []
