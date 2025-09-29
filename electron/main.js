@@ -263,7 +263,7 @@ ipcMain.handle('http-request', async (event, options) => {
       method: options.method || 'GET',
       headers: options.headers || {},
       // SECURITY: Only disable TLS verification in development mode with explicit opt-in
-      rejectUnauthorized: process.env.NODE_ENV === 'development' && process.env.ALLOW_INSECURE_TLS === 'true',
+      rejectUnauthorized: !(process.env.NODE_ENV === 'development' && process.env.ALLOW_INSECURE_TLS === 'true'),
       timeout: options.timeout || 30000 // Default 30 seconds
     };
 
