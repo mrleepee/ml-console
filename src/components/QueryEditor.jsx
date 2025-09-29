@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 import Editor, { loader } from "@monaco-editor/react";
 import { defineCustomMonacoThemes, getEnhancedTheme, loadAndDefineTheme } from "../utils/monacoThemes";
 import { registerXQueryLanguage } from "../utils/monacoXquery";
 import { isValidTheme } from "../utils/themeLoader";
+import { monacoOptimizationManager, useMonacoOptimizations } from "../utils/monacoOptimizations";
 
 export default function QueryEditor({
   value = "",
@@ -17,18 +18,56 @@ export default function QueryEditor({
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
 
-  // Initialize Monaco themes before editor creation
+  // Performance-optimized editor options based on content size
+  const optimizedOptions = useMonacoOptimizations(value, {
+    theme,
+    language,
+    automaticLayout: true,
+    wordWrap: "on",
+    lineNumbers: "on",
+    minimap: { enabled: false }, // Disabled - will be a future editor control feature
+    folding: true,
+    scrollBeyondLastLine: false,
+    renderLineHighlight: "line",
+    fontFamily: '"Fira Code", "Cascadia Code", "JetBrains Mono", monospace',
+    fontSize: 14,
+    tabSize: 2,
+    insertSpaces: true,
+    detectIndentation: false,
+    accessibilitySupport: "auto",
+    suggestOnTriggerCharacters: true,
+    acceptSuggestionOnEnter: "on"
+  });
+
+  // Initialize Monaco themes and language with optimizations
   useEffect(() => {
-    loader.init().then(monaco => {
+    loader.init().then(async monaco => {
+      monacoRef.current = monaco;
+
+      // Define themes
       defineCustomMonacoThemes(monaco);
-      registerXQueryLanguage(monaco);
+
+      // Register XQuery language with optimization caching
+      await monacoOptimizationManager.registerXQueryLanguageOptimized(monaco);
+
+      // Enable performance monitoring in development
+      if (process.env.NODE_ENV === 'development' && editorRef.current) {
+        await monacoOptimizationManager.enablePerformanceMonitoring(monaco, editorRef.current);
+      }
     });
   }, []);
 
-  // Bridge monaco change -> textarea-like onChange
-  const handleChange = (val) => {
-    if (onChange) onChange({ target: { value: val ?? "" } });
-  };
+  // Optimized change handler with debouncing for large files
+  const optimizedHandleChange = useMemo(() => {
+    const baseHandler = (val) => {
+      if (onChange) onChange({ target: { value: val ?? "" } });
+    };
+
+    return monacoOptimizationManager.createOptimizedChangeHandler(
+      baseHandler,
+      value ? value.length : 0
+    );
+  }, [onChange, value?.length]);
 
   const handleMount = async (editor, monaco) => {
     editorRef.current = editor;
@@ -36,18 +75,27 @@ export default function QueryEditor({
 
     // Ensure our custom themes exist
     defineCustomMonacoThemes(monaco);
-    registerXQueryLanguage(monaco);
 
-    // Load custom theme if it's not a built-in theme
+    // Register XQuery language with optimization caching
+    await monacoOptimizationManager.registerXQueryLanguageOptimized(monaco);
+
+    // Apply optimized theme switching
     if (isValidTheme(theme)) {
       try {
         await loadAndDefineTheme(monaco, theme);
-        // Apply the theme after it's loaded
         const themeId = getEnhancedTheme(theme);
-        editor.updateOptions({ theme: themeId });
+        await monacoOptimizationManager.switchThemeOptimized(monaco, themeId, editor);
       } catch (error) {
         console.warn(`Failed to load custom theme ${theme}:`, error);
       }
+    }
+
+    // Apply runtime optimizations based on content size
+    monacoOptimizationManager.applyRuntimeOptimizations(editor, value);
+
+    // Enable performance monitoring in development
+    if (process.env.NODE_ENV === 'development') {
+      await monacoOptimizationManager.enablePerformanceMonitoring(monaco, editor);
     }
 
     // Forward keydown to consumer in a textarea-like shape
@@ -120,13 +168,16 @@ export default function QueryEditor({
     return () => window.removeEventListener("resize", fn);
   }, []);
 
-  // Handle theme changes dynamically
+  // Handle theme changes dynamically with optimization
   useEffect(() => {
     if (editorRef.current && monacoRef.current && isValidTheme(theme)) {
-      loadAndDefineTheme(monacoRef.current, theme).then(() => {
-        // Apply the theme after it's loaded
+      loadAndDefineTheme(monacoRef.current, theme).then(async () => {
         const themeId = getEnhancedTheme(theme);
-        editorRef.current.updateOptions({ theme: themeId });
+        await monacoOptimizationManager.switchThemeOptimized(
+          monacoRef.current,
+          themeId,
+          editorRef.current
+        );
       }).catch(error =>
         console.warn(`Failed to load theme ${theme} on change:`, error)
       );
@@ -142,31 +193,20 @@ export default function QueryEditor({
       <Editor
         value={value}
         language={language}
-        onChange={handleChange}
+        onChange={optimizedHandleChange}
         onMount={handleMount}
         theme={isValidTheme(theme) ? 'vs-dark' : getEnhancedTheme(theme)}
         width="100%"
         height="100%"               // <-- critical: fill the container we control
         options={{
+          ...optimizedOptions,
           readOnly: !!disabled,
           automaticLayout: false,   // we drive layout via ResizeObserver
-          minimap: { enabled: false },
-          scrollBeyondLastLine: false,
-          wordWrap: "on",
-          renderLineHighlight: "none",
-          fontSize: 12,
-          lineNumbers: "on",
-          folding: true,
           foldingStrategy: "indentation",
           showFoldingControls: "mouseover",
           lineDecorationsWidth: 10,
           lineNumbersMinChars: 3,
           renderWhitespace: "selection",
-          selectionHighlight: true,
-          occurrencesHighlight: true,
-          insertSpaces: true,
-          tabSize: 2,
-          detectIndentation: true,
           formatOnPaste: true,
           formatOnType: false,
           contextmenu: true,

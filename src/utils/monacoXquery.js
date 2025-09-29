@@ -1,4 +1,6 @@
 import { buildXQueryLanguageConfig } from './monacoXqueryConfig';
+import { XQueryFoldingProvider } from './xqueryFoldingProvider';
+import { XQueryCommentProvider } from './xqueryCommentProvider';
 
 export const XQUERY_LANGUAGE = 'xquery-ml';
 
@@ -12,11 +14,20 @@ const signatureFor = (config) => JSON.stringify({
 
 const instanceSignatures = new WeakMap();
 
+// Context-dependent FLWOR keywords that should be filtered from global list
+const CONTEXTUAL_FLWOR_KEYWORDS = ['group', 'order', 'by', 'stable', 'ascending', 'descending', 'empty', 'greatest', 'least'];
+const CONTEXTUAL_FLWOR_KEYWORD_LOOKUP = new Set(CONTEXTUAL_FLWOR_KEYWORDS);
+
 export const registerXQueryLanguage = (monaco, overrides) => {
   if (!monaco?.languages) return;
 
   const config = buildXQueryLanguageConfig({ overrides });
-  const signature = signatureFor(config);
+  // Filter context-dependent keywords from tokenizer to prevent over-highlighting
+  const tokenProviderKeywords = config.keywords.filter((keyword) => !CONTEXTUAL_FLWOR_KEYWORD_LOOKUP.has(keyword));
+  const signature = signatureFor({
+    ...config,
+    keywords: tokenProviderKeywords
+  });
 
   const lastSignature = instanceSignatures.get(monaco);
   if (registeredInstances.has(monaco) && signature === lastSignature) return;
@@ -38,7 +49,9 @@ export const registerXQueryLanguage = (monaco, overrides) => {
   }
 
   monaco.languages.setLanguageConfiguration(XQUERY_LANGUAGE, {
-    comments: { blockComment: ['(:', ':)'] },
+    comments: {
+      blockComment: ['(:', ':)']
+    },
     brackets: [['{', '}'], ['[', ']'], ['(', ')']],
     autoClosingPairs: [
       { open: '"', close: '"', notIn: ['string'] },
@@ -54,7 +67,18 @@ export const registerXQueryLanguage = (monaco, overrides) => {
       { open: '(', close: ')' },
       { open: '[', close: ']' },
       { open: '{', close: '}' }
-    ]
+    ],
+    folding: {
+      markers: {
+        start: /^\s*\(\:/,
+        end: /^\s*\:\)/
+      },
+      offSide: false
+    },
+    indentationRules: {
+      increaseIndentPattern: /^\s*(for|let|where|order\s+by|group\s+by|return|\{|<[^/>]*[^/]>)\s*$/,
+      decreaseIndentPattern: /^\s*(\}|<\/[^>]+>|:\))\s*$/
+    }
   });
 
   monaco.languages.setMonarchTokensProvider(XQUERY_LANGUAGE, {
@@ -65,7 +89,7 @@ export const registerXQueryLanguage = (monaco, overrides) => {
       { open: '[', close: ']', token: 'delimiter.square' },
       { open: '(', close: ')', token: 'delimiter.parenthesis' }
     ],
-    keywords: config.keywords,
+    keywords: tokenProviderKeywords,
     builtins: config.builtins,
     tokenizer: {
       root: [
@@ -73,6 +97,16 @@ export const registerXQueryLanguage = (monaco, overrides) => {
         { include: '@strings' },
         { include: '@numbers' },
         [/\$[a-zA-Z_][\w\-]*/, 'variable'],
+
+        // FLWOR expression entry points (must come before XML to catch FLWOR patterns)
+        [/\bfor\s+(?:tumbling|sliding)\s+window\b/, { token: 'keyword.flwor', next: '@flwor_window' }],
+        [/\bfor\b/, { token: 'keyword.flwor', next: '@flwor_for' }],
+        [/\blet\b/, { token: 'keyword.flwor', next: '@flwor_let' }],
+        [/\bwhere\b/, { token: 'keyword.flwor', next: '@flwor_where' }],
+        [/\bgroup\s+by\b/, { token: 'keyword.flwor', next: '@flwor_group' }],
+        [/\bcount\b(?=\s+\$)/, { token: 'keyword.flwor', next: '@flwor_count' }],
+        [/\bstable\s+order\s+by\b|\border\s+by\b/, { token: 'keyword.flwor', next: '@flwor_order' }],
+        [/\breturn\b/, { token: 'keyword.flwor', next: '@flwor_return' }],
 
         // XML/HTML embedding support (Phase 2 enhancement)
         [/<\?[\w\-]+/, 'metatag', '@xml_processing_instruction'],
@@ -206,11 +240,183 @@ export const registerXQueryLanguage = (monaco, overrides) => {
       xml_declaration: [
         [/>/, 'metatag', '@pop'],
         [/[^>]+/, 'metatag']
+      ],
+
+      // FLWOR expression states (XQuery 3.0+ support)
+      flwor_expression: [
+        [/\bfor\s+(?:tumbling|sliding)\s+window\b/, { token: 'keyword.flwor', next: '@flwor_window' }],
+        [/\bfor\b/, { token: 'keyword.flwor', next: '@flwor_for' }],
+        [/\blet\b/, { token: 'keyword.flwor', next: '@flwor_let' }],
+        [/\bwhere\b/, { token: 'keyword.flwor', next: '@flwor_where' }],
+        [/\bgroup\s+by\b/, { token: 'keyword.flwor', next: '@flwor_group' }],
+        [/\bstable\s+order\s+by\b|\border\s+by\b/, { token: 'keyword.flwor', next: '@flwor_order' }],
+        [/\breturn\b/, { token: 'keyword.flwor', next: '@flwor_return' }],
+        { include: '@root' }
+      ],
+
+      flwor_for: [
+        [/\$[a-zA-Z_][\w\-]*/, 'variable'],
+        [/\bat\b/, 'keyword.flwor'],
+        [/\bas\b/, 'keyword.flwor'],
+        [/\ballowing\s+empty\b/, 'keyword.flwor'],
+        [/\bin\b/, { token: 'keyword.flwor', next: '@pop' }],
+        { include: '@root' }
+      ],
+
+      flwor_let: [
+        [/\$[a-zA-Z_][\w\-]*/, 'variable'],
+        [/\bas\b/, 'keyword.flwor'],
+        [/:=/, { token: 'operator', next: '@pop' }],
+        { include: '@root' }
+      ],
+
+      flwor_where: [
+        [/\bfor\b/, { token: 'keyword.flwor', next: '@flwor_for' }],
+        [/\blet\b/, { token: 'keyword.flwor', next: '@flwor_let' }],
+        [/\bgroup\s+by\b/, { token: 'keyword.flwor', next: '@flwor_group' }],
+        [/\border\s+by\b/, { token: 'keyword.flwor', next: '@flwor_order' }],
+        [/\breturn\b/, { token: 'keyword.flwor', next: '@flwor_return' }],
+        { include: '@root' }
+      ],
+
+      flwor_group: [
+        [/\$[a-zA-Z_][\w\-]*/, 'variable'],
+        [/:=/, 'operator'],
+        [/\bcount\b(?=\s+\$)/, 'keyword.flwor'], // Only match count followed by variable
+        [/\$[a-zA-Z_][\w\-]*/, 'variable'], // count variable
+        [/\bfor\b/, { token: 'keyword.flwor', next: '@flwor_for' }],
+        [/\blet\b/, { token: 'keyword.flwor', next: '@flwor_let' }],
+        [/\bwhere\b/, { token: 'keyword.flwor', next: '@flwor_where' }],
+        [/\border\s+by\b/, { token: 'keyword.flwor', next: '@flwor_order' }],
+        [/\breturn\b/, { token: 'keyword.flwor', next: '@flwor_return' }],
+        { include: '@root' }
+      ],
+
+      flwor_order: [
+        [/\bascending\b|\bdescending\b/, 'keyword.flwor'],
+        [/\bempty\s+(?:greatest|least)\b/, 'keyword.flwor'],
+        [/\bcollation\b/, 'keyword.flwor'],
+        [/\breturn\b/, { token: 'keyword.flwor', next: '@flwor_return' }],
+        { include: '@root' }
+      ],
+
+      flwor_return: [
+        [/\{/, { token: 'delimiter.curly', next: '@push' }],
+        [/\}/, { token: 'delimiter.curly', next: '@pop' }],
+        { include: '@flwor_nested' }
+      ],
+
+      flwor_window: [
+        [/\$[a-zA-Z_][\w\-]*/, 'variable'],
+        [/\bin\b/, 'keyword.flwor'],
+        [/\bonly\s+(?:start|end)\b/, 'keyword.flwor'],
+        [/\bstart\b/, 'keyword.flwor'],
+        [/\bend\b/, 'keyword.flwor'],
+        [/\bat\b/, 'keyword.flwor'],
+        [/\bwhen\b/, 'keyword.flwor'],
+        [/\bprevious\b/, 'keyword.flwor'],
+        [/\bnext\b/, 'keyword.flwor'],
+        [/\breturn\b/, { token: 'keyword.flwor', next: '@flwor_return' }],
+        { include: '@root' }
+      ],
+
+      flwor_count: [
+        [/\$[a-zA-Z_][\w\-]*/, 'variable', '@pop'], // count variable binding
+        { include: '@root' }
+      ],
+
+      flwor_nested: [
+        [/\bfor\b/, { token: 'keyword.flwor', next: '@flwor_for' }],
+        [/\blet\b/, { token: 'keyword.flwor', next: '@flwor_let' }],
+        [/\breturn\b/, { token: 'keyword.flwor', next: '@flwor_return' }],
+        { include: '@flwor_expression' }
       ]
     }
   });
 
   instanceSignatures.set(monaco, signature);
+
+  // Register folding provider
+  const foldingProvider = new XQueryFoldingProvider();
+  monaco.languages.registerFoldingRangeProvider(XQUERY_LANGUAGE, foldingProvider);
+
+  // Register comment provider and keybindings
+  const commentProvider = new XQueryCommentProvider();
+
+  // Add Ctrl+/ (Cmd+/) keybinding for line comment toggle
+  if (monaco.editor?.addKeybindingRules) {
+    monaco.editor.addKeybindingRules([{
+      keybinding: monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash,
+      command: 'xquery.comment.toggle',
+      when: `editorLangId == '${XQUERY_LANGUAGE}'`
+    }, {
+      keybinding: monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyA,
+      command: 'xquery.comment.block.toggle',
+      when: `editorLangId == '${XQUERY_LANGUAGE}'`
+    }]);
+  }
+
+  // Register comment toggle commands using actions instead of commands
+  try {
+    monaco.languages.registerCodeActionProvider(XQUERY_LANGUAGE, {
+      provideCodeActions: (model, range, context, token) => {
+        const actions = [];
+
+        // Line comment toggle action
+        actions.push({
+          title: 'Toggle Line Comment',
+          id: 'xquery.comment.toggle',
+          kind: 'quickfix',
+          run: (editor) => {
+            const selection = editor.getSelection();
+            if (!selection) return;
+
+            const lineRange = selection.isEmpty()
+              ? { startLineNumber: selection.startLineNumber, endLineNumber: selection.startLineNumber, startColumn: 1, endColumn: model.getLineMaxColumn(selection.startLineNumber) }
+              : selection;
+
+            const line = model.getLineContent(lineRange.startLineNumber);
+            const isCommented = commentProvider.isLineCommented(line);
+
+            if (isCommented) {
+              const uncommented = commentProvider.uncommentLine(line);
+              commentProvider.replaceLineContent(model, lineRange.startLineNumber, uncommented);
+            } else {
+              const commented = commentProvider.commentLine(line);
+              commentProvider.replaceLineContent(model, lineRange.startLineNumber, commented);
+            }
+          }
+        });
+
+        // Block comment toggle action
+        actions.push({
+          title: 'Toggle Block Comment',
+          id: 'xquery.comment.block.toggle',
+          kind: 'quickfix',
+          run: (editor) => {
+            const selection = editor.getSelection();
+            if (!selection) return;
+
+            const selectedText = model.getValueInRange(selection);
+            const isBlockCommented = commentProvider.isBlockCommented(selectedText);
+
+            const newText = isBlockCommented
+              ? commentProvider.removeBlockComment(selectedText)
+              : commentProvider.addBlockComment(selectedText);
+
+            model.pushEditOperations([], [{
+              range: selection,
+              text: newText
+            }], () => null);
+          }
+        });
+
+        return { actions, dispose: () => {} };
+      }
+    });
+  } catch (error) {
+    console.warn('Failed to register XQuery code actions:', error);
+  }
 
   return config;
 };
