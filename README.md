@@ -1,3 +1,4 @@
+
 # ML Console
 
 A modern, cross-platform desktop application for executing XQuery and JavaScript queries against MarkLogic databases. ML Console provides an enhanced alternative to MarkLogic's built-in Query Console with improved user experience, advanced result visualization, and comprehensive testing capabilities.

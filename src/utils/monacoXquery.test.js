@@ -1058,7 +1058,38 @@ return element category-analysis { $analysis }`;
       expect(keywords).toContain('previous');
       expect(keywords).toContain('next');
       expect(keywords).toContain('when');
-      expect(keywords).toContain('count');
+      // Note: 'count' removed from global keywords to preserve fn:count() function calls
+    });
+
+    it('should support standalone count clauses', () => {
+      const monaco = createMonacoStub();
+      registerXQueryLanguage(monaco);
+
+      const monarchCall = monaco.stats.monarchCalls[0];
+      const tokenizer = monarchCall.config.tokenizer;
+
+      // Verify flwor_count state exists
+      expect(tokenizer).toHaveProperty('flwor_count');
+      expect(tokenizer.flwor_count).toBeInstanceOf(Array);
+
+      // Test standalone count pattern in root tokenizer
+      const rootRules = tokenizer.root;
+      const countRule = rootRules.find(rule =>
+        Array.isArray(rule) && rule[0]?.source?.includes('count.*\\$')
+      );
+      expect(countRule).toBeDefined();
+      expect(countRule[2].next).toBe('@flwor_count');
+    });
+
+    it('should preserve function call highlighting for count()', () => {
+      const monaco = createMonacoStub();
+      registerXQueryLanguage(monaco);
+
+      const monarchCall = monaco.stats.monarchCalls[0];
+      const keywords = monarchCall.config.keywords;
+
+      // count should NOT be in global keywords to preserve fn:count() highlighting
+      expect(keywords).not.toContain('count');
     });
   });
 });

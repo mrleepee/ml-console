@@ -85,10 +85,11 @@ export const registerXQueryLanguage = (monaco, overrides) => {
 
         // FLWOR expression entry points (must come before XML to catch FLWOR patterns)
         [/\bfor\s+(?:tumbling|sliding)\s+window\b/, { token: 'keyword.flwor', next: '@flwor_window' }],
-        [/\bfor\b(?=\s+\$)/, { token: 'keyword.flwor', next: '@flwor_for' }],
-        [/\blet\b(?=\s+\$)/, { token: 'keyword.flwor', next: '@flwor_let' }],
+        [/\bfor\b/, { token: 'keyword.flwor', next: '@flwor_for' }],
+        [/\blet\b/, { token: 'keyword.flwor', next: '@flwor_let' }],
         [/\bwhere\b/, { token: 'keyword.flwor', next: '@flwor_where' }],
         [/\bgroup\s+by\b/, { token: 'keyword.flwor', next: '@flwor_group' }],
+        [/\bcount\b(?=\s+\$)/, { token: 'keyword.flwor', next: '@flwor_count' }],
         [/\bstable\s+order\s+by\b|\border\s+by\b/, { token: 'keyword.flwor', next: '@flwor_order' }],
         [/\breturn\b/, { token: 'keyword.flwor', next: '@flwor_return' }],
 
@@ -301,6 +302,11 @@ export const registerXQueryLanguage = (monaco, overrides) => {
         [/\bprevious\b/, 'keyword.flwor'],
         [/\bnext\b/, 'keyword.flwor'],
         [/\breturn\b/, { token: 'keyword.flwor', next: '@flwor_return' }],
+        { include: '@root' }
+      ],
+
+      flwor_count: [
+        [/\$[a-zA-Z_][\w\-]*/, 'variable', '@pop'], // count variable binding
         { include: '@root' }
       ],
 

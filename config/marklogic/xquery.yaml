@@ -58,7 +58,7 @@ keywords:
   - previous
   - next
   - when
-  - count
+  # Note: 'count' removed from global keywords to preserve function call highlighting
 
 builtins:
   # Core MarkLogic namespaces
