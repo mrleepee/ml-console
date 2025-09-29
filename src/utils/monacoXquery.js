@@ -77,6 +77,9 @@ export const registerXQueryLanguage = (monaco, overrides) => {
         // XML/HTML embedding support (Phase 2 enhancement)
         [/<\?[\w\-]+/, 'metatag', '@xml_processing_instruction'],
         [/<!\[CDATA\[/, 'string.cdata', '@xml_cdata'],
+        [/<!--/, 'comment.xml', '@xml_comment'],
+        [/<!DOCTYPE\s+/, 'metatag', '@xml_doctype'],
+        [/<![A-Z]+/, 'metatag', '@xml_declaration'],
         [/<\/([a-zA-Z_][\w\-]*:)?[a-zA-Z_][\w\-]*\s*>/, 'tag'],
         [/<([a-zA-Z_][\w\-]*:)?[a-zA-Z_][\w\-]*/, 'tag', '@xml_tag'],
 
@@ -87,7 +90,7 @@ export const registerXQueryLanguage = (monaco, overrides) => {
         [/\bis\b|\bisnot\b|\binstance\s+of\b|\btreat\s+as\b/, 'operator'],
         [/\bto\b|\bmod\b|\bdiv\b|\bidiv\b/, 'operator'],
         [/[<>=!|+\-*/%]/, 'operator'],
-        [/([a-zA-Z_][\w\-]*:)?[a-zA-Z_][\w\-]*(?=\s*\()/, 'type.identifier'],
+        [/[a-zA-Z_][\w\-]*:[a-zA-Z_][\w\-]*(?=\s*\()/, 'type.identifier'], // Only namespace:function() patterns
         [/@?[a-zA-Z_][\w\-.]*/, {
           cases: {
             '@keywords': 'keyword',
@@ -132,22 +135,22 @@ export const registerXQueryLanguage = (monaco, overrides) => {
       ],
 
       xml_tag: [
-        // Handle namespace prefixes in tag names
-        [/([a-zA-Z_][\w\-]*:)?[a-zA-Z_][\w\-]*/, 'tag'],
         [/\s+/, ''],
-        // Attribute names (with namespace support)
+        // Attribute names (with namespace support) - match before general tag name
         [/([a-zA-Z_][\w\-]*:)?[a-zA-Z_][\w\-]*(?=\s*=)/, 'attribute.name'],
         [/=/, 'delimiter'],
         // Attribute values with XQuery expression support
         [/"/, { token: 'attribute.value', next: '@xml_attr_double' }],
         [/'/, { token: 'attribute.value', next: '@xml_attr_single' }],
         // Self-closing or opening tag end
-        [/\/?>/, { token: 'tag', next: '@pop' }]
+        [/\/?>/, { token: 'tag', next: '@pop' }],
+        // Tag name should be last to avoid capturing attribute names
+        [/([a-zA-Z_][\w\-]*:)?[a-zA-Z_][\w\-]*/, 'tag']
       ],
 
       xml_attr_double: [
         // XQuery expressions within attribute values: {expr}
-        [/\{/, { token: 'delimiter.curly', next: '@root' }],
+        [/\{/, { token: 'delimiter.curly', next: '@xquery_in_attr_double' }],
         [/""/, 'attribute.value'],
         [/"/, { token: 'attribute.value', next: '@pop' }],
         [/[^"{}]+/, 'attribute.value']
@@ -155,10 +158,46 @@ export const registerXQueryLanguage = (monaco, overrides) => {
 
       xml_attr_single: [
         // XQuery expressions within attribute values: {expr}
-        [/\{/, { token: 'delimiter.curly', next: '@root' }],
+        [/\{/, { token: 'delimiter.curly', next: '@xquery_in_attr_single' }],
         [/''/, 'attribute.value'],
         [/'/, { token: 'attribute.value', next: '@pop' }],
         [/[^'{}]+/, 'attribute.value']
+      ],
+
+      // XQuery expressions inside XML attributes - return to correct attribute state
+      xquery_in_attr_double: [
+        [/\}/, { token: 'delimiter.curly', next: '@xml_attr_double' }],
+        { include: '@root' } // Include all root XQuery rules
+      ],
+
+      xquery_in_attr_single: [
+        [/\}/, { token: 'delimiter.curly', next: '@xml_attr_single' }],
+        { include: '@root' } // Include all root XQuery rules
+      ],
+
+      // Additional XML constructs (Phase 2 enhancement)
+      xml_comment: [
+        [/-->/, 'comment.xml', '@pop'],
+        [/[^-]+/, 'comment.xml'],
+        [/-/, 'comment.xml']
+      ],
+
+      xml_doctype: [
+        [/>/, 'metatag', '@pop'],
+        [/\[/, 'metatag', '@xml_doctype_internal'],
+        [/[^>\[]+/, 'metatag']
+      ],
+
+      xml_doctype_internal: [
+        [/\]/, 'metatag', '@pop'],
+        [/<!--/, 'comment.xml', '@xml_comment'],
+        [/<!\w+/, 'metatag'],
+        [/[^\]<]+/, 'metatag']
+      ],
+
+      xml_declaration: [
+        [/>/, 'metatag', '@pop'],
+        [/[^>]+/, 'metatag']
       ]
     }
   });

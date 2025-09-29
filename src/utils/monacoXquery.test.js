@@ -275,6 +275,9 @@ describe('registerXQueryLanguage', () => {
       // Phase 2: XML/HTML embedding support
       [/<\?[\w\-]+/, 'metatag', '@xml_processing_instruction'], // Processing instructions
       [/<!\[CDATA\[/, 'string.cdata', '@xml_cdata'], // CDATA sections
+      [/<!--/, 'comment.xml', '@xml_comment'], // XML comments
+      [/<!DOCTYPE\s+/, 'metatag', '@xml_doctype'], // DOCTYPE declarations
+      [/<![A-Z]+/, 'metatag', '@xml_declaration'], // Other XML declarations
       [/<\/([a-zA-Z_][\w\-]*:)?[a-zA-Z_][\w\-]*\s*>/, 'tag'], // Closing tags
       [/<([a-zA-Z_][\w\-]*:)?[a-zA-Z_][\w\-]*/, 'tag', '@xml_tag'], // Opening tags
 
@@ -285,7 +288,7 @@ describe('registerXQueryLanguage', () => {
       [/\bis\b|\bisnot\b|\binstance\s+of\b|\btreat\s+as\b/, 'operator'], // Type operators
       [/\bto\b|\bmod\b|\bdiv\b|\bidiv\b/, 'operator'], // Arithmetic operators
       [/[<>=!|+\-*/%]/, 'operator'],
-      [/([a-zA-Z_][\w\-]*:)?[a-zA-Z_][\w\-]*(?=\s*\()/, 'type.identifier'], // Function calls (updated for namespaces)
+      [/[a-zA-Z_][\w\-]*:[a-zA-Z_][\w\-]*(?=\s*\()/, 'type.identifier'], // Namespaced function calls only
       [/@?[a-zA-Z_][\w\-.]*/, expect.any(Object)] // Keywords/identifiers
     ]));
 
@@ -313,6 +316,12 @@ describe('registerXQueryLanguage', () => {
     expect(tokenizer.xml_tag).toBeDefined();
     expect(tokenizer.xml_attr_double).toBeDefined();
     expect(tokenizer.xml_attr_single).toBeDefined();
+    expect(tokenizer.xquery_in_attr_double).toBeDefined();
+    expect(tokenizer.xquery_in_attr_single).toBeDefined();
+    expect(tokenizer.xml_comment).toBeDefined();
+    expect(tokenizer.xml_doctype).toBeDefined();
+    expect(tokenizer.xml_doctype_internal).toBeDefined();
+    expect(tokenizer.xml_declaration).toBeDefined();
   });
 
   it('includes XQuery-specific token patterns', () => {
@@ -756,6 +765,9 @@ describe('XML/HTML Embedding Support (Phase 2)', () => {
     }
     if (text.includes('(:')) {
       tokens.push({ token: 'comment', text: 'comment content' });
+    }
+    if (text.includes('<!--')) {
+      tokens.push({ token: 'comment.xml', text: 'XML comment content' });
     }
     if (text.includes('=')) {
       tokens.push({ token: 'attribute.name', text: 'attr' });
