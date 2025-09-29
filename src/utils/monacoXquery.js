@@ -90,7 +90,13 @@ export const registerXQueryLanguage = (monaco, overrides) => {
         [/\bis\b|\bisnot\b|\binstance\s+of\b|\btreat\s+as\b/, 'operator'],
         [/\bto\b|\bmod\b|\bdiv\b|\bidiv\b/, 'operator'],
         [/[<>=!|+\-*/%]/, 'operator'],
-        [/[a-zA-Z_][\w\-]*:[a-zA-Z_][\w\-]*(?=\s*\()/, 'type.identifier'], // Only namespace:function() patterns
+        [/[a-zA-Z_][\w\-]*:[a-zA-Z_][\w\-]*(?=\s*\()/, 'type.identifier'], // namespace:function() patterns
+        [/[a-zA-Z_][\w\-]*(?=\s*\()/, {
+          cases: {
+            '@keywords': 'keyword',  // Don't highlight keywords as functions
+            '@default': 'type.identifier' // But do highlight user functions
+          }
+        }],
         [/@?[a-zA-Z_][\w\-.]*/, {
           cases: {
             '@keywords': 'keyword',
@@ -164,14 +170,16 @@ export const registerXQueryLanguage = (monaco, overrides) => {
         [/[^'{}]+/, 'attribute.value']
       ],
 
-      // XQuery expressions inside XML attributes - return to correct attribute state
+      // XQuery expressions inside XML attributes - track brace depth
       xquery_in_attr_double: [
-        [/\}/, { token: 'delimiter.curly', next: '@xml_attr_double' }],
+        [/\{/, { token: 'delimiter.curly', next: '@push' }], // Nested braces
+        [/\}/, { token: 'delimiter.curly', next: '@pop' }],   // Pop back to xml_attr_double or nested xquery
         { include: '@root' } // Include all root XQuery rules
       ],
 
       xquery_in_attr_single: [
-        [/\}/, { token: 'delimiter.curly', next: '@xml_attr_single' }],
+        [/\{/, { token: 'delimiter.curly', next: '@push' }], // Nested braces
+        [/\}/, { token: 'delimiter.curly', next: '@pop' }],   // Pop back to xml_attr_single or nested xquery
         { include: '@root' } // Include all root XQuery rules
       ],
 

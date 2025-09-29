@@ -288,7 +288,8 @@ describe('registerXQueryLanguage', () => {
       [/\bis\b|\bisnot\b|\binstance\s+of\b|\btreat\s+as\b/, 'operator'], // Type operators
       [/\bto\b|\bmod\b|\bdiv\b|\bidiv\b/, 'operator'], // Arithmetic operators
       [/[<>=!|+\-*/%]/, 'operator'],
-      [/[a-zA-Z_][\w\-]*:[a-zA-Z_][\w\-]*(?=\s*\()/, 'type.identifier'], // Namespaced function calls only
+      [/[a-zA-Z_][\w\-]*:[a-zA-Z_][\w\-]*(?=\s*\()/, 'type.identifier'], // Namespaced function calls
+      [/[a-zA-Z_][\w\-]*(?=\s*\()/, expect.any(Object)], // Default namespace function calls with keyword cases
       [/@?[a-zA-Z_][\w\-.]*/, expect.any(Object)] // Keywords/identifiers
     ]));
 
