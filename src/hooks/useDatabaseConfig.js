@@ -103,7 +103,8 @@ export default function useDatabaseConfig({
         password,
         timeout: 10000,
       });
-      setConnectionStatus(response.ok ? 'connected' : 'error');
+      // SECURITY FIX: Check status range instead of undefined response.ok property
+      setConnectionStatus(response.status >= 200 && response.status < 300 ? 'connected' : 'error');
     } catch (err) {
       console.error('Connection check failed:', err);
       setConnectionStatus('error');

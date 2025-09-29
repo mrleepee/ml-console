@@ -262,7 +262,8 @@ ipcMain.handle('http-request', async (event, options) => {
       path: url.pathname + url.search,
       method: options.method || 'GET',
       headers: options.headers || {},
-      rejectUnauthorized: false, // For self-signed certificates
+      // SECURITY: Only disable TLS verification in development mode with explicit opt-in
+      rejectUnauthorized: process.env.NODE_ENV === 'development' && process.env.ALLOW_INSECURE_TLS === 'true',
       timeout: options.timeout || 30000 // Default 30 seconds
     };
 
@@ -276,7 +277,7 @@ ipcMain.handle('http-request', async (event, options) => {
         if (res.statusCode === 401 && options.username && options.password) {
           // Handle digest authentication
           const authHeader = res.headers['www-authenticate'];
-          console.log('Auth header:', authHeader);
+          // SECURITY: Removed auth header logging to prevent credential exposure
           
           if (authHeader && authHeader.startsWith('Digest')) {
             const authParams = parseWWWAuthenticate(authHeader);
@@ -298,7 +299,7 @@ ipcMain.handle('http-request', async (event, options) => {
             
             const authorizationHeader = `Digest username="${options.username}", realm="${authParams.realm}", nonce="${authParams.nonce}", uri="${url.pathname + url.search}", qop=${qop}, nc=${nc}, cnonce="${cnonce}", response="${digestResponse}"`;
             
-            console.log('Authorization header:', authorizationHeader);
+            // SECURITY: Removed credential logging to prevent credential exposure
             
             // Second request with digest auth
             const secondRequestOptions = {
