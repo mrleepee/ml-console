@@ -267,7 +267,7 @@ export const registerXQueryLanguage = (monaco, overrides) => {
       flwor_group: [
         [/\$[a-zA-Z_][\w\-]*/, 'variable'],
         [/:=/, 'operator'],
-        [/\bcount\b/, 'keyword.flwor'],
+        [/\bcount\b(?=\s+\$)/, 'keyword.flwor'], // Only match count followed by variable
         [/\$[a-zA-Z_][\w\-]*/, 'variable'], // count variable
         [/\bfor\b/, { token: 'keyword.flwor', next: '@flwor_for' }],
         [/\blet\b/, { token: 'keyword.flwor', next: '@flwor_let' }],
