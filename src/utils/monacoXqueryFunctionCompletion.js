@@ -51,15 +51,32 @@ function filterLocalFunctions(functions) {
  * @returns {Object} - Monaco completion item
  */
 function createFunctionCompletionItem(func, monaco) {
-  // Create snippet for parameters
-  const paramSnippet = func.params
-    .map((p, i) => `\${${i + 1}:${p.name}}`)
-    .join(', ');
+  // For 0-arity functions, just insert function()
+  // For functions with params, insert function() and position cursor inside
+  let insertText;
+  let command = null;
 
-  // Build detail text
+  if (func.params.length === 0) {
+    // No parameters - insert function() with cursor after
+    insertText = `${func.name}()$0`;
+  } else {
+    // Has parameters - insert function() with cursor inside, then trigger completion
+    insertText = `${func.name}($0)`;
+
+    // Auto-trigger completion after insertion to suggest variables/functions
+    command = {
+      id: 'editor.action.triggerSuggest',
+      title: 'Trigger Suggest'
+    };
+  }
+
+  // Build detail text with parameter info
   const details = [];
   if (func.params.length > 0) {
-    details.push(`${func.params.length} parameter${func.params.length > 1 ? 's' : ''}`);
+    const paramDetails = func.params
+      .map(p => p.type ? `${p.name} as ${p.type}` : p.name)
+      .join(', ');
+    details.push(`(${paramDetails})`);
   }
   if (func.returnType) {
     details.push(`returns ${func.returnType}`);
@@ -69,12 +86,13 @@ function createFunctionCompletionItem(func, monaco) {
   return {
     label: func.name,
     kind: monaco.languages.CompletionItemKind.Function,
-    insertText: `${func.name}(${paramSnippet})`,
+    insertText: insertText,
     insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
     detail: details.join(' '),
     documentation: {
       value: `\`\`\`xquery\n${func.signature}\n\`\`\``
     },
+    command: command,
     sortText: `1_${func.name}` // Sort after variables (0_) but before keywords
   };
 }
