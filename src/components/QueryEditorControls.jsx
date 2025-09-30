@@ -58,7 +58,7 @@ export default function QueryEditorControls({
         <button
           className={`btn btn-xs ${preferences.lineNumbers === 'on' ? 'btn-primary' : 'btn-ghost'}`}
           onClick={toggleLineNumbers}
-          title={`Line numbers: ${preferences.lineNumbers}`}
+          title={`Toggle line numbers (currently ${preferences.lineNumbers})`}
           aria-label={`Toggle line numbers (currently ${preferences.lineNumbers})`}
         >
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,7 +70,7 @@ export default function QueryEditorControls({
         <button
           className={`btn btn-xs ${preferences.wordWrap === 'on' ? 'btn-primary' : 'btn-ghost'}`}
           onClick={toggleWordWrap}
-          title={`Word wrap: ${preferences.wordWrap}`}
+          title={`Toggle word wrap (currently ${preferences.wordWrap})`}
           aria-label={`Toggle word wrap (currently ${preferences.wordWrap})`}
         >
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,7 +82,7 @@ export default function QueryEditorControls({
         <button
           className={`btn btn-xs ${preferences.minimap ? 'btn-primary' : 'btn-ghost'}`}
           onClick={toggleMinimap}
-          title={`Minimap: ${preferences.minimap ? 'on' : 'off'}`}
+          title={`Toggle minimap (currently ${preferences.minimap ? 'on' : 'off'})`}
           aria-label={`Toggle minimap (currently ${preferences.minimap ? 'on' : 'off'})`}
         >
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
