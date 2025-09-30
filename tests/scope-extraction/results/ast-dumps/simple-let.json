@@ -1,0 +1,31 @@
+{
+  "file": "simple-let.xq",
+  "success": true,
+  "parseTime": "15.99ms",
+  "memoryUsed": "5.22MB",
+  "errors": [],
+  "variables": [
+    {
+      "type": "let",
+      "name": "$nodes",
+      "line": 3,
+      "column": 4,
+      "scopeStart": 3,
+      "scopeEnd": 4
+    }
+  ],
+  "functions": [],
+  "imports": [],
+  "stats": {
+    "totalVariables": 1,
+    "letBindings": 1,
+    "forBindings": 0,
+    "functionParams": 0,
+    "functions": 0,
+    "imports": 0,
+    "variablesWithScope": 1,
+    "functionsWithParams": 0,
+    "shadowingVars": 1,
+    "shadowedVars": 0
+  }
+}

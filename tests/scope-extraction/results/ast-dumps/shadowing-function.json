@@ -1,0 +1,71 @@
+{
+  "file": "shadowing-function.xq",
+  "success": true,
+  "parseTime": "13.90ms",
+  "memoryUsed": "0.80MB",
+  "errors": [],
+  "variables": [
+    {
+      "type": "function-param",
+      "name": "$value",
+      "line": 3,
+      "column": 31,
+      "scopeStart": 3,
+      "scopeEnd": 6,
+      "function": "local:process",
+      "typeDecl": "asxs:decimal",
+      "shadows": null,
+      "shadowedBy": [
+        4
+      ]
+    },
+    {
+      "type": "let",
+      "name": "$value",
+      "line": 4,
+      "column": 6,
+      "scopeStart": 4,
+      "scopeEnd": 5,
+      "shadows": 3,
+      "shadowedBy": []
+    },
+    {
+      "type": "let",
+      "name": "$value",
+      "line": 8,
+      "column": 4,
+      "scopeStart": 8,
+      "scopeEnd": 9,
+      "shadows": null,
+      "shadowedBy": []
+    }
+  ],
+  "functions": [
+    {
+      "name": "local:process",
+      "params": [
+        {
+          "name": "$value",
+          "type": "asxs:decimal",
+          "line": 3,
+          "column": 31
+        }
+      ],
+      "line": 3,
+      "column": 0
+    }
+  ],
+  "imports": [],
+  "stats": {
+    "totalVariables": 3,
+    "letBindings": 2,
+    "forBindings": 0,
+    "functionParams": 1,
+    "functions": 1,
+    "imports": 0,
+    "variablesWithScope": 3,
+    "functionsWithParams": 1,
+    "shadowingVars": 1,
+    "shadowedVars": 1
+  }
+}

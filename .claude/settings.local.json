@@ -70,7 +70,14 @@
       "mcp__codex-as-mcp__codex_review",
       "Bash(git pull:*)",
       "mcp__codex-as-mcp__codex_execute",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "mcp__browser-tools__getConsoleErrors",
+      "WebSearch",
+      "Bash(cat:*)",
+      "Bash(git branch:*)",
+      "Bash(gh pr create:*)",
+      "Bash(git log:*)",
+      "Bash(gh pr view:*)"
     ],
     "deny": [],
     "ask": []

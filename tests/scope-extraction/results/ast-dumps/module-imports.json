@@ -1,0 +1,78 @@
+{
+  "file": "module-imports.xq",
+  "success": true,
+  "parseTime": "36.33ms",
+  "memoryUsed": "0.05MB",
+  "errors": [],
+  "variables": [
+    {
+      "type": "function-param",
+      "name": "$ref",
+      "line": 5,
+      "column": 41,
+      "scopeStart": 5,
+      "scopeEnd": 13,
+      "function": "local:process-reference",
+      "typeDecl": "aselement(reference)"
+    },
+    {
+      "type": "let",
+      "name": "$rd",
+      "line": 6,
+      "column": 6,
+      "scopeStart": 6,
+      "scopeEnd": 12
+    },
+    {
+      "type": "let",
+      "name": "$source",
+      "line": 7,
+      "column": 6,
+      "scopeStart": 7,
+      "scopeEnd": 12
+    },
+    {
+      "type": "let",
+      "name": "$test-ref",
+      "line": 15,
+      "column": 4,
+      "scopeStart": 15,
+      "scopeEnd": 19
+    }
+  ],
+  "functions": [
+    {
+      "name": "local:process-reference",
+      "params": [
+        {
+          "name": "$ref",
+          "type": "aselement(reference)",
+          "line": 5,
+          "column": 41
+        }
+      ],
+      "line": 5,
+      "column": 0
+    }
+  ],
+  "imports": [
+    {
+      "namespace": "https://pubs.cas.org/modules/lib/common-reference-utils",
+      "prefix": "cru",
+      "line": 3,
+      "column": 0
+    }
+  ],
+  "stats": {
+    "totalVariables": 4,
+    "letBindings": 3,
+    "forBindings": 0,
+    "functionParams": 1,
+    "functions": 1,
+    "imports": 1,
+    "variablesWithScope": 4,
+    "functionsWithParams": 1,
+    "shadowingVars": 4,
+    "shadowedVars": 0
+  }
+}

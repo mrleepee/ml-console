@@ -36,7 +36,8 @@ export default function QueryEditor({
     detectIndentation: false,
     accessibilitySupport: "auto",
     suggestOnTriggerCharacters: true,
-    acceptSuggestionOnEnter: "on"
+    acceptSuggestionOnEnter: "on",
+    wordBasedSuggestions: false  // Disable word-based suggestions for cleaner XQuery variable completion
   });
 
   // Initialize Monaco themes and language with optimizations
