@@ -227,14 +227,46 @@ npm test -- tests/xquery-scope-completion.spec.ts
 3. **No cross-module resolution**: Variables from imported modules not suggested
 4. **No built-in functions**: Only user-defined variables suggested (XQuery built-ins via separate provider)
 
+## Function Completion (New!)
+
+### Local Function Suggestions
+
+The editor now provides auto-completion for `local:` prefixed functions:
+
+```xquery
+declare function local:calc-total($price as xs:decimal, $qty as xs:integer) as xs:decimal {
+  $price * $qty
+};
+
+local:    ← Type "local:" to see function suggestions
+```
+
+**Features:**
+- **Trigger**: Type `local:` to see available functions
+- **Filtering**: Only suggests functions declared before cursor
+- **Smart snippets**: Inserts function call with parameter placeholders
+- **Type info**: Shows parameter count and return type
+- **Signature display**: Full function signature in documentation popup
+
+**Completion details format:**
+```
+local:calc-total
+2 parameters returns xs:decimal • line 1
+```
+
+**Example usage:**
+1. Type `local:` - completion widget appears
+2. Select `local:calc-total` - inserts `local:calc-total($price, $qty)`
+3. Tab through parameter placeholders to fill in values
+
 ## Future Enhancements
 
-1. **Function completion**: Suggest function names with signatures
-2. **Namespace prefix completion**: Complete namespace-qualified names
-3. **Import resolution**: Suggest variables from imported modules
-4. **Hover tooltips**: Show full variable definition on hover
-5. **Go to definition**: Jump to variable declaration
-6. **Rename refactoring**: Rename variable across scope
+1. **Namespace prefix completion**: Complete namespace-qualified names
+2. **Import resolution**: Suggest functions from imported modules
+3. **Hover tooltips**: Show full variable/function definition on hover
+4. **Go to definition**: Jump to variable/function declaration
+5. **Rename refactoring**: Rename variable/function across scope
+6. **Signature help**: Parameter hints while typing function calls
 
 ## Related Files
 
