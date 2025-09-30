@@ -1,0 +1,58 @@
+{
+  "file": "shadowing-basic.xq",
+  "success": true,
+  "parseTime": "6.90ms",
+  "memoryUsed": "7.22MB",
+  "errors": [],
+  "variables": [
+    {
+      "type": "let",
+      "name": "$x",
+      "line": 3,
+      "column": 4,
+      "scopeStart": 3,
+      "scopeEnd": 8,
+      "shadows": null,
+      "shadowedBy": [
+        5,
+        7
+      ]
+    },
+    {
+      "type": "let",
+      "name": "$x",
+      "line": 5,
+      "column": 6,
+      "scopeStart": 5,
+      "scopeEnd": 8,
+      "shadows": 3,
+      "shadowedBy": [
+        7
+      ]
+    },
+    {
+      "type": "let",
+      "name": "$x",
+      "line": 7,
+      "column": 8,
+      "scopeStart": 7,
+      "scopeEnd": 8,
+      "shadows": 5,
+      "shadowedBy": []
+    }
+  ],
+  "functions": [],
+  "imports": [],
+  "stats": {
+    "totalVariables": 3,
+    "letBindings": 3,
+    "forBindings": 0,
+    "functionParams": 0,
+    "functions": 0,
+    "imports": 0,
+    "variablesWithScope": 3,
+    "functionsWithParams": 0,
+    "shadowingVars": 2,
+    "shadowedVars": 2
+  }
+}

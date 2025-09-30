@@ -1,0 +1,146 @@
+{
+  "file": "function-params.xq",
+  "success": true,
+  "parseTime": "67.38ms",
+  "memoryUsed": "13.69MB",
+  "errors": [],
+  "variables": [
+    {
+      "type": "function-param",
+      "name": "$item",
+      "line": 3,
+      "column": 36,
+      "scopeStart": 3,
+      "scopeEnd": 7,
+      "function": "local:process-item",
+      "typeDecl": "aselement()"
+    },
+    {
+      "type": "function-param",
+      "name": "$multiplier",
+      "line": 3,
+      "column": 56,
+      "scopeStart": 3,
+      "scopeEnd": 7,
+      "function": "local:process-item",
+      "typeDecl": "asxs:decimal",
+      "shadows": null,
+      "shadowedBy": []
+    },
+    {
+      "type": "let",
+      "name": "$base-value",
+      "line": 4,
+      "column": 6,
+      "scopeStart": 4,
+      "scopeEnd": 6
+    },
+    {
+      "type": "let",
+      "name": "$result",
+      "line": 5,
+      "column": 6,
+      "scopeStart": 5,
+      "scopeEnd": 6
+    },
+    {
+      "type": "function-param",
+      "name": "$value",
+      "line": 9,
+      "column": 37,
+      "scopeStart": 9,
+      "scopeEnd": 14,
+      "function": "local:format-result",
+      "typeDecl": "asxs:decimal"
+    },
+    {
+      "type": "function-param",
+      "name": "$label",
+      "line": 9,
+      "column": 59,
+      "scopeStart": 9,
+      "scopeEnd": 14,
+      "function": "local:format-result",
+      "typeDecl": "asxs:string"
+    },
+    {
+      "type": "let",
+      "name": "$test-item",
+      "line": 16,
+      "column": 4,
+      "scopeStart": 16,
+      "scopeEnd": 19
+    },
+    {
+      "type": "let",
+      "name": "$multiplier",
+      "line": 17,
+      "column": 4,
+      "scopeStart": 17,
+      "scopeEnd": 19,
+      "shadows": null,
+      "shadowedBy": []
+    },
+    {
+      "type": "let",
+      "name": "$calculated",
+      "line": 18,
+      "column": 4,
+      "scopeStart": 18,
+      "scopeEnd": 19
+    }
+  ],
+  "functions": [
+    {
+      "name": "local:process-item",
+      "params": [
+        {
+          "name": "$item",
+          "type": "aselement()",
+          "line": 3,
+          "column": 36
+        },
+        {
+          "name": "$multiplier",
+          "type": "asxs:decimal",
+          "line": 3,
+          "column": 56
+        }
+      ],
+      "line": 3,
+      "column": 0
+    },
+    {
+      "name": "local:format-result",
+      "params": [
+        {
+          "name": "$value",
+          "type": "asxs:decimal",
+          "line": 9,
+          "column": 37
+        },
+        {
+          "name": "$label",
+          "type": "asxs:string",
+          "line": 9,
+          "column": 59
+        }
+      ],
+      "line": 9,
+      "column": 0
+    }
+  ],
+  "imports": [],
+  "stats": {
+    "totalVariables": 9,
+    "letBindings": 5,
+    "forBindings": 0,
+    "functionParams": 4,
+    "functions": 2,
+    "imports": 0,
+    "variablesWithScope": 9,
+    "functionsWithParams": 2,
+    "shadowingVars": 7,
+    "shadowedVars": 0
+  }
+}

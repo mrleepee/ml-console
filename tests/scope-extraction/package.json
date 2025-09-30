@@ -1,0 +1,12 @@
+{
+  "name": "xquery-scope-extraction",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Enhanced XQuery scope extraction with function params, scope ranges, and shadowing",
+  "scripts": {
+    "test": "node test-runner.js"
+  },
+  "dependencies": {
+    "antlr4": "^4.13.0"
+  }
+}

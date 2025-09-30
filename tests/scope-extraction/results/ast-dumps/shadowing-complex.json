@@ -1,0 +1,88 @@
+{
+  "file": "shadowing-complex.xq",
+  "success": true,
+  "parseTime": "33.25ms",
+  "memoryUsed": "-52.37MB",
+  "errors": [],
+  "variables": [
+    {
+      "type": "let",
+      "name": "$outer",
+      "line": 3,
+      "column": 4,
+      "scopeStart": 3,
+      "scopeEnd": 14,
+      "shadows": null,
+      "shadowedBy": [
+        5,
+        8
+      ]
+    },
+    {
+      "type": "for",
+      "name": "$item",
+      "line": 4,
+      "column": 4,
+      "scopeStart": 4,
+      "scopeEnd": 14,
+      "shadows": null,
+      "shadowedBy": [
+        9
+      ]
+    },
+    {
+      "type": "let",
+      "name": "$outer",
+      "line": 5,
+      "column": 4,
+      "scopeStart": 5,
+      "scopeEnd": 14,
+      "shadows": 3,
+      "shadowedBy": [
+        8
+      ]
+    },
+    {
+      "type": "for",
+      "name": "$nested",
+      "line": 7,
+      "column": 6,
+      "scopeStart": 7,
+      "scopeEnd": 14
+    },
+    {
+      "type": "let",
+      "name": "$outer",
+      "line": 8,
+      "column": 6,
+      "scopeStart": 8,
+      "scopeEnd": 14,
+      "shadows": 5,
+      "shadowedBy": []
+    },
+    {
+      "type": "let",
+      "name": "$item",
+      "line": 9,
+      "column": 6,
+      "scopeStart": 9,
+      "scopeEnd": 14,
+      "shadows": 4,
+      "shadowedBy": []
+    }
+  ],
+  "functions": [],
+  "imports": [],
+  "stats": {
+    "totalVariables": 6,
+    "letBindings": 4,
+    "forBindings": 2,
+    "functionParams": 0,
+    "functions": 0,
+    "imports": 0,
+    "variablesWithScope": 6,
+    "functionsWithParams": 0,
+    "shadowingVars": 4,
+    "shadowedVars": 3
+  }
+}

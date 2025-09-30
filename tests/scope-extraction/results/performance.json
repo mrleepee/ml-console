@@ -1,0 +1,722 @@
+{
+  "timestamp": "2025-09-30T06:39:20.455Z",
+  "summary": {
+    "totalFiles": 8,
+    "successful": 8,
+    "failed": 0,
+    "totalVariables": 42,
+    "variablesWithScope": 42,
+    "scopeCoverage": "100.0%",
+    "totalFunctionParams": 9,
+    "totalFunctions": 7,
+    "totalImports": 2,
+    "avgParseTime": "105.54ms",
+    "maxParseTime": "623.29ms",
+    "minParseTime": "6.90ms"
+  },
+  "results": [
+    {
+      "file": "complex-pathway.xq",
+      "success": true,
+      "parseTime": "623.29ms",
+      "memoryUsed": "48.10MB",
+      "errors": [],
+      "variables": [
+        {
+          "type": "function-param",
+          "name": "$step-doc",
+          "line": 5,
+          "column": 38,
+          "scopeStart": 5,
+          "scopeEnd": 12,
+          "function": "local:best-step-name",
+          "typeDecl": "aselement(pathway-step)",
+          "shadows": null,
+          "shadowedBy": []
+        },
+        {
+          "type": "let",
+          "name": "$preferred",
+          "line": 6,
+          "column": 6,
+          "scopeStart": 6,
+          "scopeEnd": 11
+        },
+        {
+          "type": "function-param",
+          "name": "$parent-node",
+          "line": 14,
+          "column": 44,
+          "scopeStart": 14,
+          "scopeEnd": 22,
+          "function": "local:molecule-identifiers",
+          "typeDecl": "aselement()?"
+        },
+        {
+          "type": "for",
+          "name": "$identifier-node",
+          "line": 16,
+          "column": 8,
+          "scopeStart": 16,
+          "scopeEnd": 20
+        },
+        {
+          "type": "function-param",
+          "name": "$base-molecule-node",
+          "line": 24,
+          "column": 42,
+          "scopeStart": 24,
+          "scopeEnd": 30,
+          "function": "local:base-molecule-json",
+          "typeDecl": "aselement(base-molecule)"
+        },
+        {
+          "type": "let",
+          "name": "$pathway-uri",
+          "line": 32,
+          "column": 4,
+          "scopeStart": 32,
+          "scopeEnd": 55
+        },
+        {
+          "type": "let",
+          "name": "$pathway-doc",
+          "line": 33,
+          "column": 4,
+          "scopeStart": 33,
+          "scopeEnd": 55
+        },
+        {
+          "type": "for",
+          "name": "$pathway-step-ref",
+          "line": 43,
+          "column": 10,
+          "scopeStart": 43,
+          "scopeEnd": 53
+        },
+        {
+          "type": "let",
+          "name": "$rank",
+          "line": 44,
+          "column": 10,
+          "scopeStart": 44,
+          "scopeEnd": 53
+        },
+        {
+          "type": "let",
+          "name": "$step-uri",
+          "line": 45,
+          "column": 10,
+          "scopeStart": 45,
+          "scopeEnd": 53
+        },
+        {
+          "type": "let",
+          "name": "$step-doc",
+          "line": 46,
+          "column": 10,
+          "scopeStart": 46,
+          "scopeEnd": 53,
+          "shadows": null,
+          "shadowedBy": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "local:best-step-name",
+          "params": [
+            {
+              "name": "$step-doc",
+              "type": "aselement(pathway-step)",
+              "line": 5,
+              "column": 38
+            }
+          ],
+          "line": 5,
+          "column": 0
+        },
+        {
+          "name": "local:molecule-identifiers",
+          "params": [
+            {
+              "name": "$parent-node",
+              "type": "aselement()?",
+              "line": 14,
+              "column": 44
+            }
+          ],
+          "line": 14,
+          "column": 0
+        },
+        {
+          "name": "local:base-molecule-json",
+          "params": [
+            {
+              "name": "$base-molecule-node",
+              "type": "aselement(base-molecule)",
+              "line": 24,
+              "column": 42
+            }
+          ],
+          "line": 24,
+          "column": 0
+        }
+      ],
+      "imports": [
+        {
+          "namespace": "https://pubs.cas.org/modules/lib/common-reference-utils",
+          "prefix": "cru",
+          "line": 3,
+          "column": 0
+        }
+      ],
+      "stats": {
+        "totalVariables": 11,
+        "letBindings": 6,
+        "forBindings": 2,
+        "functionParams": 3,
+        "functions": 3,
+        "imports": 1,
+        "variablesWithScope": 11,
+        "functionsWithParams": 3,
+        "shadowingVars": 9,
+        "shadowedVars": 0
+      }
+    },
+    {
+      "file": "function-params.xq",
+      "success": true,
+      "parseTime": "67.38ms",
+      "memoryUsed": "13.69MB",
+      "errors": [],
+      "variables": [
+        {
+          "type": "function-param",
+          "name": "$item",
+          "line": 3,
+          "column": 36,
+          "scopeStart": 3,
+          "scopeEnd": 7,
+          "function": "local:process-item",
+          "typeDecl": "aselement()"
+        },
+        {
+          "type": "function-param",
+          "name": "$multiplier",
+          "line": 3,
+          "column": 56,
+          "scopeStart": 3,
+          "scopeEnd": 7,
+          "function": "local:process-item",
+          "typeDecl": "asxs:decimal",
+          "shadows": null,
+          "shadowedBy": []
+        },
+        {
+          "type": "let",
+          "name": "$base-value",
+          "line": 4,
+          "column": 6,
+          "scopeStart": 4,
+          "scopeEnd": 6
+        },
+        {
+          "type": "let",
+          "name": "$result",
+          "line": 5,
+          "column": 6,
+          "scopeStart": 5,
+          "scopeEnd": 6
+        },
+        {
+          "type": "function-param",
+          "name": "$value",
+          "line": 9,
+          "column": 37,
+          "scopeStart": 9,
+          "scopeEnd": 14,
+          "function": "local:format-result",
+          "typeDecl": "asxs:decimal"
+        },
+        {
+          "type": "function-param",
+          "name": "$label",
+          "line": 9,
+          "column": 59,
+          "scopeStart": 9,
+          "scopeEnd": 14,
+          "function": "local:format-result",
+          "typeDecl": "asxs:string"
+        },
+        {
+          "type": "let",
+          "name": "$test-item",
+          "line": 16,
+          "column": 4,
+          "scopeStart": 16,
+          "scopeEnd": 19
+        },
+        {
+          "type": "let",
+          "name": "$multiplier",
+          "line": 17,
+          "column": 4,
+          "scopeStart": 17,
+          "scopeEnd": 19,
+          "shadows": null,
+          "shadowedBy": []
+        },
+        {
+          "type": "let",
+          "name": "$calculated",
+          "line": 18,
+          "column": 4,
+          "scopeStart": 18,
+          "scopeEnd": 19
+        }
+      ],
+      "functions": [
+        {
+          "name": "local:process-item",
+          "params": [
+            {
+              "name": "$item",
+              "type": "aselement()",
+              "line": 3,
+              "column": 36
+            },
+            {
+              "name": "$multiplier",
+              "type": "asxs:decimal",
+              "line": 3,
+              "column": 56
+            }
+          ],
+          "line": 3,
+          "column": 0
+        },
+        {
+          "name": "local:format-result",
+          "params": [
+            {
+              "name": "$value",
+              "type": "asxs:decimal",
+              "line": 9,
+              "column": 37
+            },
+            {
+              "name": "$label",
+              "type": "asxs:string",
+              "line": 9,
+              "column": 59
+            }
+          ],
+          "line": 9,
+          "column": 0
+        }
+      ],
+      "imports": [],
+      "stats": {
+        "totalVariables": 9,
+        "letBindings": 5,
+        "forBindings": 0,
+        "functionParams": 4,
+        "functions": 2,
+        "imports": 0,
+        "variablesWithScope": 9,
+        "functionsWithParams": 2,
+        "shadowingVars": 7,
+        "shadowedVars": 0
+      }
+    },
+    {
+      "file": "module-imports.xq",
+      "success": true,
+      "parseTime": "36.33ms",
+      "memoryUsed": "0.05MB",
+      "errors": [],
+      "variables": [
+        {
+          "type": "function-param",
+          "name": "$ref",
+          "line": 5,
+          "column": 41,
+          "scopeStart": 5,
+          "scopeEnd": 13,
+          "function": "local:process-reference",
+          "typeDecl": "aselement(reference)"
+        },
+        {
+          "type": "let",
+          "name": "$rd",
+          "line": 6,
+          "column": 6,
+          "scopeStart": 6,
+          "scopeEnd": 12
+        },
+        {
+          "type": "let",
+          "name": "$source",
+          "line": 7,
+          "column": 6,
+          "scopeStart": 7,
+          "scopeEnd": 12
+        },
+        {
+          "type": "let",
+          "name": "$test-ref",
+          "line": 15,
+          "column": 4,
+          "scopeStart": 15,
+          "scopeEnd": 19
+        }
+      ],
+      "functions": [
+        {
+          "name": "local:process-reference",
+          "params": [
+            {
+              "name": "$ref",
+              "type": "aselement(reference)",
+              "line": 5,
+              "column": 41
+            }
+          ],
+          "line": 5,
+          "column": 0
+        }
+      ],
+      "imports": [
+        {
+          "namespace": "https://pubs.cas.org/modules/lib/common-reference-utils",
+          "prefix": "cru",
+          "line": 3,
+          "column": 0
+        }
+      ],
+      "stats": {
+        "totalVariables": 4,
+        "letBindings": 3,
+        "forBindings": 0,
+        "functionParams": 1,
+        "functions": 1,
+        "imports": 1,
+        "variablesWithScope": 4,
+        "functionsWithParams": 1,
+        "shadowingVars": 4,
+        "shadowedVars": 0
+      }
+    },
+    {
+      "file": "nested-flwor.xq",
+      "success": true,
+      "parseTime": "47.29ms",
+      "memoryUsed": "-4.10MB",
+      "errors": [],
+      "variables": [
+        {
+          "type": "for",
+          "name": "$doc",
+          "line": 3,
+          "column": 4,
+          "scopeStart": 3,
+          "scopeEnd": 15
+        },
+        {
+          "type": "let",
+          "name": "$id",
+          "line": 4,
+          "column": 4,
+          "scopeStart": 4,
+          "scopeEnd": 15
+        },
+        {
+          "type": "for",
+          "name": "$item",
+          "line": 8,
+          "column": 6,
+          "scopeStart": 8,
+          "scopeEnd": 15
+        },
+        {
+          "type": "let",
+          "name": "$name",
+          "line": 9,
+          "column": 6,
+          "scopeStart": 9,
+          "scopeEnd": 15
+        },
+        {
+          "type": "let",
+          "name": "$value",
+          "line": 10,
+          "column": 6,
+          "scopeStart": 10,
+          "scopeEnd": 15
+        }
+      ],
+      "functions": [],
+      "imports": [],
+      "stats": {
+        "totalVariables": 5,
+        "letBindings": 3,
+        "forBindings": 2,
+        "functionParams": 0,
+        "functions": 0,
+        "imports": 0,
+        "variablesWithScope": 5,
+        "functionsWithParams": 0,
+        "shadowingVars": 5,
+        "shadowedVars": 0
+      }
+    },
+    {
+      "file": "shadowing-basic.xq",
+      "success": true,
+      "parseTime": "6.90ms",
+      "memoryUsed": "7.22MB",
+      "errors": [],
+      "variables": [
+        {
+          "type": "let",
+          "name": "$x",
+          "line": 3,
+          "column": 4,
+          "scopeStart": 3,
+          "scopeEnd": 8,
+          "shadows": null,
+          "shadowedBy": [
+            5,
+            7
+          ]
+        },
+        {
+          "type": "let",
+          "name": "$x",
+          "line": 5,
+          "column": 6,
+          "scopeStart": 5,
+          "scopeEnd": 8,
+          "shadows": 3,
+          "shadowedBy": [
+            7
+          ]
+        },
+        {
+          "type": "let",
+          "name": "$x",
+          "line": 7,
+          "column": 8,
+          "scopeStart": 7,
+          "scopeEnd": 8,
+          "shadows": 5,
+          "shadowedBy": []
+        }
+      ],
+      "functions": [],
+      "imports": [],
+      "stats": {
+        "totalVariables": 3,
+        "letBindings": 3,
+        "forBindings": 0,
+        "functionParams": 0,
+        "functions": 0,
+        "imports": 0,
+        "variablesWithScope": 3,
+        "functionsWithParams": 0,
+        "shadowingVars": 2,
+        "shadowedVars": 2
+      }
+    },
+    {
+      "file": "shadowing-complex.xq",
+      "success": true,
+      "parseTime": "33.25ms",
+      "memoryUsed": "-52.37MB",
+      "errors": [],
+      "variables": [
+        {
+          "type": "let",
+          "name": "$outer",
+          "line": 3,
+          "column": 4,
+          "scopeStart": 3,
+          "scopeEnd": 14,
+          "shadows": null,
+          "shadowedBy": [
+            5,
+            8
+          ]
+        },
+        {
+          "type": "for",
+          "name": "$item",
+          "line": 4,
+          "column": 4,
+          "scopeStart": 4,
+          "scopeEnd": 14,
+          "shadows": null,
+          "shadowedBy": [
+            9
+          ]
+        },
+        {
+          "type": "let",
+          "name": "$outer",
+          "line": 5,
+          "column": 4,
+          "scopeStart": 5,
+          "scopeEnd": 14,
+          "shadows": 3,
+          "shadowedBy": [
+            8
+          ]
+        },
+        {
+          "type": "for",
+          "name": "$nested",
+          "line": 7,
+          "column": 6,
+          "scopeStart": 7,
+          "scopeEnd": 14
+        },
+        {
+          "type": "let",
+          "name": "$outer",
+          "line": 8,
+          "column": 6,
+          "scopeStart": 8,
+          "scopeEnd": 14,
+          "shadows": 5,
+          "shadowedBy": []
+        },
+        {
+          "type": "let",
+          "name": "$item",
+          "line": 9,
+          "column": 6,
+          "scopeStart": 9,
+          "scopeEnd": 14,
+          "shadows": 4,
+          "shadowedBy": []
+        }
+      ],
+      "functions": [],
+      "imports": [],
+      "stats": {
+        "totalVariables": 6,
+        "letBindings": 4,
+        "forBindings": 2,
+        "functionParams": 0,
+        "functions": 0,
+        "imports": 0,
+        "variablesWithScope": 6,
+        "functionsWithParams": 0,
+        "shadowingVars": 4,
+        "shadowedVars": 3
+      }
+    },
+    {
+      "file": "shadowing-function.xq",
+      "success": true,
+      "parseTime": "13.90ms",
+      "memoryUsed": "0.80MB",
+      "errors": [],
+      "variables": [
+        {
+          "type": "function-param",
+          "name": "$value",
+          "line": 3,
+          "column": 31,
+          "scopeStart": 3,
+          "scopeEnd": 6,
+          "function": "local:process",
+          "typeDecl": "asxs:decimal",
+          "shadows": null,
+          "shadowedBy": [
+            4
+          ]
+        },
+        {
+          "type": "let",
+          "name": "$value",
+          "line": 4,
+          "column": 6,
+          "scopeStart": 4,
+          "scopeEnd": 5,
+          "shadows": 3,
+          "shadowedBy": []
+        },
+        {
+          "type": "let",
+          "name": "$value",
+          "line": 8,
+          "column": 4,
+          "scopeStart": 8,
+          "scopeEnd": 9,
+          "shadows": null,
+          "shadowedBy": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "local:process",
+          "params": [
+            {
+              "name": "$value",
+              "type": "asxs:decimal",
+              "line": 3,
+              "column": 31
+            }
+          ],
+          "line": 3,
+          "column": 0
+        }
+      ],
+      "imports": [],
+      "stats": {
+        "totalVariables": 3,
+        "letBindings": 2,
+        "forBindings": 0,
+        "functionParams": 1,
+        "functions": 1,
+        "imports": 0,
+        "variablesWithScope": 3,
+        "functionsWithParams": 1,
+        "shadowingVars": 1,
+        "shadowedVars": 1
+      }
+    },
+    {
+      "file": "simple-let.xq",
+      "success": true,
+      "parseTime": "15.99ms",
+      "memoryUsed": "5.22MB",
+      "errors": [],
+      "variables": [
+        {
+          "type": "let",
+          "name": "$nodes",
+          "line": 3,
+          "column": 4,
+          "scopeStart": 3,
+          "scopeEnd": 4
+        }
+      ],
+      "functions": [],
+      "imports": [],
+      "stats": {
+        "totalVariables": 1,
+        "letBindings": 1,
+        "forBindings": 0,
+        "functionParams": 0,
+        "functions": 0,
+        "imports": 0,
+        "variablesWithScope": 1,
+        "functionsWithParams": 0,
+        "shadowingVars": 1,
+        "shadowedVars": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,168 @@
+{
+  "file": "complex-pathway.xq",
+  "success": true,
+  "parseTime": "623.29ms",
+  "memoryUsed": "48.10MB",
+  "errors": [],
+  "variables": [
+    {
+      "type": "function-param",
+      "name": "$step-doc",
+      "line": 5,
+      "column": 38,
+      "scopeStart": 5,
+      "scopeEnd": 12,
+      "function": "local:best-step-name",
+      "typeDecl": "aselement(pathway-step)",
+      "shadows": null,
+      "shadowedBy": []
+    },
+    {
+      "type": "let",
+      "name": "$preferred",
+      "line": 6,
+      "column": 6,
+      "scopeStart": 6,
+      "scopeEnd": 11
+    },
+    {
+      "type": "function-param",
+      "name": "$parent-node",
+      "line": 14,
+      "column": 44,
+      "scopeStart": 14,
+      "scopeEnd": 22,
+      "function": "local:molecule-identifiers",
+      "typeDecl": "aselement()?"
+    },
+    {
+      "type": "for",
+      "name": "$identifier-node",
+      "line": 16,
+      "column": 8,
+      "scopeStart": 16,
+      "scopeEnd": 20
+    },
+    {
+      "type": "function-param",
+      "name": "$base-molecule-node",
+      "line": 24,
+      "column": 42,
+      "scopeStart": 24,
+      "scopeEnd": 30,
+      "function": "local:base-molecule-json",
+      "typeDecl": "aselement(base-molecule)"
+    },
+    {
+      "type": "let",
+      "name": "$pathway-uri",
+      "line": 32,
+      "column": 4,
+      "scopeStart": 32,
+      "scopeEnd": 55
+    },
+    {
+      "type": "let",
+      "name": "$pathway-doc",
+      "line": 33,
+      "column": 4,
+      "scopeStart": 33,
+      "scopeEnd": 55
+    },
+    {
+      "type": "for",
+      "name": "$pathway-step-ref",
+      "line": 43,
+      "column": 10,
+      "scopeStart": 43,
+      "scopeEnd": 53
+    },
+    {
+      "type": "let",
+      "name": "$rank",
+      "line": 44,
+      "column": 10,
+      "scopeStart": 44,
+      "scopeEnd": 53
+    },
+    {
+      "type": "let",
+      "name": "$step-uri",
+      "line": 45,
+      "column": 10,
+      "scopeStart": 45,
+      "scopeEnd": 53
+    },
+    {
+      "type": "let",
+      "name": "$step-doc",
+      "line": 46,
+      "column": 10,
+      "scopeStart": 46,
+      "scopeEnd": 53,
+      "shadows": null,
+      "shadowedBy": []
+    }
+  ],
+  "functions": [
+    {
+      "name": "local:best-step-name",
+      "params": [
+        {
+          "name": "$step-doc",
+          "type": "aselement(pathway-step)",
+          "line": 5,
+          "column": 38
+        }
+      ],
+      "line": 5,
+      "column": 0
+    },
+    {
+      "name": "local:molecule-identifiers",
+      "params": [
+        {
+          "name": "$parent-node",
+          "type": "aselement()?",
+          "line": 14,
+          "column": 44
+        }
+      ],
+      "line": 14,
+      "column": 0
+    },
+    {
+      "name": "local:base-molecule-json",
+      "params": [
+        {
+          "name": "$base-molecule-node",
+          "type": "aselement(base-molecule)",
+          "line": 24,
+          "column": 42
+        }
+      ],
+      "line": 24,
+      "column": 0
+    }
+  ],
+  "imports": [
+    {
+      "namespace": "https://pubs.cas.org/modules/lib/common-reference-utils",
+      "prefix": "cru",
+      "line": 3,
+      "column": 0
+    }
+  ],
+  "stats": {
+    "totalVariables": 11,
+    "letBindings": 6,
+    "forBindings": 2,
+    "functionParams": 3,
+    "functions": 3,
+    "imports": 1,
+    "variablesWithScope": 11,
+    "functionsWithParams": 3,
+    "shadowingVars": 9,
+    "shadowedVars": 0
+  }
+}
