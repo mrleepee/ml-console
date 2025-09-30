@@ -2,6 +2,7 @@ import { buildXQueryLanguageConfig } from './monacoXqueryConfig';
 import { XQueryFoldingProvider } from './xqueryFoldingProvider';
 import { XQueryCommentProvider } from './xqueryCommentProvider';
 import { registerXQueryCompletionProvider } from './monacoXqueryCompletion';
+import { registerXQueryFunctionCompletionProvider } from './monacoXqueryFunctionCompletion';
 
 export const XQUERY_LANGUAGE = 'xquery-ml';
 
@@ -362,6 +363,13 @@ export const registerXQueryLanguage = async (monaco, overrides) => {
     await registerXQueryCompletionProvider(monaco, XQUERY_LANGUAGE);
   } catch (error) {
     console.warn('Failed to register XQuery completion provider:', error);
+  }
+
+  // Register XQuery function completion provider
+  try {
+    await registerXQueryFunctionCompletionProvider(monaco, XQUERY_LANGUAGE);
+  } catch (error) {
+    console.warn('Failed to register XQuery function completion provider:', error);
   }
 
   // Register comment toggle commands using actions instead of commands

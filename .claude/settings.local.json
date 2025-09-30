@@ -82,6 +82,7 @@
       "mcp__github__search_pull_requests",
       "mcp__github__search_repositories",
       "mcp__github__get_file_contents"
+      "Bash(gh issue create:*)"
     ],
     "deny": [],
     "ask": []
