@@ -68,9 +68,8 @@ const THEME_CATEGORY_MAP = {
   'Zenburnesque': THEME_CATEGORIES.DARK,
   'monoindustrial': THEME_CATEGORIES.DARK,
 
-  // High contrast themes (these would need special handling)
-  'hc-black': THEME_CATEGORIES.HIGH_CONTRAST,
-  'hc-light': THEME_CATEGORIES.HIGH_CONTRAST,
+  // Note: Built-in Monaco themes (vs, vs-dark, hc-black) are handled separately in ThemeSelector
+  // Note: hc-light removed - Monaco doesn't properly support it, causes loading errors
 };
 
 /**

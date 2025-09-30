@@ -5,10 +5,14 @@ const Editor = React.lazy(() => import("@monaco-editor/react"));
 import { defineCustomMonacoThemes, getEnhancedTheme, loadAndDefineTheme, preloadPopularThemes } from "../utils/monacoThemes";
 import { registerXQueryLanguage } from "../utils/monacoXquery";
 import { isValidTheme } from "../utils/themeLoader";
+import useEditorPreferences from "../hooks/useEditorPreferences";
 
 export default function MonacoViewer({ value = "", language = "plaintext", theme = "vs" }) {
   const containerRef = useRef(null);
   const editorRef = useRef(null);
+
+  // Get editor preferences for consistent styling
+  const { getMonacoOptions, preferences } = useEditorPreferences();
 
   const formatContent = useCallback(async () => {
     if (
@@ -95,6 +99,19 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
     }
   }, [theme]);
 
+  // Update Monaco editor options when preferences change (CRITICAL FIX for font size)
+  useEffect(() => {
+    if (editorRef.current) {
+      const newOptions = getMonacoOptions({
+        readOnly: true,
+        renderLineHighlight: "none", // Keep this specific to viewer
+        minimap: { enabled: false }, // Always disabled for viewer
+        dragAndDrop: false, // Disabled for read-only viewer
+      });
+      editorRef.current.updateOptions(newOptions);
+    }
+  }, [preferences, getMonacoOptions]);
+
   return (
     <div
       ref={containerRef}
@@ -106,34 +123,15 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
           value={value}
           language={language}
           onMount={handleMount}
-          theme={isValidTheme(theme) ? 'vs-dark' : getEnhancedTheme(theme)}
+          theme={isValidTheme(theme) ? getEnhancedTheme(theme) : 'vs-dark'}
           width="100%"
           height="100%"
-          options={{
+          options={getMonacoOptions({
             readOnly: true,
-            automaticLayout: false,
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            wordWrap: "on",
-            renderLineHighlight: "none",
-            fontSize: 12,
-            lineNumbers: "on",
-            folding: true,
-            foldingStrategy: "indentation",
-            showFoldingControls: "mouseover",
-            lineDecorationsWidth: 10,
-            lineNumbersMinChars: 3,
-            renderWhitespace: "selection",
-            selectionHighlight: true,
-            occurrencesHighlight: true,
-            insertSpaces: true,
-            tabSize: 2,
-            detectIndentation: true,
-            formatOnPaste: true,
-            formatOnType: false,
-            contextmenu: true,
-            dragAndDrop: true,
-          }}
+            renderLineHighlight: "none", // Keep this specific to viewer
+            minimap: { enabled: false }, // Always disabled for viewer
+            dragAndDrop: false, // Disabled for read-only viewer
+          })}
         />
       </Suspense>
     </div>

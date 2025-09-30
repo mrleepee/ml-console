@@ -78,6 +78,10 @@
       "Bash(gh pr create:*)",
       "Bash(git log:*)",
       "Bash(gh pr view:*)",
+      "Bash(gh issue create:*)",
+      "mcp__github__search_pull_requests",
+      "mcp__github__search_repositories",
+      "mcp__github__get_file_contents"
       "Bash(gh issue create:*)"
     ],
     "deny": [],
