@@ -1,6 +1,7 @@
 import { buildXQueryLanguageConfig } from './monacoXqueryConfig';
 import { XQueryFoldingProvider } from './xqueryFoldingProvider';
 import { XQueryCommentProvider } from './xqueryCommentProvider';
+import { registerXQueryCompletionProvider } from './monacoXqueryCompletion';
 
 export const XQUERY_LANGUAGE = 'xquery-ml';
 
@@ -18,7 +19,7 @@ const instanceSignatures = new WeakMap();
 const CONTEXTUAL_FLWOR_KEYWORDS = ['group', 'order', 'by', 'stable', 'ascending', 'descending', 'empty', 'greatest', 'least'];
 const CONTEXTUAL_FLWOR_KEYWORD_LOOKUP = new Set(CONTEXTUAL_FLWOR_KEYWORDS);
 
-export const registerXQueryLanguage = (monaco, overrides) => {
+export const registerXQueryLanguage = async (monaco, overrides) => {
   if (!monaco?.languages) return;
 
   const config = buildXQueryLanguageConfig({ overrides });
@@ -354,6 +355,13 @@ export const registerXQueryLanguage = (monaco, overrides) => {
       command: 'xquery.comment.block.toggle',
       when: `editorLangId == '${XQUERY_LANGUAGE}'`
     }]);
+  }
+
+  // Register XQuery variable completion provider
+  try {
+    await registerXQueryCompletionProvider(monaco, XQUERY_LANGUAGE);
+  } catch (error) {
+    console.warn('Failed to register XQuery completion provider:', error);
   }
 
   // Register comment toggle commands using actions instead of commands
