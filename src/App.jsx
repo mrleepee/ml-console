@@ -7,7 +7,7 @@ import {
 } from "./services/responseService";
 import QueryEditor from "./components/QueryEditor";
 import QueryEditorControls from "./components/QueryEditorControls";
-import useEditorPreferences from "./hooks/useEditorPreferences";
+import useEditorPreferences, { EditorPreferencesProvider } from "./hooks/useEditorPreferences";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
 import { defineCustomMonacoThemes, getEnhancedTheme } from "./utils/monacoThemes";
 import { registerXQueryLanguage, XQUERY_LANGUAGE } from "./utils/monacoXquery";

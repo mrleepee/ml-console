@@ -1,6 +1,7 @@
+import React from 'react';
 import { renderHook, act } from '@testing-library/react';
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import useEditorPreferences from './useEditorPreferences';
+import useEditorPreferences, { EditorPreferencesProvider } from './useEditorPreferences';
 
 // Mock localStorage
 const localStorageMock = {
@@ -12,6 +13,11 @@ const localStorageMock = {
 
 global.localStorage = localStorageMock;
 
+// Wrapper component for tests
+const wrapper = ({ children }) => {
+  return React.createElement(EditorPreferencesProvider, null, children);
+};
+
 describe('useEditorPreferences', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -19,7 +25,7 @@ describe('useEditorPreferences', () => {
   });
 
   test('initializes with default preferences', () => {
-    const { result } = renderHook(() => useEditorPreferences());
+    const { result } = renderHook(() => useEditorPreferences(), { wrapper });
 
     expect(result.current.preferences).toEqual({
       fontSize: 12,
@@ -46,7 +52,7 @@ describe('useEditorPreferences', () => {
     };
     localStorageMock.getItem.mockReturnValue(JSON.stringify(storedPreferences));
 
-    const { result } = renderHook(() => useEditorPreferences());
+    const { result } = renderHook(() => useEditorPreferences(), { wrapper });
 
     expect(result.current.preferences).toMatchObject(storedPreferences);
     expect(localStorageMock.getItem).toHaveBeenCalledWith('editorPreferences');
@@ -56,14 +62,14 @@ describe('useEditorPreferences', () => {
     localStorageMock.getItem.mockReturnValue('invalid json');
     console.warn = vi.fn(); // Mock console.warn
 
-    const { result } = renderHook(() => useEditorPreferences());
+    const { result } = renderHook(() => useEditorPreferences(), { wrapper });
 
     expect(result.current.preferences.fontSize).toBe(12); // Should use defaults
     expect(console.warn).toHaveBeenCalledWith('Failed to load editor preferences:', expect.any(Error));
   });
 
   test('saves preferences to localStorage when updated', () => {
-    const { result } = renderHook(() => useEditorPreferences());
+    const { result } = renderHook(() => useEditorPreferences(), { wrapper });
 
     act(() => {
       result.current.updatePreference('fontSize', 16);
@@ -76,7 +82,7 @@ describe('useEditorPreferences', () => {
   });
 
   test('updatePreference updates single preference', () => {
-    const { result } = renderHook(() => useEditorPreferences());
+    const { result } = renderHook(() => useEditorPreferences(), { wrapper });
 
     act(() => {
       result.current.updatePreference('fontSize', 16);
@@ -87,7 +93,7 @@ describe('useEditorPreferences', () => {
   });
 
   test('updatePreferences updates multiple preferences', () => {
-    const { result } = renderHook(() => useEditorPreferences());
+    const { result } = renderHook(() => useEditorPreferences(), { wrapper });
 
     act(() => {
       result.current.updatePreferences({
@@ -104,7 +110,7 @@ describe('useEditorPreferences', () => {
   });
 
   test('resetPreferences restores defaults', () => {
-    const { result } = renderHook(() => useEditorPreferences());
+    const { result } = renderHook(() => useEditorPreferences(), { wrapper });
 
     // First change some preferences
     act(() => {
@@ -135,7 +141,7 @@ describe('useEditorPreferences', () => {
   });
 
   test('getMonacoOptions returns correct Monaco editor options', () => {
-    const { result } = renderHook(() => useEditorPreferences());
+    const { result } = renderHook(() => useEditorPreferences(), { wrapper });
 
     const options = result.current.getMonacoOptions();
 
@@ -161,7 +167,7 @@ describe('useEditorPreferences', () => {
   });
 
   test('getMonacoOptions applies overrides', () => {
-    const { result } = renderHook(() => useEditorPreferences());
+    const { result } = renderHook(() => useEditorPreferences(), { wrapper });
 
     const options = result.current.getMonacoOptions({
       readOnly: true,
@@ -176,7 +182,7 @@ describe('useEditorPreferences', () => {
   });
 
   test('font size helpers work correctly', () => {
-    const { result } = renderHook(() => useEditorPreferences());
+    const { result } = renderHook(() => useEditorPreferences(), { wrapper });
 
     // Test increase
     act(() => {
@@ -204,7 +210,7 @@ describe('useEditorPreferences', () => {
   });
 
   test('toggle helpers work correctly', () => {
-    const { result } = renderHook(() => useEditorPreferences());
+    const { result } = renderHook(() => useEditorPreferences(), { wrapper });
 
     // Test line numbers toggle
     expect(result.current.preferences.lineNumbers).toBe('on');
@@ -233,7 +239,7 @@ describe('useEditorPreferences', () => {
   });
 
   test('provides correct option arrays for UI components', () => {
-    const { result } = renderHook(() => useEditorPreferences());
+    const { result } = renderHook(() => useEditorPreferences(), { wrapper });
 
     expect(result.current.fontSizes).toEqual([10, 12, 14, 16, 18, 20, 24]);
     expect(result.current.lineNumberOptions).toEqual([
@@ -260,7 +266,7 @@ describe('useEditorPreferences', () => {
     });
     console.warn = vi.fn();
 
-    const { result } = renderHook(() => useEditorPreferences());
+    const { result } = renderHook(() => useEditorPreferences(), { wrapper });
 
     act(() => {
       result.current.updatePreference('fontSize', 16);
