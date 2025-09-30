@@ -164,9 +164,18 @@ export async function registerXQueryCompletionProvider(monaco, languageId) {
           };
         });
 
+        // Log completion results for debugging
+        if (suggestions.length === 0) {
+          console.log('[XQuery Completion] No variables to suggest at this position');
+        } else {
+          console.log('[XQuery Completion] Suggesting:', suggestions.map(s => s.label).join(', '));
+        }
+
+        // Return with incomplete: false to signal we're done
+        // This prevents Monaco from showing word-based suggestions
         return {
           suggestions,
-          dispose: () => {}
+          incomplete: false
         };
       } catch (error) {
         console.error('[XQuery Completion] Fatal error:', error);
