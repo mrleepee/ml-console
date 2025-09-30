@@ -129,9 +129,7 @@ export default function QueryConsole({
         style={{ height: '40vh', minHeight: '260px' }}
       >
         <div className="h-full w-full min-w-0">
-          {/* key forces clean re-measure when sidebar toggles */}
           <QueryEditor
-            key={showHistory ? 'withHistory' : 'withoutHistory'}
             value={query}
             onChange={onQueryChange}
             onKeyDown={handleQueryKeyDown}
