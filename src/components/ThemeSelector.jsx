@@ -28,10 +28,10 @@ export function EnhancedThemeSelector({
 
   // Built-in themes for backward compatibility
   const builtInThemes = [
-    { name: 'vs', displayName: 'Light (Visual Studio)', category: 'built-in' },
-    { name: 'vs-dark', displayName: 'Dark (Visual Studio Dark)', category: 'built-in' },
-    { name: 'hc-black', displayName: 'High Contrast Black', category: 'built-in' },
-    { name: 'hc-light', displayName: 'High Contrast Light', category: 'built-in' }
+    { id: 'vs', name: 'vs', displayName: 'Light (Visual Studio)', category: 'built-in' },
+    { id: 'vs-dark', name: 'vs-dark', displayName: 'Dark (Visual Studio Dark)', category: 'built-in' },
+    { id: 'hc-black', name: 'hc-black', displayName: 'High Contrast Black', category: 'built-in' }
+    // Note: hc-light removed - Monaco doesn't properly support it, causes loading errors
   ];
 
   // Filter themes based on search and category
@@ -166,7 +166,7 @@ export function EnhancedThemeSelector({
                 <div className="py-1">
                   {filteredThemes.map((theme) => (
                     <button
-                      key={theme.id}
+                      key={`${theme.category}-${theme.id || theme.name}`}
                       type="button"
                       className={`w-full px-3 py-2 text-left hover:bg-base-200 flex items-center justify-between group ${
                         value === theme.name ? 'bg-primary text-primary-content' : ''
