@@ -123,7 +123,7 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
           value={value}
           language={language}
           onMount={handleMount}
-          theme={isValidTheme(theme) ? 'vs-dark' : getEnhancedTheme(theme)}
+          theme={isValidTheme(theme) ? getEnhancedTheme(theme) : 'vs-dark'}
           width="100%"
           height="100%"
           options={getMonacoOptions({

@@ -212,7 +212,7 @@ export default function QueryEditor({
         language={language}
         onChange={optimizedHandleChange}
         onMount={handleMount}
-        theme={isValidTheme(theme) ? 'vs-dark' : getEnhancedTheme(theme)}
+        theme={isValidTheme(theme) ? getEnhancedTheme(theme) : 'vs-dark'}
         width="100%"
         height="100%"               // <-- critical: fill the container we control
         options={{
