@@ -104,18 +104,18 @@ export default function useEditorPreferences() {
     };
   }, [preferences]);
 
-  // Font size helpers with 1px increments
+  // Font size helpers with 2px increments for better UX
   const increaseFontSize = useCallback(() => {
     const maxSize = 32; // Maximum font size
     if (preferences.fontSize < maxSize) {
-      updatePreference('fontSize', preferences.fontSize + 1);
+      updatePreference('fontSize', preferences.fontSize + 2);
     }
   }, [preferences.fontSize, updatePreference]);
 
   const decreaseFontSize = useCallback(() => {
-    const minSize = 8; // Minimum font size
+    const minSize = 10; // Minimum font size
     if (preferences.fontSize > minSize) {
-      updatePreference('fontSize', preferences.fontSize - 1);
+      updatePreference('fontSize', preferences.fontSize - 2);
     }
   }, [preferences.fontSize, updatePreference]);
 
@@ -146,6 +146,7 @@ export default function useEditorPreferences() {
     toggleWordWrap,
     toggleMinimap,
     // Available options for UI components
+    fontSizes: [10, 12, 14, 16, 18, 20, 24],
     lineNumberOptions: [
       { value: 'on', label: 'On' },
       { value: 'off', label: 'Off' },
