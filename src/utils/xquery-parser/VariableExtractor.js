@@ -43,11 +43,17 @@ class ScopeExtractionListener extends XQueryParserListener {
   enterFunctionDecl(ctx) {
     const funcName = ctx.name ? ctx.name.getText() : 'unknown';
 
+    // Extract return type if present (e.g., "as element()")
+    const returnType = ctx.returnType ? ctx.returnType.getText() : null;
+
     const func = {
       name: funcName,
       params: [],
+      returnType: returnType,
       line: ctx.start.line,
-      column: ctx.start.column
+      column: ctx.start.column,
+      // Generate signature for completion display
+      signature: null  // Will be populated after params are extracted
     };
 
     this.functions.push(func);
@@ -68,6 +74,19 @@ class ScopeExtractionListener extends XQueryParserListener {
       scope.variables.forEach(v => {
         v.scopeEnd = endLine;
       });
+    }
+
+    // Generate function signature for completion
+    if (this.currentFunction) {
+      const paramsList = this.currentFunction.params
+        .map(p => p.type ? `${p.name} as ${p.type}` : p.name)
+        .join(', ');
+
+      const returnPart = this.currentFunction.returnType
+        ? ` as ${this.currentFunction.returnType}`
+        : '';
+
+      this.currentFunction.signature = `${this.currentFunction.name}(${paramsList})${returnPart}`;
     }
 
     this.popScope();
