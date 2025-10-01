@@ -94,62 +94,163 @@ dynamic import will not move module into another chunk.
 - **Features**: Gzip/Brotli size analysis, interactive treemap
 - **Manual Chunks**: Separated Monaco wrapper into `monaco-DGO1LHqt.js`
 
-## Recommendations for Phase 2
+## Phase 2 Implementation Plan
 
-### 1. Code Splitting Opportunities
+### Priority 1: Code Split ANTLR Parser (⭐⭐⭐⭐⭐)
 
-**High Priority**:
-- Split ANTLR parser (currently ~150 KB in main bundle)
-- Lazy load Monaco on editor mount
-- Split theme loader utilities
+**Impact**: Reduce initial bundle by ~1.2 MB (65%) → **Target: <600 KB initial**
 
-**Implementation**:
+**Current Problem**:
+- Parser is imported statically in multiple files
+- Entire parser loads on app startup
+- Users without XQuery editing don't need it
+
+**Solution**: Lazy load parser only when XQuery language support is needed
+
+**Implementation Steps**:
+
+1. **Create async parser loader** (`src/utils/xquery-parser/loader.js`):
 ```javascript
-// Lazy load ANTLR parser
-const { XQueryLexer, XQueryParser } = await import('./antlr/XQueryParser');
+// Lazy load ANTLR parser modules
+let parserPromise = null;
 
-// Lazy load Monaco editor
-const MonacoEditor = React.lazy(() => import('./components/QueryEditor'));
-```
-
-### 2. Fix monacoXquery.js Import Issue
-
-**Current**: Mixed static/dynamic imports prevent chunking
-**Solution**: Convert all imports to dynamic OR static consistently
-
-**Option A** (Dynamic):
-```javascript
-// Remove static imports from App.jsx, QueryEditor.jsx, MonacoViewer.jsx
-// Keep only dynamic import in monacoOptimizations.js
-const { registerXQueryLanguage } = await import('./utils/monacoXquery');
-```
-
-**Option B** (Static):
-```javascript
-// Remove dynamic import from monacoOptimizations.js
-// Keep only static imports (current approach)
-import { registerXQueryLanguage } from './utils/monacoXquery';
-```
-
-### 3. Monaco Optimization (Conditional)
-
-**Current Analysis Needed**:
-- Use `dist/stats.html` to identify Monaco's actual size in bundle
-- If Monaco > 300 KB, consider `vite-plugin-monaco-editor`
-- May not be needed if already tree-shaken
-
-### 4. Tailwind CSS Optimization
-
-**Current**: 94 KB (15.55 KB gzipped)
-**Opportunity**: Audit unused DaisyUI components
-
-```javascript
-// tailwind.config.js
-module.exports = {
-  content: ['./src/**/*.{js,jsx}'],
-  safelist: [], // Only include used classes
+export async function loadXQueryParser() {
+  if (!parserPromise) {
+    parserPromise = Promise.all([
+      import('./XQueryLexer.js'),
+      import('./XQueryParser.js'),
+      import('./VariableExtractor.js'),
+      import('antlr4')
+    ]);
+  }
+  return parserPromise;
 }
 ```
+
+2. **Update monacoXquery.js** to load parser on-demand:
+```javascript
+// Replace static imports with dynamic
+export async function registerXQueryLanguage(monaco) {
+  const [{ XQueryLexer }, { XQueryParser }, { VariableExtractor }] =
+    await loadXQueryParser();
+
+  // Register language with loaded modules
+  monaco.languages.register({ id: 'xquery' });
+  // ... rest of registration
+}
+```
+
+3. **Update QueryEditor.jsx** to handle async registration:
+```javascript
+useEffect(() => {
+  loader.init().then(async monaco => {
+    monacoRef.current = monaco;
+    defineCustomMonacoThemes(monaco);
+
+    // Lazy load XQuery language support
+    if (language === 'xquery') {
+      await monacoOptimizationManager.registerXQueryLanguageOptimized(monaco);
+    }
+  });
+}, [language]); // Re-run when language changes
+```
+
+**Expected Result**:
+- Initial bundle: ~600 KB (down from 1.79 MB)
+- XQuery chunk: ~1.2 MB (loads on first XQuery editor mount)
+- First load improvement: **67% reduction**
+
+### Priority 2: Fix monacoXquery.js Mixed Import Warning (⭐⭐⭐⭐)
+
+**Current Issue**:
+```
+monacoXquery.js is dynamically imported by monacoOptimizations.js
+but also statically imported by App.jsx, QueryEditor.jsx, MonacoViewer.jsx
+```
+
+**Solution**: Convert ALL imports to dynamic (aligns with Priority 1)
+
+**Files to Update**:
+1. Remove static imports from:
+   - `src/App.jsx`
+   - `src/components/QueryEditor.jsx`
+   - `src/components/MonacoViewer.jsx`
+
+2. Keep only dynamic import in `monacoOptimizations.js`
+
+**Expected Result**:
+- Build warning eliminated
+- Enables proper code splitting
+- monacoXquery.js can be chunked separately
+
+### Priority 3: Lazy Load YAML Parser (⭐⭐⭐)
+
+**Impact**: Reduce initial bundle by ~80 KB (4.3%)
+
+**Current Problem**:
+- YAML library imported statically for xquery.yaml config
+- Entire YAML parser loaded upfront
+- Only needed when registering XQuery language
+
+**Solution**: Convert YAML to JSON at build time OR lazy load
+
+**Option A: Build-time conversion** (Recommended):
+```javascript
+// vite.config.js - Add custom plugin
+function yamlToJson() {
+  return {
+    name: 'yaml-to-json',
+    transform(code, id) {
+      if (id.endsWith('?raw') && id.includes('.yaml')) {
+        const yaml = require('yaml');
+        const parsed = yaml.parse(code);
+        return `export default ${JSON.stringify(parsed)}`;
+      }
+    }
+  };
+}
+```
+
+**Option B: Lazy load YAML parser**:
+```javascript
+// marklogicConfigLoader.js
+async function loadConfig() {
+  const yaml = await import('yaml');
+  const config = await fetch('./config/marklogic/xquery.yaml?raw');
+  return yaml.parse(await config.text());
+}
+```
+
+**Expected Result**:
+- Remove yaml dependency from main bundle (-80 KB)
+- Faster initial load
+
+### Priority 4: Analyze Monaco Editor Size (⭐⭐)
+
+**Current State**:
+- Monaco wrapper already code-split (monaco-DGO1LHqt.js: 22 KB)
+- Monaco editor core embedded in main bundle
+- Need to measure actual Monaco size
+
+**Investigation Needed**:
+- Monaco may already be efficiently tree-shaken
+- Check if `@monaco-editor/react` includes full editor
+- Consider manual Monaco loader if bundle is large
+
+**Deferred until after Priority 1-3** (may not be needed)
+
+### Priority 5: Tailwind CSS Optimization (⭐)
+
+**Current**: 94 KB raw / 15.55 KB gzipped
+
+**Low Priority** because:
+- Gzip compression very effective (83% reduction)
+- Only 15.55 KB over network
+- Other optimizations have higher impact
+
+**Future Consideration**:
+- Audit unused DaisyUI components
+- Consider PurgeCSS for additional reduction
 
 ## Success Metrics
 
@@ -159,31 +260,109 @@ module.exports = {
 - ✅ Gzip/Brotli sizes measured
 - ✅ Baseline metrics documented
 
-### Phase 2 Targets
-- Main bundle < 800 KB (currently 1.24 MB) - **reduce by 35%**
-- First load gzipped < 200 KB (currently 256 KB) - **reduce by 22%**
-- Code split ANTLR parser (separate chunk)
-- Resolve monacoXquery.js warning
+### Phase 2 Targets (Updated with Detailed Analysis)
 
-## Visualizer Analysis
+| Metric | Current | Target | Improvement |
+|--------|---------|--------|-------------|
+| **Initial Bundle** | 1.79 MB | <600 KB | **67% reduction** |
+| **Initial Gzipped** | 327 KB | <150 KB | **54% reduction** |
+| **XQuery Chunk** | (in main) | ~1.2 MB | Lazy loaded |
+| **Build Warnings** | 1 mixed import | 0 | **100% resolved** |
 
-Open `dist/stats.html` in a browser to see:
-- Interactive treemap of bundle composition
-- Gzip/Brotli size comparisons
-- Module-by-module size breakdown
-- Which dependencies contribute most to bundle size
+**Priority Implementation Order**:
+1. ⭐⭐⭐⭐⭐ Code split ANTLR parser → -1.2 MB
+2. ⭐⭐⭐⭐ Fix monacoXquery.js imports → eliminates warning
+3. ⭐⭐⭐ Lazy load YAML parser → -80 KB
+4. ⭐⭐ Investigate Monaco size (conditional)
+5. ⭐ CSS optimization (future)
 
-**Key Questions to Answer**:
-1. How much space does Monaco actually take?
-2. How large is the ANTLR parser?
-3. Which npm packages are the largest?
-4. Are there duplicate dependencies?
+## Detailed Dependency Analysis (via dist/stats.html)
+
+### Top 10 Largest Dependencies
+
+**Total Bundle**: 1.79 MB raw / 327.34 KB gzipped
+
+| Dependency | Raw Size | % of Bundle | Gzipped | Description |
+|------------|----------|-------------|---------|-------------|
+| **XQueryParser.js** | 698.64 KB | 37.56% | ~140 KB | ANTLR-generated parser |
+| **antlr4.web.mjs** | 304.80 KB | 16.39% | 42.04 KB | ANTLR runtime library |
+| **XQueryLexer.js** | 205.59 KB | 11.05% | ~41 KB | ANTLR-generated lexer |
+| **react-dom** | 131.45 KB | 7.07% | 42.06 KB | React DOM renderer |
+| **yaml** library | ~80 KB | ~4.3% | ~20 KB | YAML parser (xquery.yaml config) |
+| **React** | ~80 KB | ~4.3% | ~25 KB | React core |
+| **Scheduler** | ~10 KB | ~0.5% | ~3 KB | React scheduler |
+| **App components** | ~50 KB | ~2.7% | ~12 KB | Application code |
+| **Monaco utilities** | ~40 KB | ~2.2% | ~10 KB | Theme/editor utils |
+| **Other dependencies** | ~200 KB | ~10.8% | ~50 KB | Misc utilities |
+
+### Critical Findings
+
+#### 🔴 ANTLR Parser: 1.21 MB (65% of bundle!)
+
+**Combined Size**:
+- XQueryParser.js: 698.64 KB (37.56%)
+- XQueryLexer.js: 205.59 KB (11.05%)
+- antlr4 runtime: 304.80 KB (16.39%)
+- **Total: ~1.21 MB raw** (~223 KB gzipped)
+
+**Impact**: The XQuery parser accounts for **nearly two-thirds** of the entire application bundle. This is by far the largest optimization opportunity.
+
+**Why it's large**:
+- ANTLR generates extensive state machines for parsing
+- Full XQuery grammar is complex (expressions, functions, paths, FLWOR, etc.)
+- Runtime includes parser engine, lexer engine, error recovery, tree walking
+
+**Code Splitting Opportunity**: ⭐⭐⭐⭐⭐ (Highest Priority)
+- Parser only needed when editor mounts
+- Can be lazy-loaded via dynamic import
+- Would reduce initial bundle by ~1.2 MB (65%)
+
+#### 🟡 React Ecosystem: ~220 KB (12%)
+
+**Components**:
+- react-dom: 131.45 KB (7.07%)
+- react: ~80 KB (4.3%)
+- scheduler: ~10 KB (0.5%)
+
+**Code Splitting Opportunity**: ⭐ (Low Priority)
+- React must be in main bundle (required immediately)
+- Already efficiently tree-shaken
+- Gzip compression effective (42 KB)
+
+#### 🟢 YAML Library: ~80 KB (4.3%)
+
+**Usage**: Parses `config/marklogic/xquery.yaml` for function definitions
+
+**Code Splitting Opportunity**: ⭐⭐⭐ (Medium Priority)
+- Only needed when loading XQuery language config
+- Could be lazy-loaded with parser registration
+- Would reduce bundle by ~80 KB
+
+**Alternative**: Consider parsing YAML at build time and importing as JSON
 
 ## Conclusion
 
-Phase 1 successfully established baseline metrics and fixed critical issues:
-- ✅ Static theme assets now deploy correctly
-- ✅ Bundle analysis infrastructure in place
-- ✅ Vitest config verified correct
+### Phase 1 Results ✅
 
-**Next Steps**: Analyze `dist/stats.html` to identify largest contributors, then implement targeted code splitting in Phase 2.
+Successfully established baseline metrics and infrastructure:
+- ✅ Static theme assets deploy correctly (475 KB themes via vite-plugin-static-copy)
+- ✅ Bundle analysis infrastructure (`rollup-plugin-visualizer`)
+- ✅ Detailed dependency size breakdown via `dist/stats.html`
+- ✅ Identified ANTLR parser as 65% of bundle (1.21 MB!)
+
+### Phase 2 Strategy
+
+**Key Finding**: ANTLR XQuery parser dominates bundle (65% / 1.21 MB)
+
+**Optimization Approach**:
+1. **Code split ANTLR parser** → Reduce initial load by 67%
+2. **Fix mixed import warnings** → Enable proper chunking
+3. **Lazy load YAML parser** → Additional 80 KB reduction
+4. **Measure results** → Verify <600 KB initial bundle
+
+**Expected Outcome**:
+- Initial bundle: **1.79 MB → ~600 KB** (67% smaller)
+- XQuery features lazy-loaded on first use
+- Better user experience for non-XQuery workflows
+
+**Next Action**: Implement Priority 1 (ANTLR code splitting) from Phase 2 plan above.
