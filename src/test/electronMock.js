@@ -95,27 +95,41 @@ export function createElectronMock() {
     }),
 
     // Stream response to disk and get an index
+    // Matches electron/main.js:527 writeMultipartToDisk return value
     streamToDisk: vi.fn().mockImplementation(() => {
+      const dir = `/tmp/stream-test-${Date.now()}`;
       return Promise.resolve({
         success: true,
         index: {
-          directory: '/tmp/stream-test',
-          totalParts: 10,
-          metadata: { contentType: 'multipart/mixed' }
+          dir,
+          parts: Array.from({ length: 3 }, (_, i) => ({
+            contentType: i === 0 ? 'application/xml' : i === 1 ? 'application/json' : 'text/plain',
+            primitive: i === 0 ? 'element()' : i === 1 ? 'object-node()' : 'xs:string',
+            uri: `test/mock-${i + 1}`,
+            path: `/test[${i + 1}]`,
+            bytes: 100 + i * 50,
+            file: `part-${i}.txt`
+          }))
         }
       });
     }),
 
     // Read a page of streamed parts from disk
+    // Matches electron/main.js:705 response structure
     readStreamParts: vi.fn().mockImplementation((dir, start = 0, count = 50) => {
+      const totalParts = 3;
+      const end = Math.min(totalParts, start + count);
       return Promise.resolve({
         success: true,
-        parts: Array.from({ length: Math.min(count, 10) }, (_, i) => ({
+        records: Array.from({ length: end - start }, (_, i) => ({
           index: start + i,
-          contentType: 'text/plain',
-          data: `Part ${start + i} data`
+          contentType: start + i === 0 ? 'application/xml' : start + i === 1 ? 'application/json' : 'text/plain',
+          primitive: start + i === 0 ? 'element()' : start + i === 1 ? 'object-node()' : 'xs:string',
+          uri: `test/mock-${start + i + 1}`,
+          path: `/test[${start + i + 1}]`,
+          content: `<result>Part ${start + i} data</result>`
         })),
-        hasMore: start + count < 10
+        total: totalParts
       });
     }),
 
