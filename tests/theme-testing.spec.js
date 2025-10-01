@@ -141,6 +141,102 @@ test.describe('Theme Testing Integration', () => {
     }
   });
 
+  test('should maintain theme when clicking Execute button', async ({ page }) => {
+    // Navigate to the app
+    await page.goto('http://localhost:3025');
+    await page.waitForLoadState('domcontentloaded');
+
+    // Wait for Monaco to initialize
+    await page.waitForFunction(() => window.monaco !== undefined, { timeout: 10000 });
+    await page.waitForTimeout(500);
+
+    // Set Night Owl theme using correct storage key
+    await page.evaluate(() => {
+      localStorage.setItem('ml-console-monaco-theme', 'Night Owl');
+    });
+    await page.reload();
+    await page.waitForFunction(() => window.monaco !== undefined, { timeout: 10000 });
+    await page.waitForTimeout(1000);
+
+    // Verify initial theme is Night Owl
+    const initialTheme = await page.evaluate(() => {
+      const editor = window.monaco?.editor?.getEditors?.()?.[0];
+      return {
+        themeName: editor?._themeService?._theme?.themeName,
+        backgroundColor: window.getComputedStyle(document.querySelector('.monaco-editor')).backgroundColor
+      };
+    });
+
+    console.log('Initial theme:', initialTheme);
+    expect(initialTheme.themeName).toBe('night-owl');
+    expect(initialTheme.backgroundColor).toContain('1, 22, 39'); // Night Owl dark blue
+
+    // Click Execute button
+    await page.click('button:has-text("Execute")');
+    await page.waitForTimeout(500);
+
+    // Verify theme persisted after Execute click
+    const afterExecuteTheme = await page.evaluate(() => {
+      const editor = window.monaco?.editor?.getEditors?.()?.[0];
+      return {
+        themeName: editor?._themeService?._theme?.themeName,
+        backgroundColor: window.getComputedStyle(document.querySelector('.monaco-editor')).backgroundColor
+      };
+    });
+
+    console.log('After Execute theme:', afterExecuteTheme);
+    expect(afterExecuteTheme.themeName).toBe('night-owl');
+    expect(afterExecuteTheme.backgroundColor).toContain('1, 22, 39');
+    expect(afterExecuteTheme.backgroundColor).not.toContain('255, 255'); // Should NOT be white
+  });
+
+  test('should maintain theme when navigating between Query Console and Settings', async ({ page }) => {
+    // Navigate to the app
+    await page.goto('http://localhost:3025');
+    await page.waitForLoadState('domcontentloaded');
+
+    // Wait for Monaco to initialize
+    await page.waitForFunction(() => window.monaco !== undefined, { timeout: 10000 });
+    await page.waitForTimeout(500);
+
+    // Set Night Owl theme using correct storage key
+    await page.evaluate(() => {
+      localStorage.setItem('ml-console-monaco-theme', 'Night Owl');
+    });
+    await page.reload();
+    await page.waitForFunction(() => window.monaco !== undefined, { timeout: 10000 });
+    await page.waitForTimeout(1000);
+
+    // Verify initial theme
+    const initialTheme = await page.evaluate(() => {
+      const editor = window.monaco?.editor?.getEditors?.()?.[0];
+      return editor?._themeService?._theme?.themeName;
+    });
+    expect(initialTheme).toBe('night-owl');
+
+    // Navigate to Settings
+    await page.click('button:has-text("Settings")');
+    await page.waitForTimeout(500);
+
+    // Navigate back to Query Console
+    await page.click('button:has-text("Query Console")');
+    await page.waitForTimeout(500);
+
+    // Verify theme persisted after navigation
+    const afterNavigationTheme = await page.evaluate(() => {
+      const editor = window.monaco?.editor?.getEditors?.()?.[0];
+      return {
+        themeName: editor?._themeService?._theme?.themeName,
+        backgroundColor: window.getComputedStyle(document.querySelector('.monaco-editor')).backgroundColor
+      };
+    });
+
+    console.log('After navigation theme:', afterNavigationTheme);
+    expect(afterNavigationTheme.themeName).toBe('night-owl');
+    expect(afterNavigationTheme.backgroundColor).toContain('1, 22, 39');
+    expect(afterNavigationTheme.backgroundColor).not.toContain('255, 255');
+  });
+
   test('should generate theme test report', async ({ page }) => {
     // Inject our theme testing framework
     await page.addScriptTag({

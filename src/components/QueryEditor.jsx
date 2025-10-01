@@ -23,9 +23,11 @@ export default function QueryEditor({
   // Get editor preferences (includes user-configurable font size, etc.)
   const { getMonacoOptions, preferences } = useEditorPreferences();
 
+  // Compute Monaco theme ID once to use consistently everywhere
+  const themeId = useMemo(() => getEnhancedTheme(theme), [theme]);
+
   // Performance-optimized editor options based on content size
   const optimizedOptions = useMonacoOptimizations(value, {
-    theme,
     language,
     automaticLayout: true,
     wordWrap: "on",
@@ -85,15 +87,16 @@ export default function QueryEditor({
     // Register XQuery language with optimization caching
     await monacoOptimizationManager.registerXQueryLanguageOptimized(monaco);
 
-    // Apply optimized theme switching
-    if (isValidTheme(theme)) {
-      try {
+    // Apply optimized theme switching for both built-in and custom themes
+    try {
+      // Only load JSON for custom themes; built-ins are already defined
+      if (isValidTheme(theme)) {
         await loadAndDefineTheme(monaco, theme);
-        const themeId = getEnhancedTheme(theme);
-        await monacoOptimizationManager.switchThemeOptimized(monaco, themeId, editor);
-      } catch (error) {
-        console.warn(`Failed to load custom theme ${theme}:`, error);
       }
+      // Always apply the theme ID so both built-in and custom survive wrapper resets
+      await monacoOptimizationManager.switchThemeOptimized(monaco, themeId, editor);
+    } catch (error) {
+      console.warn(`Failed to apply theme ${theme}:`, error);
     }
 
     // Apply runtime optimizations based on content size
@@ -176,19 +179,26 @@ export default function QueryEditor({
 
   // Handle theme changes dynamically with optimization
   useEffect(() => {
-    if (editorRef.current && monacoRef.current && isValidTheme(theme)) {
-      loadAndDefineTheme(monacoRef.current, theme).then(async () => {
-        const themeId = getEnhancedTheme(theme);
-        await monacoOptimizationManager.switchThemeOptimized(
-          monacoRef.current,
-          themeId,
-          editorRef.current
-        );
-      }).catch(error =>
-        console.warn(`Failed to load theme ${theme} on change:`, error)
-      );
+    if (editorRef.current && monacoRef.current) {
+      const applyTheme = async () => {
+        try {
+          // Only load JSON for custom themes
+          if (isValidTheme(theme)) {
+            await loadAndDefineTheme(monacoRef.current, theme);
+          }
+          // Always apply the theme ID for both built-in and custom
+          await monacoOptimizationManager.switchThemeOptimized(
+            monacoRef.current,
+            themeId,
+            editorRef.current
+          );
+        } catch (error) {
+          console.warn(`Failed to apply theme ${theme} on change:`, error);
+        }
+      };
+      applyTheme();
     }
-  }, [theme]);
+  }, [theme, themeId]);
 
   // Update Monaco editor options when preferences change (CRITICAL FIX for font size)
   useEffect(() => {
@@ -212,7 +222,7 @@ export default function QueryEditor({
         language={language}
         onChange={optimizedHandleChange}
         onMount={handleMount}
-        theme={isValidTheme(theme) ? getEnhancedTheme(theme) : 'vs-dark'}
+        theme={themeId}  // Use computed theme ID consistently
         width="100%"
         height="100%"               // <-- critical: fill the container we control
         options={{

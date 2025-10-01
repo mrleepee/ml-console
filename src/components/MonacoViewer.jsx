@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, Suspense, useCallback } from "react";
+import React, { useEffect, useRef, Suspense, useCallback, useMemo } from "react";
 // Lazy-load Monaco editor to keep initial bundle size small
 const Editor = React.lazy(() => import("@monaco-editor/react"));
 
@@ -13,6 +13,9 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
 
   // Get editor preferences for consistent styling
   const { getMonacoOptions, preferences } = useEditorPreferences();
+
+  // Compute Monaco theme ID once to use consistently
+  const themeId = useMemo(() => getEnhancedTheme(theme), [theme]);
 
   const formatContent = useCallback(async () => {
     if (
@@ -123,7 +126,7 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
           value={value}
           language={language}
           onMount={handleMount}
-          theme={isValidTheme(theme) ? getEnhancedTheme(theme) : 'vs-dark'}
+          theme={themeId}  // Use computed theme ID consistently
           width="100%"
           height="100%"
           options={getMonacoOptions({
