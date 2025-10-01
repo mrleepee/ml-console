@@ -2,33 +2,32 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
-// Polyfill ResizeObserver for the jsdom environment if missing
-if (typeof global.ResizeObserver === 'undefined') {
-  class ResizeObserver {
-    constructor(callback) {
-      // store callback but never invoke in tests
-      this.callback = callback;
-    }
-    observe() {}
-    unobserve() {}
-    disconnect() {}
+// Ensure proper DOM globals are set up for React's instanceof checks
+if (typeof window !== 'undefined') {
+  if (typeof global.HTMLElement === 'undefined') {
+    global.HTMLElement = window.HTMLElement;
   }
-  global.ResizeObserver = ResizeObserver;
-  // ensure browser-like global also has it
-  if (typeof window !== 'undefined') {
-    window.ResizeObserver = ResizeObserver;
+  if (typeof global.Element === 'undefined') {
+    global.Element = window.Element;
   }
 }
 
-// Mock Monaco Editor to prevent issues in jsdom
-// Provide a lightweight ResizeObserver mock for components relying on it
+// Polyfill ResizeObserver for the jsdom environment
 class ResizeObserver {
+  constructor(callback) {
+    this.callback = callback;
+  }
   observe() {}
   unobserve() {}
   disconnect() {}
 }
-global.ResizeObserver = ResizeObserver;
-window.ResizeObserver = ResizeObserver;
+
+if (typeof global.ResizeObserver === 'undefined') {
+  global.ResizeObserver = ResizeObserver;
+}
+if (typeof window !== 'undefined' && typeof window.ResizeObserver === 'undefined') {
+  window.ResizeObserver = ResizeObserver;
+}
 
 // Mock Monaco Editor to prevent issues in jsdom  
 vi.mock('@monaco-editor/react', () => ({
@@ -54,80 +53,12 @@ vi.mock('@monaco-editor/react', () => ({
   })
 }));
 
-// Mock JSON responses for MarkLogic Management API
-const mockServersResponse = {
-  "server-default-list": {
-    "list-items": {
-      "list-item": [
-        {
-          "idref": "8000",
-          "nameref": "App-Services",
-          "typeref": "http",
-          "contentDatabase": "7682138842179613689",
-          "modulesDatabase": "15944027002351853507"
-        }
-      ]
-    }
-  }
-};
+// Install comprehensive electron mock matching preload.js
+import { installElectronMock, resetElectronMock } from './electronMock.js';
+import { beforeEach, afterAll } from 'vitest';
 
-const mockDatabasesResponse = {
-  "database-default-list": {
-    "list-items": {
-      "list-item": [
-        {
-          "idref": "7682138842179613689",
-          "nameref": "Documents"
-        },
-        {
-          "idref": "15944027002351853507",
-          "nameref": "Modules"
-        },
-        {
-          "idref": "123456789",
-          "nameref": "prime-content"
-        },
-        {
-          "idref": "987654321",
-          "nameref": "prime-content-modules"
-        }
-      ]
-    }
-  }
-};
-
-// Mock window.electronAPI for tests
-global.window.electronAPI = {
-  httpRequest: vi.fn().mockImplementation(({ url }) => {
-    // Return appropriate JSON responses based on the URL
-    if (url.includes('/manage/v2/servers')) {
-      return Promise.resolve({
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(mockServersResponse)
-      });
-    } else if (url.includes('/manage/v2/databases')) {
-      return Promise.resolve({
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(mockDatabasesResponse)
-      });
-    } else {
-      // Default mock for query execution
-      return Promise.resolve({
-        status: 200,
-        headers: { 'content-type': 'multipart/mixed' },
-        body: '--test\nContent-Type: text/plain\n\nTest result\n--test--'
-      });
-    }
-  }),
-  database: {
-    saveQuery: vi.fn().mockResolvedValue({ success: true }),
-    getRecentQueries: vi.fn().mockResolvedValue({ success: true, queries: [] }),
-    getQueryById: vi.fn().mockResolvedValue({ success: true, query: null }),
-    deleteQuery: vi.fn().mockResolvedValue({ success: true })
-  }
-};
+// Install the mock globally for all tests
+installElectronMock();
 
 // Mock console to capture logs for testing
 global.mockConsoleCapture = { logs: [] };
@@ -136,3 +67,14 @@ console.log = (...args) => {
   global.mockConsoleCapture.logs.push(args);
   originalLog(...args);
 };
+
+// Reset electron mock and clear logs before each test for isolation
+beforeEach(() => {
+  resetElectronMock();
+  global.mockConsoleCapture.logs = [];
+});
+
+// Restore console.log after all tests
+afterAll(() => {
+  console.log = originalLog;
+});

@@ -52,3 +52,6 @@ tauri.log
 # Test coverage reports
 coverage/
 test-results/
+
+# Claude Code local settings
+.claude/settings.local.json

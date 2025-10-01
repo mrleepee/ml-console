@@ -3,7 +3,7 @@ import { buildXQueryLanguageConfig } from './monacoXqueryConfig';
 import { registerXQueryLanguage, __resetXQueryRegistrationForTests, XQUERY_LANGUAGE } from './monacoXquery';
 
 vi.mock('./marklogicConfigLoader', () => ({
-  getMarkLogicXQueryLanguageConfig: vi.fn(() => ({
+  getMarkLogicXQueryLanguageConfig: vi.fn(async () => ({
     keywords: ['xdmp', 'cts'],
     builtins: ['xdmp', 'cts', 'fn', 'cts:search'],
     completionItems: [],
@@ -43,14 +43,14 @@ const createMonacoStub = () => {
 };
 
 describe('buildXQueryLanguageConfig', () => {
-  it('includes MarkLogic defaults by default', () => {
-    const config = buildXQueryLanguageConfig();
+  it('includes MarkLogic defaults by default', async () => {
+    const config = await buildXQueryLanguageConfig();
     expect(config.keywords).toContain('xdmp');
     expect(config.builtins).toContain('cts:search');
   });
 
-  it('merges overrides without duplicates', () => {
-    const config = buildXQueryLanguageConfig({
+  it('merges overrides without duplicates', async () => {
+    const config = await buildXQueryLanguageConfig({
       overrides: {
         keywords: ['custom-fn', 'xdmp'],
         builtins: ['custom-lib']
@@ -61,8 +61,8 @@ describe('buildXQueryLanguageConfig', () => {
     expect(config.builtins).toContain('custom-lib');
   });
 
-  it('excludes MarkLogic config when includeMarkLogic is false', () => {
-    const config = buildXQueryLanguageConfig({ includeMarkLogic: false });
+  it('excludes MarkLogic config when includeMarkLogic is false', async () => {
+    const config = await buildXQueryLanguageConfig({ includeMarkLogic: false });
     expect(config.keywords).not.toContain('xdmp');
     expect(config.keywords).not.toContain('cts');
     expect(config.builtins).not.toContain('cts:search');
@@ -72,10 +72,10 @@ describe('buildXQueryLanguageConfig', () => {
     expect(config.builtins).toContain('fn');
   });
 
-  it('handles null and undefined overrides gracefully', () => {
-    const configNull = buildXQueryLanguageConfig({ overrides: null });
-    const configUndefined = buildXQueryLanguageConfig({ overrides: undefined });
-    const configEmpty = buildXQueryLanguageConfig({ overrides: {} });
+  it('handles null and undefined overrides gracefully', async () => {
+    const configNull = await buildXQueryLanguageConfig({ overrides: null });
+    const configUndefined = await buildXQueryLanguageConfig({ overrides: undefined });
+    const configEmpty = await buildXQueryLanguageConfig({ overrides: {} });
 
     // All should include MarkLogic defaults
     expect(configNull.keywords).toContain('xdmp');
@@ -83,8 +83,8 @@ describe('buildXQueryLanguageConfig', () => {
     expect(configEmpty.keywords).toContain('xdmp');
   });
 
-  it('handles overrides with empty arrays', () => {
-    const config = buildXQueryLanguageConfig({
+  it('handles overrides with empty arrays', async () => {
+    const config = await buildXQueryLanguageConfig({
       overrides: {
         keywords: [],
         builtins: [],
