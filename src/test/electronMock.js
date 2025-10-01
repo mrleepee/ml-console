@@ -482,6 +482,7 @@ export function getElectronMock() {
 /**
  * Override database method implementations for test scenarios
  * Preserves vi.fn() mocks for assertions while changing behavior
+ * Clears call history when applying new implementation
  *
  * @param {object} overrides - Partial database method overrides
  * @returns {object} The database mock object for chaining/assertions
@@ -497,10 +498,27 @@ export function getElectronMock() {
  * setDatabaseOverrides({
  *   getRecentQueries: () => Promise.resolve({ success: true, queries: [] })
  * });
+ *
+ * @example
+ * // Restore defaults
+ * setDatabaseOverrides(); // or pass null/undefined
  */
 export function setDatabaseOverrides(overrides) {
+  // Guard against null/undefined - treat as "restore defaults"
+  if (!overrides) {
+    Object.entries(defaultDatabaseImpls).forEach(([name, impl]) => {
+      if (mockState.database[name]) {
+        mockState.database[name].mockClear();
+        mockState.database[name].mockImplementation(impl);
+      }
+    });
+    return mockState.database;
+  }
+
+  // Apply overrides and clear call history
   Object.entries(overrides).forEach(([name, impl]) => {
     if (mockState.database[name]) {
+      mockState.database[name].mockClear();
       mockState.database[name].mockImplementation(impl);
     }
   });
@@ -514,6 +532,7 @@ export function setDatabaseOverrides(overrides) {
 /**
  * Set custom command execution handler for test scenarios
  * Pass null or undefined to restore default
+ * Clears call history when applying new implementation
  *
  * @param {function} [handler] - Custom command handler or null for default
  * @returns {object} The runCommand mock for assertions
@@ -532,6 +551,12 @@ export function setDatabaseOverrides(overrides) {
  * setRunCommandHandler();
  */
 export function setRunCommandHandler(handler) {
+  // Ensure mock exists before manipulating
+  if (!mockState.runCommand) {
+    throw new Error('setRunCommandHandler called before installElectronMock()');
+  }
+
+  mockState.runCommand.mockClear();
   mockState.runCommand.mockImplementation(handler || defaultRunCommand);
   return mockState.runCommand;
 }

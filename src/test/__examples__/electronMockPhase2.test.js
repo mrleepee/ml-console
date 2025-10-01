@@ -11,7 +11,7 @@
  * NOTE: These are examples/documentation, not run as part of the test suite
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   resetElectronMock,
   setDatabaseOverrides,
@@ -21,6 +21,11 @@ import {
   setAppVersions,
   installElectronMock
 } from '../electronMock';
+
+// Ensure clean mock state for all examples
+beforeEach(() => {
+  resetElectronMock();
+});
 
 describe('Phase 2 Examples - Database Overrides', () => {
   it('example: testing error handling', async () => {
@@ -207,7 +212,7 @@ describe('Phase 2 Examples - Platform/Version Overrides', () => {
 });
 
 describe('Phase 2 Examples - Factory Options', () => {
-  it('example: install with custom database', () => {
+  it('example: install with custom database', async () => {
     installElectronMock({
       database: {
         getRecentQueries: () => Promise.resolve({ success: true, queries: [] })
@@ -215,8 +220,8 @@ describe('Phase 2 Examples - Factory Options', () => {
     });
 
     // Mock is pre-configured
-    const result = window.electronAPI.database.getRecentQueries();
-    expect(result).resolves.toHaveProperty('queries', []);
+    const result = await window.electronAPI.database.getRecentQueries();
+    expect(result.queries).toHaveLength(0);
   });
 
   it('example: install with custom platform', () => {
