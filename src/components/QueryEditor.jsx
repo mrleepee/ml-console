@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useMemo } from "react";
 import Editor, { loader } from "@monaco-editor/react";
 import { defineCustomMonacoThemes, getEnhancedTheme, loadAndDefineTheme } from "../utils/monacoThemes";
-import { registerXQueryLanguage } from "../utils/monacoXquery";
 import { isValidTheme } from "../utils/themeLoader";
 import { monacoOptimizationManager, useMonacoOptimizations } from "../utils/monacoOptimizations";
 import useEditorPreferences from "../hooks/useEditorPreferences";

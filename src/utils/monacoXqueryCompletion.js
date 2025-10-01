@@ -1,11 +1,15 @@
-import { VariableExtractor } from './xquery-parser/VariableExtractor';
+import { loadXQueryParser } from './xquery-parser/loader';
 
-// Cache extractor instance
+// Cache extractor instance and parser modules
 let extractorInstance = null;
+let parserModules = null;
 
-function getExtractor() {
+async function getExtractor() {
   if (!extractorInstance) {
-    extractorInstance = new VariableExtractor();
+    if (!parserModules) {
+      parserModules = await loadXQueryParser();
+    }
+    extractorInstance = new parserModules.VariableExtractor();
   }
   return extractorInstance;
 }

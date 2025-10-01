@@ -3,8 +3,10 @@ import { XQueryFoldingProvider } from './xqueryFoldingProvider';
 import { XQueryCommentProvider } from './xqueryCommentProvider';
 import { registerXQueryCompletionProvider } from './monacoXqueryCompletion';
 import { registerXQueryFunctionCompletionProvider } from './monacoXqueryFunctionCompletion';
+import { XQUERY_LANGUAGE } from './monacoXqueryConstants';
 
-export const XQUERY_LANGUAGE = 'xquery-ml';
+// Re-export constant for backward compatibility
+export { XQUERY_LANGUAGE };
 
 const registeredInstances = new WeakSet();
 

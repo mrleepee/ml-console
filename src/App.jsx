@@ -10,7 +10,8 @@ import QueryEditorControls from "./components/QueryEditorControls";
 import useEditorPreferences, { EditorPreferencesProvider } from "./hooks/useEditorPreferences";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
 import { defineCustomMonacoThemes, getEnhancedTheme } from "./utils/monacoThemes";
-import { registerXQueryLanguage, XQUERY_LANGUAGE } from "./utils/monacoXquery";
+import { XQUERY_LANGUAGE } from "./utils/monacoXqueryConstants";
+import { monacoOptimizationManager } from "./utils/monacoOptimizations";
 import "./App.css";
 import useStreamingResults from "./hooks/useStreamingResults";
 import queryService from "./services/queryService";
@@ -263,11 +264,11 @@ function App() {
       }
     }, [content, language]);
 
-    const handleEditorMount = React.useCallback((editor, monaco) => {
+    const handleEditorMount = React.useCallback(async (editor, monaco) => {
       editorRef.current = editor;
       setEditorMounted(true);
       defineCustomMonacoThemes(monaco);
-      registerXQueryLanguage(monaco);
+      await monacoOptimizationManager.registerXQueryLanguageOptimized(monaco);
     }, []);
 
     useEffect(() => { if (editorMounted && content) formatContent(); }, [editorMounted, content, formatContent]);

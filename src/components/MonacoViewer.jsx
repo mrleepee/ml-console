@@ -3,7 +3,7 @@ import React, { useEffect, useRef, Suspense, useCallback, useMemo } from "react"
 const Editor = React.lazy(() => import("@monaco-editor/react"));
 
 import { defineCustomMonacoThemes, getEnhancedTheme, loadAndDefineTheme, preloadPopularThemes } from "../utils/monacoThemes";
-import { registerXQueryLanguage } from "../utils/monacoXquery";
+import { monacoOptimizationManager } from "../utils/monacoOptimizations";
 import { isValidTheme } from "../utils/themeLoader";
 import useEditorPreferences from "../hooks/useEditorPreferences";
 
@@ -36,7 +36,7 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
   const handleMount = async (editor, monaco) => {
     editorRef.current = editor;
     defineCustomMonacoThemes(monaco);
-    registerXQueryLanguage(monaco);
+    await monacoOptimizationManager.registerXQueryLanguageOptimized(monaco);
 
     // Load custom theme if it's not a built-in theme
     if (isValidTheme(theme)) {
