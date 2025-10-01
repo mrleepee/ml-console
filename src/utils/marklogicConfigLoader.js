@@ -1,7 +1,7 @@
-import { parse } from 'yaml';
 import rawMarkLogicXQueryConfig from '../../config/marklogic/xquery.yaml?raw';
 
 let cachedConfig = null;
+let yamlModule = null;
 
 const emptyConfig = Object.freeze({
   keywords: [],
@@ -16,9 +16,21 @@ const normalizeArray = (value) => {
     .map((item) => item.trim());
 };
 
-export const getMarkLogicXQueryLanguageConfig = () => {
+/**
+ * Lazy load YAML parser to reduce initial bundle size.
+ * YAML is only needed when loading XQuery language configuration.
+ */
+async function loadYaml() {
+  if (!yamlModule) {
+    yamlModule = await import('yaml');
+  }
+  return yamlModule;
+}
+
+export const getMarkLogicXQueryLanguageConfig = async () => {
   if (cachedConfig) return cachedConfig;
   try {
+    const { parse } = await loadYaml();
     const parsed = parse(rawMarkLogicXQueryConfig) ?? {};
     const keywords = normalizeArray(parsed.keywords);
     const builtins = normalizeArray(parsed.builtins);

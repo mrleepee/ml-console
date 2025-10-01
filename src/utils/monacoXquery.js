@@ -3,8 +3,10 @@ import { XQueryFoldingProvider } from './xqueryFoldingProvider';
 import { XQueryCommentProvider } from './xqueryCommentProvider';
 import { registerXQueryCompletionProvider } from './monacoXqueryCompletion';
 import { registerXQueryFunctionCompletionProvider } from './monacoXqueryFunctionCompletion';
+import { XQUERY_LANGUAGE } from './monacoXqueryConstants';
 
-export const XQUERY_LANGUAGE = 'xquery-ml';
+// Re-export constant for backward compatibility
+export { XQUERY_LANGUAGE };
 
 const registeredInstances = new WeakSet();
 
@@ -23,7 +25,7 @@ const CONTEXTUAL_FLWOR_KEYWORD_LOOKUP = new Set(CONTEXTUAL_FLWOR_KEYWORDS);
 export const registerXQueryLanguage = async (monaco, overrides) => {
   if (!monaco?.languages) return;
 
-  const config = buildXQueryLanguageConfig({ overrides });
+  const config = await buildXQueryLanguageConfig({ overrides });
   // Filter context-dependent keywords from tokenizer to prevent over-highlighting
   const tokenProviderKeywords = config.keywords.filter((keyword) => !CONTEXTUAL_FLWOR_KEYWORD_LOOKUP.has(keyword));
   const signature = signatureFor({

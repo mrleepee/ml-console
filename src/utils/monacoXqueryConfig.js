@@ -21,9 +21,12 @@ const defaultConfig = {
 
 const uniq = (items) => Array.from(new Set(items.filter(Boolean)));
 
-export const buildXQueryLanguageConfig = ({ overrides = {}, includeMarkLogic = true } = {}) => {
+export const buildXQueryLanguageConfig = async ({ overrides = {}, includeMarkLogic = true } = {}) => {
   const configs = [defaultConfig];
-  if (includeMarkLogic) configs.push(getMarkLogicXQueryLanguageConfig());
+  if (includeMarkLogic) {
+    const mlConfig = await getMarkLogicXQueryLanguageConfig();
+    configs.push(mlConfig);
+  }
   if (overrides && Object.keys(overrides).length > 0) configs.push(overrides);
 
   const merged = configs.reduce((acc, cfg) => {
@@ -42,4 +45,4 @@ export const buildXQueryLanguageConfig = ({ overrides = {}, includeMarkLogic = t
 };
 
 export const defaultXQueryLanguageConfig = defaultConfig;
-export const markLogicXQueryLanguageConfig = () => getMarkLogicXQueryLanguageConfig();
+export const markLogicXQueryLanguageConfig = async () => await getMarkLogicXQueryLanguageConfig();
