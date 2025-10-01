@@ -1,12 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react'
 import App from './App.jsx'
+import { EditorPreferencesProvider } from './hooks/useEditorPreferences'
 
 // Cleanup after each test to prevent React issues
 afterEach(() => {
   cleanup()
   global.mockConsoleCapture.logs = []
 })
+
+// Wrapper component that provides required context
+const AppWithProviders = () => (
+  <EditorPreferencesProvider>
+    <App />
+  </EditorPreferencesProvider>
+)
 
 // Test the parsing functions in isolation first
 describe('Multipart Response Parsing', () => {
@@ -152,7 +160,7 @@ describe('App Component Rendering', () => {
 
   it('should have Console tab active by default', async () => {
     await act(async () => {
-      render(<App />)
+      render(<AppWithProviders />)
     })
     
     const consoleTab = screen.getByRole('button', { name: /query console/i })
@@ -161,7 +169,7 @@ describe('App Component Rendering', () => {
 
   it('should show execute button', async () => {
     await act(async () => {
-      render(<App />)
+      render(<AppWithProviders />)
     })
     
     const executeButton = screen.getByRole('button', { name: /execute/i })
@@ -190,7 +198,7 @@ describe('Query Execution Logic', () => {
 
     try {
       await act(async () => {
-        render(<App />)
+        render(<AppWithProviders />)
       })
       
       const executeButton = screen.getByRole('button', { name: /execute/i })

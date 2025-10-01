@@ -51,3 +51,4 @@ tauri.log
 
 # Test coverage reports
 coverage/
+test-results/
