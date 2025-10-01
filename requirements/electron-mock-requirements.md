@@ -19,11 +19,25 @@
 - Some test files (`useQueryHistory.simple.test.js`) set `global.window = {}` which wipes DOM constructors - requires test file updates (not mock issues)
 - One service test failing due to unrelated query formatting
 
-### Phase 2: Test Scenario Flexibility 🔄 PLANNED
-- Override injection for database methods
-- `setRunCommandHandler` for command testing
-- Streaming progress emitter helper
-- Factory options for platform/version overrides
+### Phase 2: Test Scenario Flexibility ✅ COMPLETE
+**Branch**: `feature/electron-mock-phase2`
+**Commits**: ab1d5a2, d917694
+**Status**: Implemented with comprehensive examples and Codex-reviewed fixes
+
+**Delivered**:
+- `setDatabaseOverrides()` - Override any database method per-test with call history clearing
+- `setRunCommandHandler()` - Customize command execution with error prevention
+- `emitStreamProgress()` - Emit progress events for UI testing
+- `setPlatform()` / `setAppVersions()` - Override environment metadata per-test
+- Factory options for `installElectronMock()` - Configure at install time
+- Module state management - Centralized tracking prevents cross-test pollution
+- Comprehensive examples file with 20+ usage patterns
+
+**Critical Fixes (Codex Review)**:
+- Added `mockClear()` before applying overrides to prevent call history pollution
+- Guard against null/undefined in setDatabaseOverrides (treats as restore defaults)
+- Error handling for setRunCommandHandler called before init
+- Fixed example file with proper beforeEach and async/await patterns
 
 ### Phase 3: Maintenance & Alignment 📋 FUTURE
 - Automated parity checker
@@ -64,22 +78,27 @@
 - `onEvalStreamProgress` registers listener and returns unsubscribe function; internal helper `_emitProgress` available.
 - `evalStream` mock returns `{ success: true, data }`.
 
-### R3: Command Execution ✅ COMPLETE (Phase 1)
-- Implement `runCommand` as `vi.fn` returning `{ success: true, stdout, stderr, exitCode: 0 }`.
-- ⏳ **Phase 2**: Provide `setRunCommandHandler` hook for per-test overrides.
+### R3: Command Execution ✅ COMPLETE
+- **Phase 1**: Implement `runCommand` as `vi.fn` returning `{ success: true, stdout, stderr, exitCode: 0 }`.
+- **Phase 2**: `setRunCommandHandler(handler)` for per-test overrides with call history clearing and initialization safety.
 
-### R4: Database API Coverage ✅ COMPLETE (Phase 1)
-- All methods implemented: `saveQuery`, `getRecentQueries`, `getQueryById`, `searchQueries`, `getQueriesByType`, `updateQueryStatus`, `deleteQuery`, `getStats`.
-- Response formats match `electron/database.js` production schema (camelCase fields, proper defaults).
-- ⏳ **Phase 2**: Add per-method override injection without global state mutation.
+### R4: Database API Coverage ✅ COMPLETE
+- **Phase 1**: All 8 methods implemented with production-accurate schemas.
+- **Phase 2**: `setDatabaseOverrides(overrides)` for per-method injection with:
+  - Call history clearing to prevent test pollution
+  - Null-safe (treats falsy as restore defaults)
+  - No global state mutation between tests
 
 ### R5: Cancellation Support ❌ NOT NEEDED
 - ~~Define `cancelQuery`~~ **Decision**: Not in preload.js, `queryClient` handles gracefully.
 
-### R6: Environment Metadata ✅ COMPLETE (Phase 1)
-- `platform`: defaults to `process.platform` or `'darwin'`.
-- `versions`: `{ node, electron: '27.0.0', chrome: '118.0.0' }`.
-- ⏳ **Phase 2**: Factory options for overriding per test.
+### R6: Environment Metadata ✅ COMPLETE
+- **Phase 1**: `platform` and `versions` with sensible defaults.
+- **Phase 2**:
+  - `setPlatform(platform)` for per-test override
+  - `setAppVersions(versions)` for version testing
+  - Factory options support at install time
+  - Reset clears all overrides
 
 ### R7: Reset & Lifecycle ✅ COMPLETE (Phase 1)
 - `installElectronMock()` and `resetElectronMock()` exported from `src/test/electronMock.js`.
