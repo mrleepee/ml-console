@@ -54,7 +54,8 @@ vi.mock('@monaco-editor/react', () => ({
 }));
 
 // Install comprehensive electron mock matching preload.js
-import { installElectronMock } from './electronMock.js';
+import { installElectronMock, resetElectronMock } from './electronMock.js';
+import { beforeEach, afterAll } from 'vitest';
 
 // Install the mock globally for all tests
 installElectronMock();
@@ -66,3 +67,14 @@ console.log = (...args) => {
   global.mockConsoleCapture.logs.push(args);
   originalLog(...args);
 };
+
+// Reset electron mock and clear logs before each test for isolation
+beforeEach(() => {
+  resetElectronMock();
+  global.mockConsoleCapture.logs = [];
+});
+
+// Restore console.log after all tests
+afterAll(() => {
+  console.log = originalLog;
+});

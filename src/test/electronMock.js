@@ -136,22 +136,31 @@ export function createElectronMock() {
       exitCode: 0
     }),
 
-    // Database operations
+    // Database operations - matches electron/database.js format
     database: {
       saveQuery: vi.fn().mockResolvedValue({
         success: true,
-        id: 'query-123'
+        id: 1,
+        changes: 1,
+        updated: false,
+        message: 'New query saved'
       }),
 
-      getRecentQueries: vi.fn().mockImplementation((limit = 10) => {
+      getRecentQueries: vi.fn().mockImplementation((limit = 15) => {
         return Promise.resolve({
           success: true,
           queries: Array.from({ length: Math.min(limit, 3) }, (_, i) => ({
-            id: `query-${i}`,
-            queryText: `SELECT ${i}`,
+            id: i + 1,
+            content: `xquery version "1.0-ml";\n\nfn:current-dateTime()`,
+            preview: 'fn:current-dateTime()',
             queryType: 'xquery',
-            createdAt: Date.now() - i * 60000,
-            status: 'completed'
+            databaseName: 'Documents',
+            version: 1,
+            createdAt: new Date(Date.now() - i * 60000).toISOString(),
+            updatedAt: new Date(Date.now() - i * 60000).toISOString(),
+            executionTimeMs: 45,
+            status: 'executed',
+            hasEmbedding: false
           }))
         });
       }),
@@ -161,36 +170,54 @@ export function createElectronMock() {
           success: true,
           query: {
             id,
-            queryText: 'SELECT * FROM test',
+            content: 'xquery version "1.0-ml";\n\nfn:current-dateTime()',
+            preview: 'fn:current-dateTime()',
             queryType: 'xquery',
-            createdAt: Date.now(),
-            status: 'completed'
+            databaseName: 'Documents',
+            version: 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            executionTimeMs: 45,
+            status: 'executed',
+            hasEmbedding: false
           }
         });
       }),
 
-      searchQueries: vi.fn().mockImplementation((searchTerm, limit = 10) => {
+      searchQueries: vi.fn().mockImplementation((searchTerm, limit = 15) => {
         return Promise.resolve({
           success: true,
           queries: searchTerm ? [{
-            id: 'query-search-1',
-            queryText: `Query matching ${searchTerm}`,
+            id: 1,
+            content: `Query matching ${searchTerm}`,
+            preview: `Query matching ${searchTerm}`,
             queryType: 'xquery',
-            createdAt: Date.now(),
-            status: 'completed'
+            databaseName: 'Documents',
+            version: 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            executionTimeMs: 45,
+            status: 'executed',
+            hasEmbedding: false
           }] : []
         });
       }),
 
-      getQueriesByType: vi.fn().mockImplementation((queryType, limit = 10) => {
+      getQueriesByType: vi.fn().mockImplementation((queryType, limit = 15) => {
         return Promise.resolve({
           success: true,
           queries: [{
-            id: 'query-type-1',
-            queryText: 'Query text',
+            id: 1,
+            content: 'Query text',
+            preview: 'Query text',
             queryType,
-            createdAt: Date.now(),
-            status: 'completed'
+            databaseName: 'Documents',
+            version: 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            executionTimeMs: 45,
+            status: 'executed',
+            hasEmbedding: false
           }]
         });
       }),
@@ -198,38 +225,28 @@ export function createElectronMock() {
       updateQueryStatus: vi.fn().mockImplementation((id, status, executionTimeMs) => {
         return Promise.resolve({
           success: true,
-          id,
-          status,
-          executionTimeMs
+          changes: 1
         });
       }),
 
       deleteQuery: vi.fn().mockResolvedValue({
-        success: true
+        success: true,
+        changes: 1
       }),
 
       getStats: vi.fn().mockResolvedValue({
         success: true,
         stats: {
-          totalQueries: 42,
-          queryTypes: {
-            xquery: 30,
-            javascript: 8,
-            sql: 4
-          },
-          recentActivity: {
-            last24Hours: 15,
-            last7Days: 38
-          }
+          total_queries: 42,
+          xquery_count: 30,
+          javascript_count: 8,
+          sparql_count: 3,
+          optic_count: 1,
+          embedded_queries: 0,
+          last_query_time: new Date().toISOString()
         }
       })
     },
-
-    // Query cancellation
-    cancelQuery: vi.fn().mockResolvedValue({
-      success: true,
-      message: 'Query cancelled'
-    }),
 
     // Platform info
     platform: process.platform || 'darwin',
