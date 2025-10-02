@@ -50,9 +50,17 @@ describe('queryService.executeQuery', () => {
       method: 'POST',
       preferStream: true,
     }));
-    const { body } = queryClient.sendQuery.mock.calls[0][0];
-    const decodedBody = decodeURIComponent(body.split('=')[1]);
-    expect(decodedBody).toContain('xdmp:eval-in');
+
+    // Verify REST API form body format (not xdmp:eval-in wrapper)
+    const { body, headers } = queryClient.sendQuery.mock.calls[0][0];
+    expect(headers['Content-Type']).toBe('application/x-www-form-urlencoded');
+    expect(body).toContain('xquery=');
+    expect(body).toContain('database=');
+
+    const decodedBody = decodeURIComponent(body);
+    expect(decodedBody).toContain('1 to 10');
+    expect(decodedBody).toContain('database=123');
+
     expect(result.mode).toBe('buffer');
     expect(result.tableData).toHaveLength(1);
     expect(result.formatted).toBe('result');
