@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import useQueryHistory from '../useQueryHistory';
+import { setMockElectronAPI, clearMockElectronAPI } from '../../test/helpers/mockElectronAPI';
 
 describe('useQueryHistory - Core Functionality', () => {
   const mockQueries = [
@@ -36,32 +37,31 @@ describe('useQueryHistory - Core Functionality', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock window.electronAPI
-    global.window = {
-      electronAPI: {
-        database: {
-          getRecentQueries: vi.fn().mockResolvedValue({
-            success: true,
-            queries: mockQueries
-          }),
-          saveQuery: vi.fn().mockResolvedValue({
-            success: true,
-            queryId: 'new-query-123'
-          }),
-          getQueryById: vi.fn().mockResolvedValue({
-            success: true,
-            query: mockQueries[0]
-          }),
-          deleteQuery: vi.fn().mockResolvedValue({
-            success: true
-          })
-        }
+    // Mock window.electronAPI without wiping DOM constructors
+    setMockElectronAPI({
+      database: {
+        getRecentQueries: vi.fn().mockResolvedValue({
+          success: true,
+          queries: mockQueries
+        }),
+        saveQuery: vi.fn().mockResolvedValue({
+          success: true,
+          queryId: 'new-query-123'
+        }),
+        getQueryById: vi.fn().mockResolvedValue({
+          success: true,
+          query: mockQueries[0]
+        }),
+        deleteQuery: vi.fn().mockResolvedValue({
+          success: true
+        })
       }
-    };
+    });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    clearMockElectronAPI();
   });
 
   describe('initialization', () => {

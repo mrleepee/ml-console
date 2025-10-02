@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { setMockElectronAPI, clearMockElectronAPI } from '../../test/helpers/mockElectronAPI';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import useDatabaseConfig from '../useDatabaseConfig';
 
@@ -52,11 +53,10 @@ describe('useDatabaseConfig', () => {
     parseDatabaseConfigs.mockReturnValue(mockParsedConfigs);
     checkConnection.mockResolvedValue({ ok: true });
 
-    // Mock window.electronAPI
-    global.window = global.window || {};
-    global.window.electronAPI = {
+    // Mock window.electronAPI without wiping DOM constructors
+    setMockElectronAPI({
       httpRequest: vi.fn().mockResolvedValue({ status: 200, body: 'test' })
-    };
+    });
 
     // Mock DOM environment for testing
     global.document = global.document || { getElementById: vi.fn() };

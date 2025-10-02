@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { setMockElectronAPI, clearMockElectronAPI } from '../../test/helpers/mockElectronAPI';
 import { renderHook, act } from '@testing-library/react';
 import useTheme from '../useTheme';
 
@@ -22,15 +23,18 @@ describe('useTheme - Core Functionality', () => {
     vi.clearAllMocks();
     mockLocalStorage.clear();
 
-    // Mock global objects
-    global.window = {
-      localStorage: mockLocalStorage
-    };
+    // Mock global objects without wiping DOM constructors
+    if (!global.window.localStorage) {
+      global.window.localStorage = mockLocalStorage;
+    } else {
+      Object.assign(global.window.localStorage, mockLocalStorage);
+    }
 
-    global.document = {
-      documentElement: {
-        setAttribute: vi.fn()
-      }
+    if (!global.document) {
+      global.document = {};
+    }
+    global.document.documentElement = {
+      setAttribute: vi.fn()
     };
   });
 
