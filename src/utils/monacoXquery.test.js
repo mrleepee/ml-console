@@ -14,6 +14,13 @@ const createMonacoStub = () => {
   const registered = [];
   const languageConfigurationCalls = [];
   const monarchCalls = [];
+  const models = [];
+
+  // Mock model with lifecycle events
+  const createMockModel = () => ({
+    getValue: () => '',
+    onDidChangeContent: vi.fn(() => ({ dispose: vi.fn() }))
+  });
 
   return {
     languages: {
@@ -31,16 +38,21 @@ const createMonacoStub = () => {
       registerFoldingRangeProvider: vi.fn(),
       registerCodeActionProvider: vi.fn(),
       CompletionItemKind: {
+        Method: 0,
+        Function: 1,
         Variable: 4,
         Property: 9,
-        Keyword: 17
+        Keyword: 17,
+        Snippet: 27
       },
       CompletionItemInsertTextRule: {
         InsertAsSnippet: 4
       }
     },
     editor: {
-      addKeybindingRules: vi.fn()
+      addKeybindingRules: vi.fn(),
+      getModels: () => models,
+      onDidCreateModel: vi.fn(() => ({ dispose: vi.fn() }))
     },
     KeyMod: {
       CtrlCmd: 2048,
@@ -147,9 +159,9 @@ describe('registerXQueryLanguage', () => {
   });
 
   it('handles missing monaco gracefully', async () => {
-    await expect(registerXQueryLanguage(null)).resolves.not.toThrow();
-    await expect(registerXQueryLanguage({})).resolves.not.toThrow();
-    await expect(registerXQueryLanguage({ languages: null })).resolves.not.toThrow();
+    await expect(registerXQueryLanguage(null)).resolves.toBeUndefined();
+    await expect(registerXQueryLanguage({})).resolves.toBeUndefined();
+    await expect(registerXQueryLanguage({ languages: null })).resolves.toBeUndefined();
   });
 
   it('handles language already registered', async () => {
