@@ -84,7 +84,8 @@
       "mcp__github__get_file_contents",
       "Bash(git fetch:*)",
       "Bash(git merge:*)",
-      "Bash(git stash drop:*)"
+      "Bash(git stash drop:*)",
+      "Bash(tee:*)"
     ],
     "deny": [],
     "ask": []

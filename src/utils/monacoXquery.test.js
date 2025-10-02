@@ -14,6 +14,13 @@ const createMonacoStub = () => {
   const registered = [];
   const languageConfigurationCalls = [];
   const monarchCalls = [];
+  const models = [];
+
+  // Mock model with lifecycle events
+  const createMockModel = () => ({
+    getValue: () => '',
+    onDidChangeContent: vi.fn(() => ({ dispose: vi.fn() }))
+  });
 
   return {
     languages: {
@@ -26,7 +33,34 @@ const createMonacoStub = () => {
       },
       setMonarchTokensProvider: (id, config) => {
         monarchCalls.push({ id, config });
+      },
+      registerCompletionItemProvider: vi.fn(),
+      registerFoldingRangeProvider: vi.fn(),
+      registerCodeActionProvider: vi.fn(),
+      CompletionItemKind: {
+        Method: 0,
+        Function: 1,
+        Variable: 4,
+        Property: 9,
+        Keyword: 17,
+        Snippet: 27
+      },
+      CompletionItemInsertTextRule: {
+        InsertAsSnippet: 4
       }
+    },
+    editor: {
+      addKeybindingRules: vi.fn(),
+      getModels: () => models,
+      onDidCreateModel: vi.fn(() => ({ dispose: vi.fn() }))
+    },
+    KeyMod: {
+      CtrlCmd: 2048,
+      Shift: 1024
+    },
+    KeyCode: {
+      Slash: 85,
+      KeyA: 31
     },
     stats: {
       get registeredLanguages() {
@@ -101,22 +135,22 @@ describe('registerXQueryLanguage', () => {
     __resetXQueryRegistrationForTests();
   });
 
-  it('registers the language once and applies token providers', () => {
+  it('registers the language once and applies token providers', async () => {
     const monaco = createMonacoStub();
 
-    registerXQueryLanguage(monaco);
-    registerXQueryLanguage(monaco); // no-op on identical config
+    await registerXQueryLanguage(monaco);
+    await registerXQueryLanguage(monaco); // no-op on identical config
 
     expect(monaco.stats.registeredLanguages).toEqual([XQUERY_LANGUAGE]);
     expect(monaco.stats.languageConfigurationCalls).toHaveLength(1);
     expect(monaco.stats.monarchCalls).toHaveLength(1);
   });
 
-  it('reapplies providers when overrides change', () => {
+  it('reapplies providers when overrides change', async () => {
     const monaco = createMonacoStub();
 
-    registerXQueryLanguage(monaco, { keywords: ['first'] });
-    registerXQueryLanguage(monaco, { keywords: ['second'] });
+    await registerXQueryLanguage(monaco, { keywords: ['first'] });
+    await registerXQueryLanguage(monaco, { keywords: ['second'] });
 
     expect(monaco.stats.registeredLanguages).toEqual([XQUERY_LANGUAGE]);
     expect(monaco.stats.languageConfigurationCalls).toHaveLength(2);
@@ -124,25 +158,25 @@ describe('registerXQueryLanguage', () => {
     expect(monaco.stats.monarchCalls[1].config.keywords).toContain('second');
   });
 
-  it('handles missing monaco gracefully', () => {
-    expect(() => registerXQueryLanguage(null)).not.toThrow();
-    expect(() => registerXQueryLanguage({})).not.toThrow();
-    expect(() => registerXQueryLanguage({ languages: null })).not.toThrow();
+  it('handles missing monaco gracefully', async () => {
+    await expect(registerXQueryLanguage(null)).resolves.toBeUndefined();
+    await expect(registerXQueryLanguage({})).resolves.toBeUndefined();
+    await expect(registerXQueryLanguage({ languages: null })).resolves.toBeUndefined();
   });
 
-  it('handles language already registered', () => {
+  it('handles language already registered', async () => {
     const monaco = createMonacoStub();
     // Pre-register the language
     monaco.languages.register({ id: XQUERY_LANGUAGE });
 
-    registerXQueryLanguage(monaco);
+    await registerXQueryLanguage(monaco);
 
     expect(monaco.stats.registeredLanguages).toEqual([XQUERY_LANGUAGE]);
     expect(monaco.stats.languageConfigurationCalls).toHaveLength(1);
     expect(monaco.stats.monarchCalls).toHaveLength(1);
   });
 
-  it('registers language with all required properties', () => {
+  it('registers language with all required properties', async () => {
     const monaco = createMonacoStub();
     let registrationCall = null;
 
@@ -153,7 +187,7 @@ describe('registerXQueryLanguage', () => {
       originalRegister.call(monaco.languages, { id: config.id });
     };
 
-    registerXQueryLanguage(monaco);
+    await registerXQueryLanguage(monaco);
 
     expect(registrationCall).toEqual({
       id: XQUERY_LANGUAGE,
@@ -163,10 +197,10 @@ describe('registerXQueryLanguage', () => {
     });
   });
 
-  it('applies correct language configuration', () => {
+  it('applies correct language configuration', async () => {
     const monaco = createMonacoStub();
 
-    registerXQueryLanguage(monaco);
+    await registerXQueryLanguage(monaco);
 
     const configCall = monaco.stats.languageConfigurationCalls[0];
     expect(configCall.id).toBe(XQUERY_LANGUAGE);
@@ -184,10 +218,10 @@ describe('registerXQueryLanguage', () => {
     });
   });
 
-  it('applies monarch tokenizer with correct structure', () => {
+  it('applies monarch tokenizer with correct structure', async () => {
     const monaco = createMonacoStub();
 
-    registerXQueryLanguage(monaco);
+    await registerXQueryLanguage(monaco);
 
     const monarchCall = monaco.stats.monarchCalls[0];
     expect(monarchCall.id).toBe(XQUERY_LANGUAGE);
@@ -210,10 +244,10 @@ describe('registerXQueryLanguage', () => {
     });
   });
 
-  it('includes MarkLogic keywords and builtins in tokenizer', () => {
+  it('includes MarkLogic keywords and builtins in tokenizer', async () => {
     const monaco = createMonacoStub();
 
-    registerXQueryLanguage(monaco);
+    await registerXQueryLanguage(monaco);
 
     const monarchCall = monaco.stats.monarchCalls[0];
     expect(monarchCall.config.keywords).toContain('xdmp');
@@ -222,16 +256,16 @@ describe('registerXQueryLanguage', () => {
     expect(monarchCall.config.builtins).toContain('fn');
   });
 
-  it('detects completion item content changes and reapplies providers', () => {
+  it('detects completion item content changes and reapplies providers', async () => {
     const monaco = createMonacoStub();
 
     // First registration with initial completion items
-    registerXQueryLanguage(monaco, {
+    await registerXQueryLanguage(monaco, {
       completionItems: [{ label: 'initial-item', kind: 'function' }]
     });
 
     // Second registration with same array length but different content
-    registerXQueryLanguage(monaco, {
+    await registerXQueryLanguage(monaco, {
       completionItems: [{ label: 'changed-item', kind: 'function' }]
     });
 
@@ -257,10 +291,10 @@ describe('registerXQueryLanguage', () => {
     // triggers signature change detection and provider reapplication
   });
 
-  it('applies detailed tokenizer rules correctly', () => {
+  it('applies detailed tokenizer rules correctly', async () => {
     const monaco = createMonacoStub();
 
-    registerXQueryLanguage(monaco);
+    await registerXQueryLanguage(monaco);
 
     const monarchCall = monaco.stats.monarchCalls[0];
     const tokenizer = monarchCall.config.tokenizer;
@@ -325,10 +359,10 @@ describe('registerXQueryLanguage', () => {
     expect(tokenizer.xml_declaration).toBeDefined();
   });
 
-  it('includes XQuery-specific token patterns', () => {
+  it('includes XQuery-specific token patterns', async () => {
     const monaco = createMonacoStub();
 
-    registerXQueryLanguage(monaco);
+    await registerXQueryLanguage(monaco);
 
     const monarchCall = monaco.stats.monarchCalls[0];
 
@@ -364,7 +398,7 @@ describe('registerXQueryLanguage', () => {
     expect(functionRule[1]).toBe('type.identifier');
   });
 
-  it('end-to-end integration test with real config building', () => {
+  it('end-to-end integration test with real config building', async () => {
     const monaco = createMonacoStub();
 
     // Use the real buildXQueryLanguageConfig with custom overrides
@@ -374,7 +408,7 @@ describe('registerXQueryLanguage', () => {
       completionItems: [{ label: 'custom-item', kind: 'function' }]
     };
 
-    registerXQueryLanguage(monaco, customOverrides);
+    await registerXQueryLanguage(monaco, customOverrides);
 
     // Verify language registration
     expect(monaco.stats.registeredLanguages).toEqual([XQUERY_LANGUAGE]);
@@ -415,7 +449,7 @@ describe('registerXQueryLanguage', () => {
 
     // Verify completion items integration by testing the built config directly
     // (completion items are used by completion providers, not monarch tokenizer)
-    const builtConfig = buildXQueryLanguageConfig({ overrides: customOverrides });
+    const builtConfig = await buildXQueryLanguageConfig({ overrides: customOverrides });
     expect(builtConfig.completionItems).toBeDefined();
     expect(builtConfig.completionItems.length).toBeGreaterThan(0);
     expect(builtConfig.completionItems).toEqual(
@@ -423,17 +457,17 @@ describe('registerXQueryLanguage', () => {
     );
   });
 
-  it('end-to-end integration with configuration merging', () => {
+  it('end-to-end integration with configuration merging', async () => {
     const monaco = createMonacoStub();
 
     // First registration with some overrides
-    registerXQueryLanguage(monaco, {
+    await registerXQueryLanguage(monaco, {
       keywords: ['first-keyword'],
       builtins: ['first:builtin']
     });
 
     // Second registration with different overrides (should update tokenizer)
-    registerXQueryLanguage(monaco, {
+    await registerXQueryLanguage(monaco, {
       keywords: ['second-keyword'],
       builtins: ['second:builtin'],
       completionItems: [{ label: 'second-item', kind: 'function' }]
@@ -457,7 +491,7 @@ describe('registerXQueryLanguage', () => {
     expect(finalMonarchCall.config.builtins).not.toContain('first:builtin'); // Not merged
 
     // Verify completion items flow through the integration
-    const secondConfig = buildXQueryLanguageConfig({
+    const secondConfig = await buildXQueryLanguageConfig({
       overrides: {
         keywords: ['second-keyword'],
         builtins: ['second:builtin'],
@@ -471,7 +505,7 @@ describe('registerXQueryLanguage', () => {
     expect(secondConfig.completionItems).toBeDefined();
   });
 
-  it('returns completion data for downstream completion provider registration', () => {
+  it('returns completion data for downstream completion provider registration', async () => {
     const monaco = createMonacoStub();
 
     // Track completion provider registrations
@@ -486,7 +520,7 @@ describe('registerXQueryLanguage', () => {
     ];
 
     // Register language with completion items and get the config data back
-    const languageConfig = registerXQueryLanguage(monaco, {
+    const languageConfig = await registerXQueryLanguage(monaco, {
       keywords: ['test-keyword'],
       completionItems: customCompletionItems
     });
@@ -522,18 +556,18 @@ describe('registerXQueryLanguage', () => {
     // to downstream consumers, addressing the integration gap
   });
 
-  it('handles multiple Monaco instances independently', () => {
+  it('handles multiple Monaco instances independently', async () => {
     const monaco1 = createMonacoStub();
     const monaco2 = createMonacoStub();
 
     // Register language on first Monaco instance
-    registerXQueryLanguage(monaco1, {
+    await registerXQueryLanguage(monaco1, {
       keywords: ['first-keyword'],
       completionItems: [{ label: 'first-item', kind: 'function' }]
     });
 
     // Register language on second Monaco instance with different config
-    registerXQueryLanguage(monaco2, {
+    await registerXQueryLanguage(monaco2, {
       keywords: ['second-keyword'],
       completionItems: [{ label: 'second-item', kind: 'function' }]
     });
@@ -549,11 +583,11 @@ describe('registerXQueryLanguage', () => {
     expect(monaco2.stats.monarchCalls[0].config.keywords).toContain('second-keyword');
 
     // Registering the same config again on each instance should be a no-op
-    registerXQueryLanguage(monaco1, {
+    await registerXQueryLanguage(monaco1, {
       keywords: ['first-keyword'],
       completionItems: [{ label: 'first-item', kind: 'function' }]
     });
-    registerXQueryLanguage(monaco2, {
+    await registerXQueryLanguage(monaco2, {
       keywords: ['second-keyword'],
       completionItems: [{ label: 'second-item', kind: 'function' }]
     });
@@ -573,8 +607,8 @@ describe('XML/HTML Embedding Support (Phase 2)', () => {
   });
 
   describe('XML Tag Recognition', () => {
-    it('should tokenize basic XML tags', () => {
-      registerXQueryLanguage(monaco);
+    it('should tokenize basic XML tags', async () => {
+      await registerXQueryLanguage(monaco);
       const tokenizer = monaco.stats.monarchCalls[0].config.tokenizer;
 
       // Test opening tag
@@ -590,16 +624,16 @@ describe('XML/HTML Embedding Support (Phase 2)', () => {
       expect(selfCloseTokens.some(t => t.token === 'tag')).toBe(true);
     });
 
-    it('should handle namespaced XML tags', () => {
-      registerXQueryLanguage(monaco);
+    it('should handle namespaced XML tags', async () => {
+      await registerXQueryLanguage(monaco);
       const tokenizer = monaco.stats.monarchCalls[0].config.tokenizer;
 
       const tokens = tokenizeTestString(tokenizer, '<xs:element>');
       expect(tokens.some(t => t.token === 'tag' && t.text.includes('xs:element'))).toBe(true);
     });
 
-    it('should tokenize XML attributes with namespaces', () => {
-      registerXQueryLanguage(monaco);
+    it('should tokenize XML attributes with namespaces', async () => {
+      await registerXQueryLanguage(monaco);
       const tokenizer = monaco.stats.monarchCalls[0].config.tokenizer;
 
       const tokens = tokenizeTestString(tokenizer, '<element xmlns:xs="http://www.w3.org/2001/XMLSchema">');
@@ -609,16 +643,16 @@ describe('XML/HTML Embedding Support (Phase 2)', () => {
   });
 
   describe('Processing Instructions and CDATA', () => {
-    it('should tokenize XML processing instructions', () => {
-      registerXQueryLanguage(monaco);
+    it('should tokenize XML processing instructions', async () => {
+      await registerXQueryLanguage(monaco);
       const tokenizer = monaco.stats.monarchCalls[0].config.tokenizer;
 
       const tokens = tokenizeTestString(tokenizer, '<?xml version="1.0"?>');
       expect(tokens.some(t => t.token === 'metatag')).toBe(true);
     });
 
-    it('should tokenize CDATA sections', () => {
-      registerXQueryLanguage(monaco);
+    it('should tokenize CDATA sections', async () => {
+      await registerXQueryLanguage(monaco);
       const tokenizer = monaco.stats.monarchCalls[0].config.tokenizer;
 
       const tokens = tokenizeTestString(tokenizer, '<![CDATA[some raw content]]>');
@@ -627,8 +661,8 @@ describe('XML/HTML Embedding Support (Phase 2)', () => {
   });
 
   describe('XQuery Expressions in XML Attributes', () => {
-    it('should handle XQuery expressions within XML attribute values', () => {
-      registerXQueryLanguage(monaco);
+    it('should handle XQuery expressions within XML attribute values', async () => {
+      await registerXQueryLanguage(monaco);
       const tokenizer = monaco.stats.monarchCalls[0].config.tokenizer;
 
       // Test expression in double-quoted attribute
@@ -642,8 +676,8 @@ describe('XML/HTML Embedding Support (Phase 2)', () => {
       expect(singleQuoteTokens.some(t => t.token === 'type.identifier')).toBe(true);
     });
 
-    it('should handle complex XQuery expressions in attributes', () => {
-      registerXQueryLanguage(monaco);
+    it('should handle complex XQuery expressions in attributes', async () => {
+      await registerXQueryLanguage(monaco);
       const tokenizer = monaco.stats.monarchCalls[0].config.tokenizer;
 
       const tokens = tokenizeTestString(tokenizer, '<element count="{if ($x > 5) then $x else 0}">');
@@ -655,8 +689,8 @@ describe('XML/HTML Embedding Support (Phase 2)', () => {
   });
 
   describe('Mixed XQuery and XML Content', () => {
-    it('should handle element constructors with XQuery expressions', () => {
-      registerXQueryLanguage(monaco);
+    it('should handle element constructors with XQuery expressions', async () => {
+      await registerXQueryLanguage(monaco);
       const tokenizer = monaco.stats.monarchCalls[0].config.tokenizer;
 
       const xqueryXml = `
@@ -680,8 +714,8 @@ describe('XML/HTML Embedding Support (Phase 2)', () => {
       expect(tokens.some(t => t.token === 'variable')).toBe(true);
     });
 
-    it('should handle XML with embedded XQuery expressions in content', () => {
-      registerXQueryLanguage(monaco);
+    it('should handle XML with embedded XQuery expressions in content', async () => {
+      await registerXQueryLanguage(monaco);
       const tokenizer = monaco.stats.monarchCalls[0].config.tokenizer;
 
       const mixedContent = '<result>The count is: {count($items)} items</result>';
@@ -695,8 +729,8 @@ describe('XML/HTML Embedding Support (Phase 2)', () => {
   });
 
   describe('XML State Machine Edge Cases', () => {
-    it('should handle malformed XML gracefully', () => {
-      registerXQueryLanguage(monaco);
+    it('should handle malformed XML gracefully', async () => {
+      await registerXQueryLanguage(monaco);
       const tokenizer = monaco.stats.monarchCalls[0].config.tokenizer;
 
       // Missing closing bracket
@@ -709,8 +743,8 @@ describe('XML/HTML Embedding Support (Phase 2)', () => {
       expect(() => tokenizeTestString(tokenizer, '<?invalid-pi')).not.toThrow();
     });
 
-    it('should handle nested XML structures', () => {
-      registerXQueryLanguage(monaco);
+    it('should handle nested XML structures', async () => {
+      await registerXQueryLanguage(monaco);
       const tokenizer = monaco.stats.monarchCalls[0].config.tokenizer;
 
       const nestedXml = `
@@ -728,8 +762,8 @@ describe('XML/HTML Embedding Support (Phase 2)', () => {
       expect(tokens.some(t => t.token === 'type.identifier')).toBe(true);
     });
 
-    it('should handle XML with XQuery comments', () => {
-      registerXQueryLanguage(monaco);
+    it('should handle XML with XQuery comments', async () => {
+      await registerXQueryLanguage(monaco);
       const tokenizer = monaco.stats.monarchCalls[0].config.tokenizer;
 
       const commentedXml = `
@@ -832,17 +866,17 @@ describe('XML/HTML Embedding Support (Phase 2)', () => {
   }
 
   // Alias for consistency with FLWOR tests
-  const mockTokenizer = (text) => {
+  const mockTokenizer = async (text) => {
     const monaco = createMonacoStub();
-    registerXQueryLanguage(monaco);
+    await registerXQueryLanguage(monaco);
     const monarchCall = monaco.stats.monarchCalls[0];
     return tokenizeTestString(monarchCall.config.tokenizer, text);
   };
 
   describe('Enhanced FLWOR Expression Tests (XQuery 3.0+)', () => {
-    it('should validate FLWOR tokenizer state structure', () => {
+    it('should validate FLWOR tokenizer state structure', async () => {
       const monaco = createMonacoStub();
-      registerXQueryLanguage(monaco);
+      await registerXQueryLanguage(monaco);
 
       const monarchCall = monaco.stats.monarchCalls[0];
       const tokenizer = monarchCall.config.tokenizer;
@@ -869,9 +903,9 @@ describe('XML/HTML Embedding Support (Phase 2)', () => {
       expect(tokenizer.flwor_nested).toBeInstanceOf(Array);
     });
 
-    it('should tokenize basic FLWOR expressions', () => {
+    it('should tokenize basic FLWOR expressions', async () => {
       const monaco = createMonacoStub();
-      registerXQueryLanguage(monaco);
+      await registerXQueryLanguage(monaco);
 
       const xquery = `for $item in collection("test")
 let $value := $item/value
@@ -879,7 +913,7 @@ where $value > 50
 order by $value ascending
 return $item/name`;
 
-      const mockTokens = mockTokenizer(xquery);
+      const mockTokens = await mockTokenizer(xquery);
 
       // Verify FLWOR keywords are detected
       expect(mockTokens.some(token =>
@@ -896,9 +930,9 @@ return $item/name`;
       )).toBe(true);
     });
 
-    it('should tokenize enhanced FLWOR with grouping and counting', () => {
+    it('should tokenize enhanced FLWOR with grouping and counting', async () => {
       const monaco = createMonacoStub();
-      registerXQueryLanguage(monaco);
+      await registerXQueryLanguage(monaco);
 
       const xquery = `for $item in collection("test")
 let $category := $item/category
@@ -911,7 +945,7 @@ return element result {
   attribute count { $total }
 }`;
 
-      const mockTokens = mockTokenizer(xquery);
+      const mockTokens = await mockTokenizer(xquery);
 
       // Verify enhanced FLWOR keywords
       expect(mockTokens.some(token =>
@@ -922,16 +956,16 @@ return element result {
       )).toBe(true);
     });
 
-    it('should tokenize tumbling window expressions', () => {
+    it('should tokenize tumbling window expressions', async () => {
       const monaco = createMonacoStub();
-      registerXQueryLanguage(monaco);
+      await registerXQueryLanguage(monaco);
 
       const xquery = `for tumbling window $w in (1 to 10)
     start at $s when true
     end at $e when $e - $s eq 2
 return <window start="{$s}" end="{$e}">{$w}</window>`;
 
-      const mockTokens = mockTokenizer(xquery);
+      const mockTokens = await mockTokenizer(xquery);
 
       // Verify window expression keywords
       expect(mockTokens.some(token =>
@@ -939,9 +973,9 @@ return <window start="{$s}" end="{$e}">{$w}</window>`;
       )).toBe(true);
     });
 
-    it('should tokenize sliding window expressions with modifiers', () => {
+    it('should tokenize sliding window expressions with modifiers', async () => {
       const monaco = createMonacoStub();
-      registerXQueryLanguage(monaco);
+      await registerXQueryLanguage(monaco);
 
       const xquery = `for sliding window $w in collection("test")/item
     start at $s when true
@@ -950,7 +984,7 @@ return <window start="{$s}" end="{$e}">{$w}</window>`;
     next $next
 return <batch>{$w}</batch>`;
 
-      const mockTokens = mockTokenizer(xquery);
+      const mockTokens = await mockTokenizer(xquery);
 
       // Verify sliding window with modifiers
       expect(mockTokens.some(token =>
@@ -958,14 +992,14 @@ return <batch>{$w}</batch>`;
       )).toBe(true);
     });
 
-    it('should tokenize context-sensitive allowing empty', () => {
+    it('should tokenize context-sensitive allowing empty', async () => {
       const monaco = createMonacoStub();
-      registerXQueryLanguage(monaco);
+      await registerXQueryLanguage(monaco);
 
       const xqueryValid = `for $item allowing empty in collection("nonexistent")
 return if ($item) then $item else <empty/>`;
 
-      const mockTokens = mockTokenizer(xqueryValid);
+      const mockTokens = await mockTokenizer(xqueryValid);
 
       // Should detect allowing empty in FLWOR context
       expect(mockTokens.some(token =>
@@ -973,9 +1007,9 @@ return if ($item) then $item else <empty/>`;
       )).toBe(true);
     });
 
-    it('should handle nested FLWOR expressions', () => {
+    it('should handle nested FLWOR expressions', async () => {
       const monaco = createMonacoStub();
-      registerXQueryLanguage(monaco);
+      await registerXQueryLanguage(monaco);
 
       const xquery = `for $category in ("electronics", "books")
 let $analysis := (
@@ -986,7 +1020,7 @@ let $analysis := (
 )
 return element category-analysis { $analysis }`;
 
-      const mockTokens = mockTokenizer(xquery);
+      const mockTokens = await mockTokenizer(xquery);
 
       // Should detect both outer and inner FLWOR expressions
       const forTokens = mockTokens.filter(token =>
@@ -995,9 +1029,9 @@ return element category-analysis { $analysis }`;
       expect(forTokens.length).toBeGreaterThan(1); // Multiple for clauses detected
     });
 
-    it('should integrate FLWOR with XML embedding', () => {
+    it('should integrate FLWOR with XML embedding', async () => {
       const monaco = createMonacoStub();
-      registerXQueryLanguage(monaco);
+      await registerXQueryLanguage(monaco);
 
       const xquery = `<results>
 {
@@ -1014,7 +1048,7 @@ return element category-analysis { $analysis }`;
 }
 </results>`;
 
-      const mockTokens = mockTokenizer(xquery);
+      const mockTokens = await mockTokenizer(xquery);
 
       // Should detect both FLWOR and XML tokens
       expect(mockTokens.some(token =>
@@ -1025,9 +1059,9 @@ return element category-analysis { $analysis }`;
       )).toBe(true);
     });
 
-    it('should prevent FLWOR keyword over-highlighting outside context', () => {
+    it('should prevent FLWOR keyword over-highlighting outside context', async () => {
       const monaco = createMonacoStub();
-      registerXQueryLanguage(monaco);
+      await registerXQueryLanguage(monaco);
 
       // Context-dependent keywords should not be in global keyword list
       const monarchCall = monaco.stats.monarchCalls[0];
@@ -1042,9 +1076,9 @@ return element category-analysis { $analysis }`;
       expect(keywords).not.toContain('least'); // Multi-word "empty least" only
     });
 
-    it('should include safe FLWOR keywords in global list', () => {
+    it('should include safe FLWOR keywords in global list', async () => {
       const monaco = createMonacoStub();
-      registerXQueryLanguage(monaco);
+      await registerXQueryLanguage(monaco);
 
       const monarchCall = monaco.stats.monarchCalls[0];
       const keywords = monarchCall.config.keywords;
@@ -1061,9 +1095,9 @@ return element category-analysis { $analysis }`;
       // Note: 'count' removed from global keywords to preserve fn:count() function calls
     });
 
-    it('should support standalone count clauses', () => {
+    it('should support standalone count clauses', async () => {
       const monaco = createMonacoStub();
-      registerXQueryLanguage(monaco);
+      await registerXQueryLanguage(monaco);
 
       const monarchCall = monaco.stats.monarchCalls[0];
       const tokenizer = monarchCall.config.tokenizer;
@@ -1081,9 +1115,9 @@ return element category-analysis { $analysis }`;
       expect(countRule[2].next).toBe('@flwor_count');
     });
 
-    it('should preserve function call highlighting for count()', () => {
+    it('should preserve function call highlighting for count()', async () => {
       const monaco = createMonacoStub();
-      registerXQueryLanguage(monaco);
+      await registerXQueryLanguage(monaco);
 
       const monarchCall = monaco.stats.monarchCalls[0];
       const keywords = monarchCall.config.keywords;
