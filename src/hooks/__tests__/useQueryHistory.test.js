@@ -145,7 +145,7 @@ describe('useQueryHistory - Core Functionality', () => {
     });
 
     it('should handle electron API not available', async () => {
-      global.window = {};
+      clearMockElectronAPI();
 
       const { result } = renderHook(() => useQueryHistory());
 

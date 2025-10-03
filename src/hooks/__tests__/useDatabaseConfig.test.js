@@ -367,8 +367,8 @@ describe('useDatabaseConfig', () => {
 
   describe('fallback request handling', () => {
     it('should use fetch when electronAPI is not available', async () => {
-      // Remove electronAPI
-      global.window = {};
+      // Remove electronAPI without wiping DOM
+      clearMockElectronAPI();
       global.fetch = vi.fn().mockResolvedValue({
         text: vi.fn().mockResolvedValue('fetch response'),
         status: 200
@@ -385,7 +385,7 @@ describe('useDatabaseConfig', () => {
     });
 
     it('should handle fetch errors gracefully', async () => {
-      global.window = {};
+      clearMockElectronAPI();
       global.fetch = vi.fn().mockRejectedValue(new Error('Fetch failed'));
 
       const { result } = renderHook(() => useDatabaseConfig());

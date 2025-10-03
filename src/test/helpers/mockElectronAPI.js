@@ -14,8 +14,9 @@ export function setMockElectronAPI(electronAPI) {
     throw new Error('setMockElectronAPI can only be called in jsdom environment');
   }
 
-  // Preserve existing window properties
-  if (!global.window) {
+  // CRITICAL: Always point global.window to jsdom's window
+  // If a test reassigned it to {} we need to restore the real jsdom window
+  if (!global.window || typeof global.window.HTMLElement === 'undefined') {
     global.window = window;
   }
 
