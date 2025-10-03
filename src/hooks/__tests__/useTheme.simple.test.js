@@ -30,12 +30,11 @@ describe('useTheme - Core Functionality', () => {
       Object.assign(global.window.localStorage, mockLocalStorage);
     }
 
-    if (!global.document) {
-      global.document = {};
+    // Mock document.documentElement.setAttribute (readonly property)
+    const mockSetAttribute = vi.fn();
+    if (global.document?.documentElement) {
+      vi.spyOn(global.document.documentElement, 'setAttribute').mockImplementation(mockSetAttribute);
     }
-    global.document.documentElement = {
-      setAttribute: vi.fn()
-    };
   });
 
   afterEach(() => {
