@@ -222,8 +222,42 @@ interface LayoutState {
 
 ---
 
-### Phase 2: Maximize/Minimize Buttons
-**Status:** Not started
+### Phase 2: Layout Preset Buttons ✅ COMPLETED
+
+**Implemented:**
+- ✅ Added Min/Mid/Max button group to Query pane header
+- ✅ Min button: Sets editor to 30% / results to 70%
+- ✅ Mid button: Sets editor to 50% / results to 50% (balanced)
+- ✅ Max button: Sets editor to 70% / results to 30%
+- ✅ Active state styling shows which preset is selected
+- ✅ Buttons use DaisyUI join component for grouped appearance
+- ✅ Tooltips provide clear descriptions
+
+**Files Modified:**
+- [src/App.jsx](src/App.jsx:473-496) - Added preset button group to Query header
+
+**Testing Verified:**
+- Min button correctly sets 30/70 split with small editor
+- Mid button correctly sets 50/50 balanced layout
+- Max button correctly sets 70/30 split with large editor
+- Active button styling works correctly
+- Settings persist to localStorage
+- All buttons have descriptive tooltips
+
+**Design Notes:**
+- Changed from original "maximize/minimize toggle" concept to "preset buttons"
+- Provides 3 quick presets instead of temporary toggle state
+- Simpler UX - one click to desired layout vs toggle dance
+- Settings-based slider still available for custom percentages
+
+**Acceptance Criteria:**
+- ✅ Quick layout presets visible on Query pane
+- ✅ One-click access to 30%, 50%, 70% editor heights
+- ✅ Active state shows current selection
+- ✅ Settings persist across sessions
+- ✅ Query History unaffected by changes
+
+---
 
 ### Phase 3: Compact Results Header
 **Status:** Not started

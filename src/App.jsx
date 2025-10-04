@@ -470,6 +470,31 @@ function App() {
                       toggleMinimap={toggleMinimap}
                     />
 
+                    {/* Layout Presets */}
+                    <div className="join">
+                      <button
+                        onClick={() => updatePreferences({ editorHeightPercent: 30, resultsHeightPercent: 70 })}
+                        className={`btn btn-sm join-item ${editorPreferences.editorHeightPercent === 30 ? 'btn-active' : 'btn-outline'}`}
+                        title="Minimize editor (30%)"
+                      >
+                        Min
+                      </button>
+                      <button
+                        onClick={() => updatePreferences({ editorHeightPercent: 50, resultsHeightPercent: 50 })}
+                        className={`btn btn-sm join-item ${editorPreferences.editorHeightPercent === 50 ? 'btn-active' : 'btn-outline'}`}
+                        title="Balanced layout (50/50)"
+                      >
+                        Mid
+                      </button>
+                      <button
+                        onClick={() => updatePreferences({ editorHeightPercent: 70, resultsHeightPercent: 30 })}
+                        className={`btn btn-sm join-item ${editorPreferences.editorHeightPercent === 70 ? 'btn-active' : 'btn-outline'}`}
+                        title="Maximize editor (70%)"
+                      >
+                        Max
+                      </button>
+                    </div>
+
                     {/* Execute Button */}
                     <button
                       onClick={() => executeQuery()}
