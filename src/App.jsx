@@ -88,6 +88,7 @@ function App() {
   const {
     preferences: editorPreferences,
     updatePreference,
+    updatePreferences,
     increaseFontSize,
     decreaseFontSize,
     toggleLineNumbers,
@@ -469,6 +470,37 @@ function App() {
                       toggleMinimap={toggleMinimap}
                     />
 
+                    {/* Layout Presets */}
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => updatePreferences({ editorHeightPercent: 30, resultsHeightPercent: 70 })}
+                        className={`btn btn-sm ${editorPreferences.editorHeightPercent === 30 ? 'btn-primary' : 'btn-ghost'}`}
+                        title="Minimize editor (30%)"
+                      >
+                        <svg className="w-4 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => updatePreferences({ editorHeightPercent: 50, resultsHeightPercent: 50 })}
+                        className={`btn btn-sm ${editorPreferences.editorHeightPercent === 50 ? 'btn-primary' : 'btn-ghost'}`}
+                        title="Balanced layout (50/50)"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v10M16 7v10M8 7h8M8 17h8M4 7h16M4 17h16" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => updatePreferences({ editorHeightPercent: 70, resultsHeightPercent: 30 })}
+                        className={`btn btn-sm ${editorPreferences.editorHeightPercent === 70 ? 'btn-primary' : 'btn-ghost'}`}
+                        title="Maximize editor (70%)"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                        </svg>
+                      </button>
+                    </div>
+
                     {/* Execute Button */}
                     <button
                       onClick={() => executeQuery()}
@@ -491,7 +523,10 @@ function App() {
               {/* Fixed/controlled height + overflow hidden so Monaco can't grow infinitely */}
               <div
                 className="card-body p-0 overflow-hidden"
-                style={{ height: '40vh', minHeight: '260px' }}
+                style={{
+                  height: `${editorPreferences.editorHeightPercent}vh`,
+                  minHeight: '260px'
+                }}
               >
                 <div className="h-full w-full min-w-0">
                   {/* key forces clean re-measure when sidebar toggles */}
@@ -511,14 +546,14 @@ function App() {
 
             {/* Results (fills the remaining vertical space) */}
             <div className="card bg-base-100 shadow-sm border border-base-300 flex-1 flex flex-col min-w-0 overflow-hidden">
-              <div className="card-header bg-base-200 px-4 py-3 border-b border-base-300">
+              <div className="card-header bg-base-200 px-4 py-2 border-b border-base-300">
                 <div className="flex items-center justify-between">
-                  <h2 className="card-title text-lg">Results</h2>
+                  <h2 className="card-title text-base">Results</h2>
                   <div className="card-actions flex items-center gap-2">
-                    <select 
-                      value={viewMode} 
+                    <select
+                      value={viewMode}
                       onChange={(e) => setViewMode(e.target.value)}
-                      className="select select-bordered select-sm w-32"
+                      className="select select-bordered select-xs w-28"
                     >
                       <option value="table">Table View</option>
                       <option value="parsed">Parsed Text</option>
@@ -526,23 +561,23 @@ function App() {
                     </select>
                     {viewMode === 'table' && streamIndex && (
                       <div className="flex items-center gap-2">
-                        <button 
-                          className="btn btn-sm"
+                        <button
+                          className="btn btn-xs"
                           onClick={prevPage}
                           disabled={pageStart === 0}
                           title="Previous 50"
                         >
                           Previous 50
                         </button>
-                        <button 
-                          className="btn btn-sm"
+                        <button
+                          className="btn btn-xs"
                           onClick={nextPage}
                           disabled={pageStart + pageSize >= totalRecords}
                           title="Next 50"
                         >
                           Next 50
                         </button>
-                        <span className="text-sm text-base-content/70">
+                        <span className="text-xs text-base-content/70">
                           {Math.min(pageStart + 1, totalRecords)}–{Math.min(pageStart + pageSize, totalRecords)} of {totalRecords}
                         </span>
                       </div>
@@ -550,24 +585,24 @@ function App() {
                     {viewMode === "table" && hasRecords && (
                       <div className="flex items-center gap-2">
                         <div className="join">
-                          <button 
-                            onClick={goToPrevRecord} 
+                          <button
+                            onClick={goToPrevRecord}
                             disabled={activeRecordIndex <= 0}
-                            className="btn btn-sm btn-outline join-item"
+                            className="btn btn-xs btn-outline join-item"
                             title="Previous record (Ctrl+↑)"
                           >
                             ↑
                           </button>
-                          <button 
-                            onClick={goToNextRecord} 
+                          <button
+                            onClick={goToNextRecord}
                             disabled={activeRecordIndex >= tableData.length - 1}
-                            className="btn btn-sm btn-outline join-item"
+                            className="btn btn-xs btn-outline join-item"
                             title="Next record (Ctrl+↓)"
                           >
                             ↓
                           </button>
                         </div>
-                        <span className="text-sm text-base-content/70">
+                        <span className="text-xs text-base-content/70">
                           {activeRecordIndex + 1} of {tableData.length}
                         </span>
                       </div>
@@ -836,6 +871,51 @@ function App() {
                   monacoTheme={monacoTheme}
                   onMonacoThemeChange={setMonacoTheme}
                 />
+
+                {/* Layout Settings */}
+                <div className="divider"></div>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Layout</h3>
+
+                  <div className="form-control">
+                    <label className="label" htmlFor="settings-editor-height">
+                      <span className="label-text font-medium">Editor Height</span>
+                      <span className="label-text-alt">{editorPreferences.editorHeightPercent}%</span>
+                    </label>
+                    <input
+                      id="settings-editor-height"
+                      type="range"
+                      min="20"
+                      max="70"
+                      value={editorPreferences.editorHeightPercent}
+                      onChange={(e) => {
+                        const newHeight = parseInt(e.target.value);
+                        updatePreferences({
+                          editorHeightPercent: newHeight,
+                          resultsHeightPercent: 100 - newHeight
+                        });
+                      }}
+                      className="range range-primary mt-2"
+                      step="5"
+                      aria-label={`Editor height: ${editorPreferences.editorHeightPercent}%`}
+                    />
+                    <div className="w-full flex justify-between text-xs mt-2">
+                      <span>20%</span>
+                      <span>45%</span>
+                      <span>70%</span>
+                    </div>
+                  </div>
+
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text font-medium">Results Height</span>
+                      <span className="label-text-alt">{editorPreferences.resultsHeightPercent}% (auto)</span>
+                    </label>
+                    <div className="text-sm text-base-content/60">
+                      Automatically calculated as 100% - Editor Height
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -37,7 +37,9 @@ describe('useEditorPreferences', () => {
       bracketMatching: true,
       autoCompletion: true,
       formatOnPaste: true,
-      renderWhitespace: 'selection'
+      renderWhitespace: 'selection',
+      editorHeightPercent: 40,
+      resultsHeightPercent: 60
     });
     expect(result.current.isLoading).toBe(false);
   });
@@ -136,7 +138,9 @@ describe('useEditorPreferences', () => {
       bracketMatching: true,
       autoCompletion: true,
       formatOnPaste: true,
-      renderWhitespace: 'selection'
+      renderWhitespace: 'selection',
+      editorHeightPercent: 40,
+      resultsHeightPercent: 60
     });
   });
 
@@ -273,5 +277,171 @@ describe('useEditorPreferences', () => {
     });
 
     expect(console.warn).toHaveBeenCalledWith('Failed to save editor preferences:', expect.any(Error));
+  });
+
+  describe('Layout Preferences (editorHeightPercent / resultsHeightPercent)', () => {
+    test('initializes with default layout percentages', () => {
+      const { result } = renderHook(() => useEditorPreferences(), { wrapper });
+
+      expect(result.current.preferences.editorHeightPercent).toBe(40);
+      expect(result.current.preferences.resultsHeightPercent).toBe(60);
+    });
+
+    test('loads layout percentages from localStorage', () => {
+      const storedPreferences = {
+        editorHeightPercent: 50,
+        resultsHeightPercent: 50
+      };
+      localStorageMock.getItem.mockReturnValue(JSON.stringify(storedPreferences));
+
+      const { result } = renderHook(() => useEditorPreferences(), { wrapper });
+
+      expect(result.current.preferences.editorHeightPercent).toBe(50);
+      expect(result.current.preferences.resultsHeightPercent).toBe(50);
+    });
+
+    test('clamps editorHeightPercent to 20-70 range when loading from localStorage', () => {
+      // Test lower bound
+      localStorageMock.getItem.mockReturnValue(JSON.stringify({ editorHeightPercent: 10 }));
+      const { result: result1 } = renderHook(() => useEditorPreferences(), { wrapper });
+      expect(result1.current.preferences.editorHeightPercent).toBe(20);
+      expect(result1.current.preferences.resultsHeightPercent).toBe(80);
+
+      // Test upper bound
+      localStorageMock.getItem.mockReturnValue(JSON.stringify({ editorHeightPercent: 90 }));
+      const { result: result2 } = renderHook(() => useEditorPreferences(), { wrapper });
+      expect(result2.current.preferences.editorHeightPercent).toBe(70);
+      expect(result2.current.preferences.resultsHeightPercent).toBe(30);
+    });
+
+    test('auto-calculates resultsHeightPercent when loading from localStorage', () => {
+      localStorageMock.getItem.mockReturnValue(JSON.stringify({ editorHeightPercent: 65 }));
+
+      const { result } = renderHook(() => useEditorPreferences(), { wrapper });
+
+      expect(result.current.preferences.editorHeightPercent).toBe(65);
+      expect(result.current.preferences.resultsHeightPercent).toBe(35);
+    });
+
+    test('setEditorHeight helper clamps to 20-70 range', () => {
+      const { result } = renderHook(() => useEditorPreferences(), { wrapper });
+
+      // Test setting below minimum
+      act(() => {
+        result.current.setEditorHeight(10);
+      });
+      expect(result.current.preferences.editorHeightPercent).toBe(20);
+      expect(result.current.preferences.resultsHeightPercent).toBe(80);
+
+      // Test setting above maximum
+      act(() => {
+        result.current.setEditorHeight(85);
+      });
+      expect(result.current.preferences.editorHeightPercent).toBe(70);
+      expect(result.current.preferences.resultsHeightPercent).toBe(30);
+
+      // Test setting valid value
+      act(() => {
+        result.current.setEditorHeight(45);
+      });
+      expect(result.current.preferences.editorHeightPercent).toBe(45);
+      expect(result.current.preferences.resultsHeightPercent).toBe(55);
+    });
+
+    test('updatePreferences updates both editor and results height', () => {
+      const { result } = renderHook(() => useEditorPreferences(), { wrapper });
+
+      act(() => {
+        result.current.updatePreferences({
+          editorHeightPercent: 30,
+          resultsHeightPercent: 70
+        });
+      });
+
+      expect(result.current.preferences.editorHeightPercent).toBe(30);
+      expect(result.current.preferences.resultsHeightPercent).toBe(70);
+    });
+
+    test('layout presets: Min (30/70)', () => {
+      const { result } = renderHook(() => useEditorPreferences(), { wrapper });
+
+      act(() => {
+        result.current.updatePreferences({
+          editorHeightPercent: 30,
+          resultsHeightPercent: 70
+        });
+      });
+
+      expect(result.current.preferences.editorHeightPercent).toBe(30);
+      expect(result.current.preferences.resultsHeightPercent).toBe(70);
+    });
+
+    test('layout presets: Mid (50/50)', () => {
+      const { result } = renderHook(() => useEditorPreferences(), { wrapper });
+
+      act(() => {
+        result.current.updatePreferences({
+          editorHeightPercent: 50,
+          resultsHeightPercent: 50
+        });
+      });
+
+      expect(result.current.preferences.editorHeightPercent).toBe(50);
+      expect(result.current.preferences.resultsHeightPercent).toBe(50);
+    });
+
+    test('layout presets: Max (70/30)', () => {
+      const { result } = renderHook(() => useEditorPreferences(), { wrapper });
+
+      act(() => {
+        result.current.updatePreferences({
+          editorHeightPercent: 70,
+          resultsHeightPercent: 30
+        });
+      });
+
+      expect(result.current.preferences.editorHeightPercent).toBe(70);
+      expect(result.current.preferences.resultsHeightPercent).toBe(30);
+    });
+
+    test('persists layout preferences to localStorage', () => {
+      const { result } = renderHook(() => useEditorPreferences(), { wrapper });
+
+      act(() => {
+        result.current.updatePreferences({
+          editorHeightPercent: 55,
+          resultsHeightPercent: 45
+        });
+      });
+
+      expect(localStorageMock.setItem).toHaveBeenCalledWith(
+        'editorPreferences',
+        expect.stringContaining('"editorHeightPercent":55')
+      );
+      expect(localStorageMock.setItem).toHaveBeenCalledWith(
+        'editorPreferences',
+        expect.stringContaining('"resultsHeightPercent":45')
+      );
+    });
+
+    test('resetPreferences restores default layout percentages', () => {
+      const { result } = renderHook(() => useEditorPreferences(), { wrapper });
+
+      // Change layout preferences
+      act(() => {
+        result.current.updatePreferences({
+          editorHeightPercent: 70,
+          resultsHeightPercent: 30
+        });
+      });
+
+      // Reset to defaults
+      act(() => {
+        result.current.resetPreferences();
+      });
+
+      expect(result.current.preferences.editorHeightPercent).toBe(40);
+      expect(result.current.preferences.resultsHeightPercent).toBe(60);
+    });
   });
 });
