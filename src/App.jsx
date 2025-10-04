@@ -540,14 +540,14 @@ function App() {
 
             {/* Results (fills the remaining vertical space) */}
             <div className="card bg-base-100 shadow-sm border border-base-300 flex-1 flex flex-col min-w-0 overflow-hidden">
-              <div className="card-header bg-base-200 px-4 py-3 border-b border-base-300">
+              <div className="card-header bg-base-200 px-4 py-2 border-b border-base-300">
                 <div className="flex items-center justify-between">
-                  <h2 className="card-title text-lg">Results</h2>
+                  <h2 className="card-title text-base">Results</h2>
                   <div className="card-actions flex items-center gap-2">
-                    <select 
-                      value={viewMode} 
+                    <select
+                      value={viewMode}
                       onChange={(e) => setViewMode(e.target.value)}
-                      className="select select-bordered select-sm w-32"
+                      className="select select-bordered select-xs w-28"
                     >
                       <option value="table">Table View</option>
                       <option value="parsed">Parsed Text</option>
@@ -555,23 +555,23 @@ function App() {
                     </select>
                     {viewMode === 'table' && streamIndex && (
                       <div className="flex items-center gap-2">
-                        <button 
-                          className="btn btn-sm"
+                        <button
+                          className="btn btn-xs"
                           onClick={prevPage}
                           disabled={pageStart === 0}
                           title="Previous 50"
                         >
                           Previous 50
                         </button>
-                        <button 
-                          className="btn btn-sm"
+                        <button
+                          className="btn btn-xs"
                           onClick={nextPage}
                           disabled={pageStart + pageSize >= totalRecords}
                           title="Next 50"
                         >
                           Next 50
                         </button>
-                        <span className="text-sm text-base-content/70">
+                        <span className="text-xs text-base-content/70">
                           {Math.min(pageStart + 1, totalRecords)}–{Math.min(pageStart + pageSize, totalRecords)} of {totalRecords}
                         </span>
                       </div>
@@ -579,24 +579,24 @@ function App() {
                     {viewMode === "table" && hasRecords && (
                       <div className="flex items-center gap-2">
                         <div className="join">
-                          <button 
-                            onClick={goToPrevRecord} 
+                          <button
+                            onClick={goToPrevRecord}
                             disabled={activeRecordIndex <= 0}
-                            className="btn btn-sm btn-outline join-item"
+                            className="btn btn-xs btn-outline join-item"
                             title="Previous record (Ctrl+↑)"
                           >
                             ↑
                           </button>
-                          <button 
-                            onClick={goToNextRecord} 
+                          <button
+                            onClick={goToNextRecord}
                             disabled={activeRecordIndex >= tableData.length - 1}
-                            className="btn btn-sm btn-outline join-item"
+                            className="btn btn-xs btn-outline join-item"
                             title="Next record (Ctrl+↓)"
                           >
                             ↓
                           </button>
                         </div>
-                        <span className="text-sm text-base-content/70">
+                        <span className="text-xs text-base-content/70">
                           {activeRecordIndex + 1} of {tableData.length}
                         </span>
                       </div>
