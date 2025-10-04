@@ -88,6 +88,7 @@ function App() {
   const {
     preferences: editorPreferences,
     updatePreference,
+    updatePreferences,
     increaseFontSize,
     decreaseFontSize,
     toggleLineNumbers,
@@ -491,7 +492,10 @@ function App() {
               {/* Fixed/controlled height + overflow hidden so Monaco can't grow infinitely */}
               <div
                 className="card-body p-0 overflow-hidden"
-                style={{ height: '40vh', minHeight: '260px' }}
+                style={{
+                  height: `${editorPreferences.editorHeightPercent}vh`,
+                  minHeight: '260px'
+                }}
               >
                 <div className="h-full w-full min-w-0">
                   {/* key forces clean re-measure when sidebar toggles */}
@@ -836,6 +840,51 @@ function App() {
                   monacoTheme={monacoTheme}
                   onMonacoThemeChange={setMonacoTheme}
                 />
+
+                {/* Layout Settings */}
+                <div className="divider"></div>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Layout</h3>
+
+                  <div className="form-control">
+                    <label className="label" htmlFor="settings-editor-height">
+                      <span className="label-text font-medium">Editor Height</span>
+                      <span className="label-text-alt">{editorPreferences.editorHeightPercent}%</span>
+                    </label>
+                    <input
+                      id="settings-editor-height"
+                      type="range"
+                      min="20"
+                      max="80"
+                      value={editorPreferences.editorHeightPercent}
+                      onChange={(e) => {
+                        const newHeight = parseInt(e.target.value);
+                        updatePreferences({
+                          editorHeightPercent: newHeight,
+                          resultsHeightPercent: 100 - newHeight
+                        });
+                      }}
+                      className="range range-primary"
+                      step="5"
+                      aria-label={`Editor height: ${editorPreferences.editorHeightPercent}%`}
+                    />
+                    <div className="w-full flex justify-between text-xs px-2 mt-1">
+                      <span>20%</span>
+                      <span>50%</span>
+                      <span>80%</span>
+                    </div>
+                  </div>
+
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text font-medium">Results Height</span>
+                      <span className="label-text-alt">{editorPreferences.resultsHeightPercent}% (auto)</span>
+                    </label>
+                    <div className="text-sm text-base-content/60">
+                      Automatically calculated as 100% - Editor Height
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -10,7 +10,9 @@ const DEFAULT_PREFERENCES = {
   bracketMatching: true,
   autoCompletion: true,
   formatOnPaste: true,
-  renderWhitespace: 'selection'
+  renderWhitespace: 'selection',
+  editorHeightPercent: 40, // Editor height as percentage (20-80)
+  resultsHeightPercent: 60 // Results height as percentage (auto-calculated)
 };
 
 const STORAGE_KEY = 'editorPreferences';
@@ -31,6 +33,13 @@ export function EditorPreferencesProvider({ children }) {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
+
+        // Validate and clamp editorHeightPercent to ensure consistency
+        if (typeof parsed.editorHeightPercent === 'number') {
+          parsed.editorHeightPercent = Math.max(20, Math.min(80, parsed.editorHeightPercent));
+          parsed.resultsHeightPercent = 100 - parsed.editorHeightPercent;
+        }
+
         // Merge with defaults to handle missing properties in stored preferences
         setPreferences(prev => ({ ...prev, ...parsed }));
       }
@@ -133,6 +142,15 @@ export function EditorPreferencesProvider({ children }) {
     updatePreference('minimap', !preferences.minimap);
   }, [preferences.minimap, updatePreference]);
 
+  // Layout helper to update editor height and auto-calculate results height
+  const setEditorHeight = useCallback((heightPercent) => {
+    const clampedHeight = Math.max(20, Math.min(80, heightPercent));
+    updatePreferences({
+      editorHeightPercent: clampedHeight,
+      resultsHeightPercent: 100 - clampedHeight
+    });
+  }, [updatePreferences]);
+
   const value = {
     preferences,
     isLoading,
@@ -146,6 +164,7 @@ export function EditorPreferencesProvider({ children }) {
     toggleLineNumbers,
     toggleWordWrap,
     toggleMinimap,
+    setEditorHeight,
     // Available options for UI components
     fontSizes: [10, 12, 14, 16, 18, 20, 24],
     lineNumberOptions: [
