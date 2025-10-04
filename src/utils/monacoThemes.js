@@ -6,6 +6,9 @@ import { loadThemeFromFile, isValidTheme, getMonacoThemeId, getRecommendedThemes
 // Cache for loaded themes to avoid repeated loading
 const themeCache = new Map();
 
+// Test-only function to clear theme cache
+export const clearThemeCache = () => themeCache.clear();
+
 // Helper function to get enhanced theme name
 export const getEnhancedTheme = (themeName) => {
   // Normalize theme name by trimming whitespace

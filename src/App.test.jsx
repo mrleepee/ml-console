@@ -142,17 +142,17 @@ Simple text result
 describe('App Component Rendering', () => {
   it('should render without crashing', async () => {
     console.log('🧪 Testing App component rendering...')
-    
+
     let container
     await act(async () => {
-      const result = render(<App />)
+      const result = render(<AppWithProviders />)
       container = result.container
     })
-    
+
     expect(container).toBeInTheDocument()
-    
+
     // Check if our test console log appeared
-    const hasRenderLog = global.mockConsoleCapture.logs.some(log => 
+    const hasRenderLog = global.mockConsoleCapture.logs.some(log =>
       log.join(' ').includes('🚀 App component loaded')
     )
     expect(hasRenderLog).toBe(true)

@@ -1,18 +1,19 @@
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ThemeSelector, { EnhancedThemeSelector, SimpleThemeSelector } from './ThemeSelector';
 
 // Mock the themeLoader module
-jest.mock('../utils/themeLoader.js', () => ({
-  getAllAvailableThemes: jest.fn(() => [
+vi.mock('../utils/themeLoader.js', () => ({
+  getAllAvailableThemes: vi.fn(() => [
     { name: 'GitHub Dark', displayName: 'GitHub Dark', category: 'dark', id: 'github-dark' },
     { name: 'GitHub Light', displayName: 'GitHub Light', category: 'light', id: 'github-light' },
     { name: 'Night Owl', displayName: 'Night Owl', category: 'dark', id: 'night-owl' },
     { name: 'Dracula', displayName: 'Dracula', category: 'dark', id: 'dracula' },
     { name: 'Solarized-light', displayName: 'Solarized Light', category: 'light', id: 'solarized-light' }
   ]),
-  getThemesByCategory: jest.fn(() => ({
+  getThemesByCategory: vi.fn(() => ({
     light: [
       { name: 'GitHub Light', displayName: 'GitHub Light', category: 'light', id: 'github-light' },
       { name: 'Solarized-light', displayName: 'Solarized Light', category: 'light', id: 'solarized-light' }
@@ -24,7 +25,7 @@ jest.mock('../utils/themeLoader.js', () => ({
     ],
     'high-contrast': []
   })),
-  searchThemes: jest.fn((term) => {
+  searchThemes: vi.fn((term) => {
     const allThemes = [
       { name: 'GitHub Dark', displayName: 'GitHub Dark', category: 'dark', id: 'github-dark' },
       { name: 'GitHub Light', displayName: 'GitHub Light', category: 'light', id: 'github-light' },
@@ -42,13 +43,13 @@ jest.mock('../utils/themeLoader.js', () => ({
     DARK: 'dark',
     HIGH_CONTRAST: 'high-contrast'
   },
-  getThemeDisplayName: jest.fn(name => name || 'Unknown Theme')
+  getThemeDisplayName: vi.fn(name => name || 'Unknown Theme')
 }));
 
 describe('ThemeSelector Components', () => {
   describe('SimpleThemeSelector', () => {
     test('renders basic theme dropdown', () => {
-      const mockOnChange = jest.fn();
+      const mockOnChange = vi.fn();
       render(
         <SimpleThemeSelector
           value="vs-dark"
@@ -62,7 +63,7 @@ describe('ThemeSelector Components', () => {
     });
 
     test('includes built-in and popular themes', () => {
-      const mockOnChange = jest.fn();
+      const mockOnChange = vi.fn();
       render(
         <SimpleThemeSelector
           value="vs"
@@ -79,7 +80,7 @@ describe('ThemeSelector Components', () => {
 
     test('calls onChange when selection changes', async () => {
       const user = userEvent.setup();
-      const mockOnChange = jest.fn();
+      const mockOnChange = vi.fn();
 
       render(
         <SimpleThemeSelector
@@ -95,7 +96,7 @@ describe('ThemeSelector Components', () => {
     });
 
     test('can be disabled', () => {
-      const mockOnChange = jest.fn();
+      const mockOnChange = vi.fn();
       render(
         <SimpleThemeSelector
           value="vs"
@@ -112,12 +113,12 @@ describe('ThemeSelector Components', () => {
   describe('EnhancedThemeSelector', () => {
     const defaultProps = {
       value: 'GitHub Dark',
-      onChange: jest.fn(),
+      onChange: vi.fn(),
       showBuiltInThemes: true
     };
 
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
     });
 
     test('displays current theme selection', () => {
@@ -198,7 +199,7 @@ describe('ThemeSelector Components', () => {
 
     test('selects theme and closes dropdown', async () => {
       const user = userEvent.setup();
-      const mockOnChange = jest.fn();
+      const mockOnChange = vi.fn();
 
       render(<EnhancedThemeSelector {...defaultProps} onChange={mockOnChange} />);
 
@@ -296,7 +297,7 @@ describe('ThemeSelector Components', () => {
 
     test('clears search when theme is selected', async () => {
       const user = userEvent.setup();
-      const mockOnChange = jest.fn();
+      const mockOnChange = vi.fn();
 
       render(<EnhancedThemeSelector {...defaultProps} onChange={mockOnChange} />);
 
@@ -325,7 +326,7 @@ describe('ThemeSelector Components', () => {
         <ThemeSelector
           variant="toggle"
           theme="light"
-          onThemeChange={jest.fn()}
+          onThemeChange={vi.fn()}
         />
       );
 
@@ -339,9 +340,9 @@ describe('ThemeSelector Components', () => {
         <ThemeSelector
           variant="full"
           theme="light"
-          onThemeChange={jest.fn()}
+          onThemeChange={vi.fn()}
           monacoTheme="vs"
-          onMonacoThemeChange={jest.fn()}
+          onMonacoThemeChange={vi.fn()}
           MonacoEditor={MockMonacoEditor}
         />
       );
@@ -354,7 +355,7 @@ describe('ThemeSelector Components', () => {
 
     test('toggles application theme', async () => {
       const user = userEvent.setup();
-      const mockOnThemeChange = jest.fn();
+      const mockOnThemeChange = vi.fn();
 
       render(
         <ThemeSelector
@@ -375,9 +376,9 @@ describe('ThemeSelector Components', () => {
         <ThemeSelector
           variant="full"
           theme="dark"
-          onThemeChange={jest.fn()}
+          onThemeChange={vi.fn()}
           monacoTheme="vs-dark"
-          onMonacoThemeChange={jest.fn()}
+          onMonacoThemeChange={vi.fn()}
         />
       );
 
@@ -387,13 +388,13 @@ describe('ThemeSelector Components', () => {
 
     test('changes Monaco theme', async () => {
       const user = userEvent.setup();
-      const mockOnMonacoThemeChange = jest.fn();
+      const mockOnMonacoThemeChange = vi.fn();
 
       render(
         <ThemeSelector
           variant="full"
           theme="light"
-          onThemeChange={jest.fn()}
+          onThemeChange={vi.fn()}
           monacoTheme="vs"
           onMonacoThemeChange={mockOnMonacoThemeChange}
           MonacoEditor={MockMonacoEditor}
@@ -416,9 +417,9 @@ describe('ThemeSelector Components', () => {
         <ThemeSelector
           variant="full"
           theme="light"
-          onThemeChange={jest.fn()}
+          onThemeChange={vi.fn()}
           monacoTheme="GitHub Dark"
-          onMonacoThemeChange={jest.fn()}
+          onMonacoThemeChange={vi.fn()}
           MonacoEditor={MockMonacoEditor}
         />
       );
@@ -433,9 +434,9 @@ describe('ThemeSelector Components', () => {
         <ThemeSelector
           variant="full"
           theme="light"
-          onThemeChange={jest.fn()}
+          onThemeChange={vi.fn()}
           monacoTheme="vs"
-          onMonacoThemeChange={jest.fn()}
+          onMonacoThemeChange={vi.fn()}
         />
       );
 
@@ -447,9 +448,9 @@ describe('ThemeSelector Components', () => {
         <ThemeSelector
           variant="full"
           theme="light"
-          onThemeChange={jest.fn()}
+          onThemeChange={vi.fn()}
           monacoTheme="vs"
-          onMonacoThemeChange={jest.fn()}
+          onMonacoThemeChange={vi.fn()}
         />
       );
 
@@ -459,7 +460,7 @@ describe('ThemeSelector Components', () => {
 
   describe('Accessibility', () => {
     test('has proper ARIA attributes', () => {
-      render(<EnhancedThemeSelector value="GitHub Dark" onChange={jest.fn()} />);
+      render(<EnhancedThemeSelector value="GitHub Dark" onChange={vi.fn()} />);
 
       const button = screen.getByRole('button');
       expect(button).toHaveAttribute('aria-haspopup', 'listbox');
@@ -468,7 +469,7 @@ describe('ThemeSelector Components', () => {
 
     test('updates aria-expanded when dropdown opens', async () => {
       const user = userEvent.setup();
-      render(<EnhancedThemeSelector value="GitHub Dark" onChange={jest.fn()} />);
+      render(<EnhancedThemeSelector value="GitHub Dark" onChange={vi.fn()} />);
 
       const button = screen.getByRole('button');
       await user.click(button);
@@ -478,7 +479,7 @@ describe('ThemeSelector Components', () => {
 
     test('search input receives focus when dropdown opens', async () => {
       const user = userEvent.setup();
-      render(<EnhancedThemeSelector value="GitHub Dark" onChange={jest.fn()} />);
+      render(<EnhancedThemeSelector value="GitHub Dark" onChange={vi.fn()} />);
 
       const button = screen.getByRole('button');
       await user.click(button);
@@ -492,7 +493,7 @@ describe('ThemeSelector Components', () => {
         <ThemeSelector
           variant="toggle"
           theme="light"
-          onThemeChange={jest.fn()}
+          onThemeChange={vi.fn()}
         />
       );
 

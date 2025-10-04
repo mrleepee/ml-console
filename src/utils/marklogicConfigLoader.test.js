@@ -20,8 +20,8 @@ describe('getMarkLogicXQueryLanguageConfig', () => {
     __resetMarkLogicConfigCacheForTests();
   });
 
-  it('parses YAML configuration into arrays', () => {
-    const config = getMarkLogicXQueryLanguageConfig();
+  it('parses YAML configuration into arrays', async () => {
+    const config = await getMarkLogicXQueryLanguageConfig();
     expect(Array.isArray(config.keywords)).toBe(true);
     expect(Array.isArray(config.builtins)).toBe(true);
     expect(Array.isArray(config.completionItems)).toBe(true);
@@ -29,14 +29,14 @@ describe('getMarkLogicXQueryLanguageConfig', () => {
     expect(config.builtins).toContain('cts:search');
   });
 
-  it('caches the parsed configuration', () => {
-    const first = getMarkLogicXQueryLanguageConfig();
-    const second = getMarkLogicXQueryLanguageConfig();
+  it('caches the parsed configuration', async () => {
+    const first = await getMarkLogicXQueryLanguageConfig();
+    const second = await getMarkLogicXQueryLanguageConfig();
     expect(second).toBe(first);
   });
 
-  it('includes enhanced XQuery operators and keywords', () => {
-    const config = getMarkLogicXQueryLanguageConfig();
+  it('includes enhanced XQuery operators and keywords', async () => {
+    const config = await getMarkLogicXQueryLanguageConfig();
 
     // Check for XQuery operators
     expect(config.keywords).toContain('eq');
@@ -53,8 +53,8 @@ describe('getMarkLogicXQueryLanguageConfig', () => {
     expect(config.keywords).toContain('json');
   });
 
-  it('includes comprehensive MarkLogic functions', () => {
-    const config = getMarkLogicXQueryLanguageConfig();
+  it('includes comprehensive MarkLogic functions', async () => {
+    const config = await getMarkLogicXQueryLanguageConfig();
 
     // Check for core namespaces
     expect(config.builtins).toContain('xdmp');
@@ -69,7 +69,7 @@ describe('getMarkLogicXQueryLanguageConfig', () => {
     expect(config.builtins).toContain('fn:collection');
   });
 
-  it('provides test override functionality', () => {
+  it('provides test override functionality', async () => {
     const testConfig = {
       keywords: ['test-keyword'],
       builtins: ['test:function'],
@@ -77,7 +77,7 @@ describe('getMarkLogicXQueryLanguageConfig', () => {
     };
 
     __setMarkLogicConfigOverrideForTests(testConfig);
-    const config = getMarkLogicXQueryLanguageConfig();
+    const config = await getMarkLogicXQueryLanguageConfig();
 
     expect(config).toBe(testConfig);
     expect(config.keywords).toEqual(['test-keyword']);
@@ -93,8 +93,8 @@ describe('getMarkLogicXQueryLanguageConfig', () => {
     expect(Object.isFrozen(emptyMarkLogicConfig)).toBe(true);
   });
 
-  it('maintains data structure integrity', () => {
-    const config = getMarkLogicXQueryLanguageConfig();
+  it('maintains data structure integrity', async () => {
+    const config = await getMarkLogicXQueryLanguageConfig();
 
     // Ensure no undefined or null values
     config.keywords.forEach(keyword => {
@@ -128,7 +128,7 @@ describe('getMarkLogicXQueryLanguageConfig', () => {
     // Reset cache to force re-parsing
     __resetMarkLogicConfigCacheForTests();
 
-    const config = getMarkLogicXQueryLanguageConfig();
+    const config = await getMarkLogicXQueryLanguageConfig();
 
     // Should fall back to empty config
     expect(config).toBe(emptyMarkLogicConfig);
@@ -169,7 +169,7 @@ describe('getMarkLogicXQueryLanguageConfig', () => {
     // Reset cache to force re-parsing
     __resetMarkLogicConfigCacheForTests();
 
-    const config = getMarkLogicXQueryLanguageConfig();
+    const config = await getMarkLogicXQueryLanguageConfig();
 
     expect(config.completionItems).toHaveLength(2);
     expect(config.completionItems[0]).toEqual({ label: 'valid-item', kind: 'function' });
@@ -198,7 +198,7 @@ describe('getMarkLogicXQueryLanguageConfig', () => {
     // Reset cache to force re-parsing
     __resetMarkLogicConfigCacheForTests();
 
-    const config = getMarkLogicXQueryLanguageConfig();
+    const config = await getMarkLogicXQueryLanguageConfig();
 
     expect(config.keywords).toEqual([]);
     expect(config.builtins).toEqual([]);
@@ -235,7 +235,7 @@ describe('getMarkLogicXQueryLanguageConfig', () => {
     // Reset cache to force re-parsing
     __resetMarkLogicConfigCacheForTests();
 
-    const config = getMarkLogicXQueryLanguageConfig();
+    const config = await getMarkLogicXQueryLanguageConfig();
 
     expect(config.keywords).toEqual(['valid-keyword', 'spaced-keyword']);
     expect(config.builtins).toEqual(['valid:builtin', 'spaced:builtin']);
@@ -262,7 +262,7 @@ describe('getMarkLogicXQueryLanguageConfig', () => {
 
     __resetMarkLogicConfigCacheForTests();
 
-    const config = getMarkLogicXQueryLanguageConfig();
+    const config = await getMarkLogicXQueryLanguageConfig();
 
     expect(config.completionItems).toHaveLength(2);
     expect(config.completionItems.map(item => item.label)).toEqual(['valid-item', 'another-valid']);
@@ -294,7 +294,7 @@ describe('getMarkLogicXQueryLanguageConfig', () => {
 
     __resetMarkLogicConfigCacheForTests();
 
-    const config = getMarkLogicXQueryLanguageConfig();
+    const config = await getMarkLogicXQueryLanguageConfig();
 
     expect(config.completionItems).toHaveLength(2);
 

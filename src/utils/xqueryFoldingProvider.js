@@ -48,24 +48,32 @@ export class XQueryFoldingProvider {
 
       // FLWOR expressions - detect start of major clauses
       if (this.isFLWORStart(trimmedLine)) {
-        const flworStart = {
-          line: i + 1,
-          type: 'flwor',
-          indent: line.search(/\S/),
-          keyword: this.getFLWORKeyword(trimmedLine)
-        };
-        stack.push(flworStart);
-        continue;
+        const currentIndent = line.search(/\S/);
+        const lastFLWOR = this.findLastFLWOR(stack);
+
+        // Push if: no existing FLWOR, or this is at a different indent level
+        // Same indent means it's a continuation clause (let after for), so don't push
+        if (!lastFLWOR || currentIndent > lastFLWOR.indent || currentIndent < lastFLWOR.indent) {
+          const flworStart = {
+            line: i + 1,
+            type: 'flwor',
+            indent: currentIndent,
+            keyword: this.getFLWORKeyword(trimmedLine)
+          };
+          stack.push(flworStart);
+        }
+        // Don't continue - let braces on same line be processed
       }
 
       // FLWOR return clause ends the expression
       if (this.isReturnClause(trimmedLine)) {
-        // Find the matching FLWOR start
+        const currentIndent = line.search(/\S/);
+        // Find the matching FLWOR start with same indentation
         const flworStart = this.findLastFLWOR(stack);
-        if (flworStart && i > flworStart.line) {
+        if (flworStart && i + 1 > flworStart.line && currentIndent === flworStart.indent) {
           // Look ahead to find the end of the return expression
           const returnEnd = this.findReturnEnd(lines, i);
-          if (returnEnd > i) {
+          if (returnEnd >= i) {
             ranges.push({
               start: flworStart.line,
               end: returnEnd + 1,
@@ -74,7 +82,7 @@ export class XQueryFoldingProvider {
             this.removeFromStack(stack, flworStart);
           }
         }
-        continue;
+        // Don't continue - let braces on same line be processed
       }
 
       // Curly braces { }
@@ -89,12 +97,16 @@ export class XQueryFoldingProvider {
             });
           } else if (char === '}') {
             const lastBrace = this.findLastOfType(stack, 'brace');
-            if (lastBrace && i > lastBrace.line - 1) {
-              ranges.push({
-                start: lastBrace.line,
-                end: i + 1,
-                kind: 0 // FoldingRangeKind.Region
-              });
+            if (lastBrace) {
+              // Only create fold if braces span multiple lines
+              if (i + 1 > lastBrace.line) {
+                ranges.push({
+                  start: lastBrace.line,
+                  end: i + 1,
+                  kind: 0 // FoldingRangeKind.Region
+                });
+              }
+              // Always remove matched brace from stack
               this.removeFromStack(stack, lastBrace);
             }
           }
@@ -111,6 +123,7 @@ export class XQueryFoldingProvider {
           tagName: tagName,
           indent: line.search(/\S/)
         });
+        // XML tags are entire lines, so continue is appropriate
         continue;
       }
 
@@ -126,36 +139,20 @@ export class XQueryFoldingProvider {
           });
           this.removeFromStack(stack, matchingStart);
         }
+        // XML tags are entire lines, so continue is appropriate
         continue;
       }
 
-      // Function definitions
-      const functionMatch = trimmedLine.match(/^declare\s+function\s+[\w\-:]+\s*\(/);
-      if (functionMatch) {
-        stack.push({
-          line: i + 1,
-          type: 'function',
-          indent: line.search(/\S/)
-        });
-        continue;
-      }
-
-      // End of function (usually marked by };)
-      if (trimmedLine.match(/^\};?\s*$/) && this.findLastOfType(stack, 'function')) {
-        const functionStart = this.findLastOfType(stack, 'function');
-        if (functionStart && i > functionStart.line) {
-          ranges.push({
-            start: functionStart.line,
-            end: i + 1,
-            kind: 0 // FoldingRangeKind.Region
-          });
-          this.removeFromStack(stack, functionStart);
-        }
-        continue;
-      }
+      // Function definitions - handled by brace folding
+      // Function fold regions are created by the curly brace logic
+      // which provides sufficient folding for function bodies
     }
 
-    return ranges;
+    // Sort ranges by start line, then by end line (descending) for consistent ordering
+    return ranges.sort((a, b) => {
+      if (a.start !== b.start) return a.start - b.start;
+      return b.end - a.end; // Longer ranges first when starting at same line
+    });
   }
 
   isInString(line, index) {
@@ -170,7 +167,7 @@ export class XQueryFoldingProvider {
   }
 
   isReturnClause(line) {
-    return /^return\s+/.test(line);
+    return /^return(\s+|$)/.test(line);
   }
 
   getFLWORKeyword(line) {
@@ -190,9 +187,12 @@ export class XQueryFoldingProvider {
   findReturnEnd(lines, startLine) {
     let braceCount = 0;
     let parenCount = 0;
+    const returnIndent = lines[startLine].search(/\S/);
 
     for (let i = startLine; i < lines.length; i++) {
-      const line = lines[i].trim();
+      const line = lines[i];
+      const trimmedLine = line.trim();
+      const currentIndent = line.search(/\S/);
 
       // Count braces and parentheses to determine expression boundaries
       for (let j = 0; j < line.length; j++) {
@@ -205,15 +205,27 @@ export class XQueryFoldingProvider {
         }
       }
 
-      // End of return expression when we're back to balanced braces and find a semicolon or new major construct
+      // End of return expression when we're back to balanced braces and find:
+      // - a semicolon or closing brace at end of line
+      // - OR a new major construct at same or lesser indentation (not nested inside return)
       if (braceCount === 0 && parenCount === 0) {
-        if (line.endsWith(';') || line.endsWith('}') ||
-            /^(for|let|declare|xquery)\s+/.test(line)) {
+        if (trimmedLine.endsWith(';') || trimmedLine.endsWith('}')) {
           return i;
+        }
+        // Only treat for/let/declare/xquery as end markers if at same or lesser indentation
+        if (i > startLine && currentIndent <= returnIndent &&
+            /^(for|let|declare|xquery)\s+/.test(trimmedLine)) {
+          return i - 1; // Previous line is the end
         }
       }
     }
 
+    // If we reach EOF with balanced braces/parens, treat EOF as the end of the expression
+    if (braceCount === 0 && parenCount === 0) {
+      return lines.length - 1;
+    }
+
+    // Unbalanced delimiters at EOF - invalid fold
     return startLine;
   }
 
@@ -240,5 +252,17 @@ export class XQueryFoldingProvider {
     if (index > -1) {
       stack.splice(index, 1);
     }
+  }
+
+  getCommonIndent(lines) {
+    let minIndent = Infinity;
+    for (const line of lines) {
+      if (line.trim().length === 0) continue; // Skip empty lines
+      const indent = line.search(/\S/);
+      if (indent !== -1 && indent < minIndent) {
+        minIndent = indent;
+      }
+    }
+    return minIndent === Infinity ? 0 : minIndent;
   }
 }
