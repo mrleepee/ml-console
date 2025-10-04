@@ -474,24 +474,30 @@ function App() {
                     <div className="join">
                       <button
                         onClick={() => updatePreferences({ editorHeightPercent: 30, resultsHeightPercent: 70 })}
-                        className={`btn btn-sm join-item ${editorPreferences.editorHeightPercent === 30 ? 'btn-active' : 'btn-outline'}`}
+                        className={`btn btn-sm join-item ${editorPreferences.editorHeightPercent === 30 ? 'btn-primary' : 'btn-outline'}`}
                         title="Minimize editor (30%)"
                       >
-                        Min
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                        </svg>
                       </button>
                       <button
                         onClick={() => updatePreferences({ editorHeightPercent: 50, resultsHeightPercent: 50 })}
-                        className={`btn btn-sm join-item ${editorPreferences.editorHeightPercent === 50 ? 'btn-active' : 'btn-outline'}`}
+                        className={`btn btn-sm join-item ${editorPreferences.editorHeightPercent === 50 ? 'btn-primary' : 'btn-outline'}`}
                         title="Balanced layout (50/50)"
                       >
-                        Mid
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v10M16 7v10M8 7h8M8 17h8M4 7h16M4 17h16" />
+                        </svg>
                       </button>
                       <button
                         onClick={() => updatePreferences({ editorHeightPercent: 70, resultsHeightPercent: 30 })}
-                        className={`btn btn-sm join-item ${editorPreferences.editorHeightPercent === 70 ? 'btn-active' : 'btn-outline'}`}
+                        className={`btn btn-sm join-item ${editorPreferences.editorHeightPercent === 70 ? 'btn-primary' : 'btn-outline'}`}
                         title="Maximize editor (70%)"
                       >
-                        Max
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                        </svg>
                       </button>
                     </div>
 
