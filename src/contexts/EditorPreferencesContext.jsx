@@ -11,7 +11,7 @@ const DEFAULT_PREFERENCES = {
   autoCompletion: true,
   formatOnPaste: true,
   renderWhitespace: 'selection',
-  editorHeightPercent: 40, // Editor height as percentage (20-80)
+  editorHeightPercent: 40, // Editor height as percentage (20-70)
   resultsHeightPercent: 60 // Results height as percentage (auto-calculated)
 };
 
@@ -36,7 +36,7 @@ export function EditorPreferencesProvider({ children }) {
 
         // Validate and clamp editorHeightPercent to ensure consistency
         if (typeof parsed.editorHeightPercent === 'number') {
-          parsed.editorHeightPercent = Math.max(20, Math.min(80, parsed.editorHeightPercent));
+          parsed.editorHeightPercent = Math.max(20, Math.min(70, parsed.editorHeightPercent));
           parsed.resultsHeightPercent = 100 - parsed.editorHeightPercent;
         }
 
@@ -144,7 +144,7 @@ export function EditorPreferencesProvider({ children }) {
 
   // Layout helper to update editor height and auto-calculate results height
   const setEditorHeight = useCallback((heightPercent) => {
-    const clampedHeight = Math.max(20, Math.min(80, heightPercent));
+    const clampedHeight = Math.max(20, Math.min(70, heightPercent));
     updatePreferences({
       editorHeightPercent: clampedHeight,
       resultsHeightPercent: 100 - clampedHeight

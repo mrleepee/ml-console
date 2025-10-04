@@ -855,7 +855,7 @@ function App() {
                       id="settings-editor-height"
                       type="range"
                       min="20"
-                      max="80"
+                      max="70"
                       value={editorPreferences.editorHeightPercent}
                       onChange={(e) => {
                         const newHeight = parseInt(e.target.value);
@@ -864,14 +864,14 @@ function App() {
                           resultsHeightPercent: 100 - newHeight
                         });
                       }}
-                      className="range range-primary"
+                      className="range range-primary mt-2"
                       step="5"
                       aria-label={`Editor height: ${editorPreferences.editorHeightPercent}%`}
                     />
-                    <div className="w-full flex justify-between text-xs px-2 mt-1">
+                    <div className="w-full flex justify-between text-xs mt-2">
                       <span>20%</span>
-                      <span>50%</span>
-                      <span>80%</span>
+                      <span>45%</span>
+                      <span>70%</span>
                     </div>
                   </div>
 
