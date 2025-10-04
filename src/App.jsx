@@ -471,19 +471,19 @@ function App() {
                     />
 
                     {/* Layout Presets */}
-                    <div className="join">
+                    <div className="flex items-center gap-1">
                       <button
                         onClick={() => updatePreferences({ editorHeightPercent: 30, resultsHeightPercent: 70 })}
-                        className={`btn btn-sm join-item ${editorPreferences.editorHeightPercent === 30 ? 'btn-primary' : 'btn-outline'}`}
+                        className={`btn btn-sm ${editorPreferences.editorHeightPercent === 30 ? 'btn-primary' : 'btn-ghost'}`}
                         title="Minimize editor (30%)"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                         </svg>
                       </button>
                       <button
                         onClick={() => updatePreferences({ editorHeightPercent: 50, resultsHeightPercent: 50 })}
-                        className={`btn btn-sm join-item ${editorPreferences.editorHeightPercent === 50 ? 'btn-primary' : 'btn-outline'}`}
+                        className={`btn btn-sm ${editorPreferences.editorHeightPercent === 50 ? 'btn-primary' : 'btn-ghost'}`}
                         title="Balanced layout (50/50)"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -492,7 +492,7 @@ function App() {
                       </button>
                       <button
                         onClick={() => updatePreferences({ editorHeightPercent: 70, resultsHeightPercent: 30 })}
-                        className={`btn btn-sm join-item ${editorPreferences.editorHeightPercent === 70 ? 'btn-primary' : 'btn-outline'}`}
+                        className={`btn btn-sm ${editorPreferences.editorHeightPercent === 70 ? 'btn-primary' : 'btn-ghost'}`}
                         title="Maximize editor (70%)"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
