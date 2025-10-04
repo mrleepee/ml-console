@@ -10,13 +10,11 @@ vi.mock('../../services/queryService', () => ({
 }));
 
 vi.mock('../../services/responseService', () => ({
-  default: {
-    toResultEnvelope: vi.fn(),
-  }
+  toResultEnvelope: vi.fn((result) => result),
 }));
 
 import queryService from '../../services/queryService';
-import responseService from '../../services/responseService';
+import { toResultEnvelope } from '../../services/responseService';
 
 describe('useQueryExecution - Core Functionality', () => {
   const mockDatabaseConfig = {
@@ -193,7 +191,7 @@ describe('useQueryExecution - Core Functionality', () => {
       };
 
       queryService.executeQuery.mockResolvedValue(mockResponse);
-      responseService.toResultEnvelope.mockReturnValue(mockEnvelope);
+      toResultEnvelope.mockReturnValue(mockEnvelope);
 
       const onStaticResults = vi.fn();
       const onQuerySave = vi.fn();
@@ -233,7 +231,7 @@ describe('useQueryExecution - Core Functionality', () => {
       };
 
       queryService.executeQuery.mockResolvedValue(mockResponse);
-      responseService.toResultEnvelope.mockReturnValue(mockEnvelope);
+      toResultEnvelope.mockReturnValue(mockEnvelope);
 
       const { result } = renderHook(() => useQueryExecution());
 

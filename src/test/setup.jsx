@@ -34,6 +34,10 @@ vi.mock('@monaco-editor/react', () => ({
   default: vi.fn(({ value, language, height }) => {
     return vi.fn().mockReturnValue(null)();
   }),
+  loader: {
+    init: vi.fn(() => Promise.resolve()),
+    config: vi.fn()
+  },
   useMonaco: () => ({
     editor: {
       defineTheme: vi.fn(),

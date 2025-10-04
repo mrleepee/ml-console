@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { setMockElectronAPI, clearMockElectronAPI } from '../../test/helpers/mockElectronAPI';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import useDatabaseConfig from '../useDatabaseConfig';
 
@@ -52,11 +53,10 @@ describe('useDatabaseConfig', () => {
     parseDatabaseConfigs.mockReturnValue(mockParsedConfigs);
     checkConnection.mockResolvedValue({ ok: true });
 
-    // Mock window.electronAPI
-    global.window = global.window || {};
-    global.window.electronAPI = {
+    // Mock window.electronAPI without wiping DOM constructors
+    setMockElectronAPI({
       httpRequest: vi.fn().mockResolvedValue({ status: 200, body: 'test' })
-    };
+    });
 
     // Mock DOM environment for testing
     global.document = global.document || { getElementById: vi.fn() };
@@ -367,8 +367,8 @@ describe('useDatabaseConfig', () => {
 
   describe('fallback request handling', () => {
     it('should use fetch when electronAPI is not available', async () => {
-      // Remove electronAPI
-      global.window = {};
+      // Remove electronAPI without wiping DOM
+      clearMockElectronAPI();
       global.fetch = vi.fn().mockResolvedValue({
         text: vi.fn().mockResolvedValue('fetch response'),
         status: 200
@@ -385,7 +385,7 @@ describe('useDatabaseConfig', () => {
     });
 
     it('should handle fetch errors gracefully', async () => {
-      global.window = {};
+      clearMockElectronAPI();
       global.fetch = vi.fn().mockRejectedValue(new Error('Fetch failed'));
 
       const { result } = renderHook(() => useDatabaseConfig());

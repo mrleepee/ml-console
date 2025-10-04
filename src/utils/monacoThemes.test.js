@@ -1,42 +1,48 @@
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   getEnhancedTheme,
   defineCustomMonacoThemes,
   loadAndDefineTheme,
-  preloadPopularThemes
+  preloadPopularThemes,
+  clearThemeCache
 } from './monacoThemes.js';
+import * as themeLoader from './themeLoader.js';
 
 // Mock the themeLoader module
-jest.mock('./themeLoader.js', () => ({
-  isValidTheme: jest.fn(),
-  getMonacoThemeId: jest.fn(),
-  getRecommendedThemes: jest.fn(() => ({
+vi.mock('./themeLoader.js', () => ({
+  isValidTheme: vi.fn(),
+  getMonacoThemeId: vi.fn(),
+  getRecommendedThemes: vi.fn(() => ({
     light: 'GitHub Light',
     dark: 'GitHub Dark',
     fallback: 'Night Owl'
   })),
-  loadThemeFromFile: jest.fn()
+  loadThemeFromFile: vi.fn()
 }));
 
 // Mock fetch for theme loading
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 describe('monacoThemes', () => {
   let mockMonaco;
 
   beforeEach(() => {
     // Reset all mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+
+    // Clear theme cache to prevent cross-test contamination
+    clearThemeCache();
 
     // Create mock Monaco instance
     mockMonaco = {
       editor: {
-        defineTheme: jest.fn()
+        defineTheme: vi.fn()
       }
     };
 
     // Setup default mock implementations
-    require('./themeLoader.js').isValidTheme.mockReturnValue(false);
-    require('./themeLoader.js').getMonacoThemeId.mockImplementation(name =>
+    themeLoader.isValidTheme.mockReturnValue(false);
+    themeLoader.getMonacoThemeId.mockImplementation(name =>
       name.toLowerCase().replace(/\s+/g, '-')
     );
 
@@ -52,7 +58,7 @@ describe('monacoThemes', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('getEnhancedTheme', () => {
@@ -68,8 +74,8 @@ describe('monacoThemes', () => {
       expect(getEnhancedTheme('\tvs-dark\n')).toBe('vs-dark-enhanced');
     });
 
-    test('returns monaco theme ID for valid custom themes', () => {
-      const { isValidTheme, getMonacoThemeId } = require('./themeLoader.js');
+    test('returns monaco theme ID for valid custom themes', async () => {
+      const { isValidTheme, getMonacoThemeId } = themeLoader;
       isValidTheme.mockReturnValue(true);
       getMonacoThemeId.mockReturnValue('github-dark');
 
@@ -78,8 +84,8 @@ describe('monacoThemes', () => {
       expect(getMonacoThemeId).toHaveBeenCalledWith('GitHub Dark');
     });
 
-    test('returns recommended dark theme for unknown themes', () => {
-      const { getMonacoThemeId } = require('./themeLoader.js');
+    test('returns recommended dark theme for unknown themes', async () => {
+      const { getMonacoThemeId } = themeLoader;
       getMonacoThemeId.mockReturnValue('github-dark');
 
       const result = getEnhancedTheme('unknown-theme');
@@ -145,7 +151,7 @@ describe('monacoThemes', () => {
 
   describe('loadAndDefineTheme', () => {
     test('returns false for invalid theme names', async () => {
-      const { isValidTheme } = require('./themeLoader.js');
+      const { isValidTheme } = themeLoader;
       isValidTheme.mockReturnValue(false);
 
       const result = await loadAndDefineTheme(mockMonaco, 'invalid-theme');
@@ -154,7 +160,7 @@ describe('monacoThemes', () => {
     });
 
     test('loads and defines valid custom theme', async () => {
-      const { isValidTheme, getMonacoThemeId, loadThemeFromFile } = require('./themeLoader.js');
+      const { isValidTheme, getMonacoThemeId, loadThemeFromFile } = themeLoader;
       isValidTheme.mockReturnValue(true);
       getMonacoThemeId.mockReturnValue('github-dark');
       loadThemeFromFile.mockResolvedValue({
@@ -179,7 +185,7 @@ describe('monacoThemes', () => {
     });
 
     test('enhances theme with selection colors when missing', async () => {
-      const { isValidTheme, getMonacoThemeId, loadThemeFromFile } = require('./themeLoader.js');
+      const { isValidTheme, getMonacoThemeId, loadThemeFromFile } = themeLoader;
       isValidTheme.mockReturnValue(true);
       getMonacoThemeId.mockReturnValue('test-theme');
       loadThemeFromFile.mockResolvedValue({
@@ -200,7 +206,7 @@ describe('monacoThemes', () => {
     });
 
     test('preserves existing selection colors', async () => {
-      const { isValidTheme, getMonacoThemeId, loadThemeFromFile } = require('./themeLoader.js');
+      const { isValidTheme, getMonacoThemeId, loadThemeFromFile } = themeLoader;
       isValidTheme.mockReturnValue(true);
       getMonacoThemeId.mockReturnValue('test-theme');
       loadThemeFromFile.mockResolvedValue({
@@ -221,11 +227,11 @@ describe('monacoThemes', () => {
     });
 
     test('handles theme loading errors gracefully', async () => {
-      const { isValidTheme, loadThemeFromFile } = require('./themeLoader.js');
+      const { isValidTheme, loadThemeFromFile } = themeLoader;
       isValidTheme.mockReturnValue(true);
       loadThemeFromFile.mockRejectedValue(new Error('Network error'));
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const result = await loadAndDefineTheme(mockMonaco, 'GitHub Dark');
 
@@ -237,7 +243,7 @@ describe('monacoThemes', () => {
     });
 
     test('caches successfully loaded themes', async () => {
-      const { isValidTheme, getMonacoThemeId, loadThemeFromFile } = require('./themeLoader.js');
+      const { isValidTheme, getMonacoThemeId, loadThemeFromFile } = themeLoader;
       isValidTheme.mockReturnValue(true);
       getMonacoThemeId.mockReturnValue('github-dark');
       loadThemeFromFile.mockResolvedValue({
@@ -260,7 +266,7 @@ describe('monacoThemes', () => {
 
   describe('preloadPopularThemes', () => {
     test('attempts to load popular themes', async () => {
-      const { isValidTheme, loadThemeFromFile } = require('./themeLoader.js');
+      const { isValidTheme, loadThemeFromFile } = themeLoader;
       isValidTheme.mockReturnValue(true);
       loadThemeFromFile.mockResolvedValue({
         base: 'vs-dark',
@@ -269,7 +275,7 @@ describe('monacoThemes', () => {
         colors: {}
       });
 
-      const consoleSpy = jest.spyOn(console, 'debug').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 
       await preloadPopularThemes(mockMonaco);
 
@@ -283,34 +289,40 @@ describe('monacoThemes', () => {
     });
 
     test('handles individual theme loading failures gracefully', async () => {
-      const { isValidTheme, loadThemeFromFile } = require('./themeLoader.js');
+      const { isValidTheme, loadThemeFromFile } = themeLoader;
       isValidTheme.mockReturnValue(true);
+      // preloadPopularThemes loads 7 themes: GitHub Dark, GitHub Light, Night Owl, Dracula, Monokai Bright, Solarized-dark, Solarized-light
       loadThemeFromFile
-        .mockResolvedValueOnce({ base: 'vs-dark', inherit: true, rules: [], colors: {} })
-        .mockRejectedValueOnce(new Error('Theme not found'))
-        .mockResolvedValueOnce({ base: 'vs', inherit: true, rules: [], colors: {} });
+        .mockResolvedValueOnce({ base: 'vs-dark', inherit: true, rules: [], colors: {} })  // GitHub Dark
+        .mockRejectedValueOnce(new Error('Theme not found'))  // GitHub Light (fails)
+        .mockResolvedValueOnce({ base: 'vs-dark', inherit: true, rules: [], colors: {} })  // Night Owl
+        .mockResolvedValueOnce({ base: 'vs-dark', inherit: true, rules: [], colors: {} })  // Dracula
+        .mockResolvedValueOnce({ base: 'vs-dark', inherit: true, rules: [], colors: {} })  // Monokai Bright
+        .mockResolvedValueOnce({ base: 'vs-dark', inherit: true, rules: [], colors: {} })  // Solarized-dark
+        .mockResolvedValueOnce({ base: 'vs', inherit: true, rules: [], colors: {} });      // Solarized-light
 
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
-      const debugSpy = jest.spyOn(console, 'debug').mockImplementation();
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 
       await preloadPopularThemes(mockMonaco);
 
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to preload theme GitHub Light:', expect.any(Error));
+      expect(errorSpy).toHaveBeenCalledWith('Failed to load theme GitHub Light:', expect.any(Error));
       expect(debugSpy).toHaveBeenCalledWith('Popular themes preloading completed');
 
-      consoleSpy.mockRestore();
+      errorSpy.mockRestore();
       debugSpy.mockRestore();
     });
   });
 
   describe('enhanceThemeSelection helper', () => {
     test('adds selection colors based on theme base', async () => {
-      const { isValidTheme, getMonacoThemeId, loadThemeFromFile } = require('./themeLoader.js');
+      const { isValidTheme, getMonacoThemeId, loadThemeFromFile } = themeLoader;
       isValidTheme.mockReturnValue(true);
-      getMonacoThemeId.mockReturnValue('test-theme');
+      getMonacoThemeId.mockReturnValueOnce('test-theme-dark');
+      getMonacoThemeId.mockReturnValueOnce('test-theme-light');
 
       // Test dark theme enhancement
-      loadThemeFromFile.mockResolvedValue({
+      loadThemeFromFile.mockResolvedValueOnce({
         base: 'vs-dark',
         inherit: true,
         rules: [],
@@ -324,8 +336,7 @@ describe('monacoThemes', () => {
       expect(enhancedTheme.colors['editor.selectionForeground']).toBe('#FFFFFF');
 
       // Test light theme enhancement
-      mockMonaco.editor.defineTheme.mockClear();
-      loadThemeFromFile.mockResolvedValue({
+      loadThemeFromFile.mockResolvedValueOnce({
         base: 'vs',
         inherit: true,
         rules: [],
@@ -334,13 +345,13 @@ describe('monacoThemes', () => {
 
       await loadAndDefineTheme(mockMonaco, 'Test Theme Light');
 
-      const lightEnhancedTheme = mockMonaco.editor.defineTheme.mock.calls[0][1];
+      const lightEnhancedTheme = mockMonaco.editor.defineTheme.mock.calls[1][1];
       expect(lightEnhancedTheme.colors['editor.selectionBackground']).toBe('#ADD8E6CC');
       expect(lightEnhancedTheme.colors['editor.selectionForeground']).toBe('#000000');
     });
 
     test('handles high contrast themes', async () => {
-      const { isValidTheme, getMonacoThemeId, loadThemeFromFile } = require('./themeLoader.js');
+      const { isValidTheme, getMonacoThemeId, loadThemeFromFile } = themeLoader;
       isValidTheme.mockReturnValue(true);
       getMonacoThemeId.mockReturnValue('test-hc-theme');
       loadThemeFromFile.mockResolvedValue({
