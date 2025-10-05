@@ -331,7 +331,6 @@ function App() {
 
       if (response.mode === 'stream') {
         await initializeStream(response.streamIndex);
-        setViewMode('table');
       } else {
         const envelope = toResultEnvelope(response);
         loadStaticRecords(envelope.rows);
