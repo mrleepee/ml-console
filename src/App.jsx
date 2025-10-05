@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import Editor from '@monaco-editor/react';
 import {
   parseMultipartResponse,
-  formatRecordContent,
   toResultEnvelope,
 } from "./services/responseService";
 import QueryEditor from "./components/QueryEditor";
@@ -12,7 +11,6 @@ import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/database
 import { defineCustomMonacoThemes, getEnhancedTheme } from "./utils/monacoThemes";
 import { XQUERY_LANGUAGE } from "./utils/monacoXqueryConstants";
 import { monacoOptimizationManager } from "./utils/monacoOptimizations";
-import { calculateResultEditorHeight } from "./utils/editorSizing";
 import "./App.css";
 import useStreamingResults from "./hooks/useStreamingResults";
 import queryService from "./services/queryService";
@@ -20,78 +18,6 @@ import { request as ipcRequest, checkConnection as adapterCheck } from "./ipc/qu
 import useTheme from "./hooks/useTheme";
 import useDatabaseConfig from "./hooks/useDatabaseConfig";
 import ThemeSelector from "./components/ThemeSelector";
-
-// Memoized component for individual result records to prevent unnecessary re-renders
-const ResultRecord = React.memo(function ResultRecord({
-  record,
-  index,
-  globalIndex,
-  pageStart,
-  isActive,
-  recordRefs,
-  monacoTheme,
-  getMonacoLanguageFromContentType,
-  MemoMonacoEditor
-}) {
-  // Format content once and memoize
-  const formattedContent = React.useMemo(() => formatRecordContent(record), [record]);
-  const recordHeight = React.useMemo(() => calculateResultEditorHeight(formattedContent), [formattedContent]);
-
-  const contentHash = record.content?.substring(0, 50)?.replace(/\W+/g, '') || 'empty';
-  const stableId = `record-${globalIndex}-${record.uri || 'no-uri'}-${contentHash}`;
-  const recordId = `record-${globalIndex}`;
-
-  return (
-    <div
-      key={stableId}
-      className={`card bg-base-100 shadow-sm border ${isActive ? 'border-primary ring-2 ring-primary/20' : 'border-base-300'}`}
-      ref={(el) => {
-        if (el) recordRefs.current[recordId] = el;
-        else delete recordRefs.current[recordId];
-      }}
-      id={recordId}
-    >
-      <div className="card-header bg-primary text-primary-content px-4 py-2">
-        <div className="flex justify-between items-center">
-          <span className="font-medium">#{globalIndex + 1}</span>
-          <span className="text-sm opacity-90">{record.uri || 'No URI'}</span>
-        </div>
-      </div>
-      <div className="card-body p-4">
-        <div className="flex flex-wrap gap-4 text-sm text-base-content/70 mb-4">
-          <span><strong>Content Type:</strong> {record.contentType || 'Not available'}</span>
-          <span><strong>Datatype:</strong> {record.primitive || 'Not available'}</span>
-          {record.path && <span><strong>XPath:</strong> {record.path}</span>}
-        </div>
-        <div className="border border-base-300 rounded-lg overflow-hidden">
-          <MemoMonacoEditor
-            content={formattedContent}
-            language={getMonacoLanguageFromContentType(record.contentType)}
-            readOnly={true}
-            height={recordHeight}
-            path={stableId}
-            theme={monacoTheme}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}, (prevProps, nextProps) => {
-  // Custom comparison: re-render when isActive, record content, or theme changes
-  // Ignore function prop changes (recordRefs, getMonacoLanguageFromContentType, MemoMonacoEditor)
-  // CRITICAL: Check isActive FIRST - if it changed, must re-render to update border styling
-  if (prevProps.isActive !== nextProps.isActive) {
-    return false; // Force re-render when active state changes
-  }
-
-  // Skip re-render only if all relevant props are unchanged
-  return (
-    prevProps.record === nextProps.record &&
-    prevProps.index === nextProps.index &&
-    prevProps.monacoTheme === nextProps.monacoTheme &&
-    prevProps.globalIndex === nextProps.globalIndex
-  );
-});
 
 function App() {
   console.log("🚀 App component loaded - React code is running!");
@@ -124,7 +50,6 @@ function App() {
   const [queryType, setQueryType] = useState("xquery");
   const [activeTab, setActiveTab] = useState("console");
   const [rawResults, setRawResults] = useState("");
-  const [viewMode, setViewMode] = useState("table"); // "table", "parsed", "raw"
   const pageSize = 50;
   const {
     state: streamState,
@@ -200,46 +125,6 @@ function App() {
   const recordRefs = useRef({});
   const resultsOutputRef = useRef(null);
 
-  // Record navigation functions
-  const scrollToRecord = (pageRelativeIndex) => {
-    // Convert page-relative index to global index
-    // pageRelativeIndex is 0-based within current page
-    // globalIndex accounts for pagination offset
-    const globalIndex = pageStart + pageRelativeIndex;
-    const recordId = `record-${globalIndex}`;
-    const element = recordRefs.current[recordId];
-    const container = resultsOutputRef.current;
-    if (element && container) {
-      const containerRect = container.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
-      const currentScroll = container.scrollTop;
-      const containerTop = containerRect.top;
-      const elementTop = elementRect.top;
-      const targetScroll = currentScroll + (elementTop - containerTop) - 20;
-      container.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
-      // Note: activeRecordIndex is already set by advanceStreamRecord/rewindStreamRecord
-      // Don't set it again here to avoid race conditions
-    }
-  };
-
-  const goToPrevRecord = () => {
-    if (!hasRecords) return;
-    const target = Math.max(rewindStreamRecord(), 0);
-    scrollToRecord(target);
-  };
-  const goToNextRecord = () => {
-    if (!hasRecords) return;
-    const target = Math.min(advanceStreamRecord(), tableData.length - 1);
-    scrollToRecord(target);
-  };
-
-  const nextPage = async () => {
-    await nextStreamPage();
-  };
-
-  const prevPage = async () => {
-    await prevStreamPage();
-  };
 
 
   // Database helper functions
@@ -420,32 +305,6 @@ function App() {
     return () => clearTimeout(id);
   }, [showHistory]);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (viewMode === "table" && hasRecords) {
-        if (e.key === 'ArrowUp' && e.ctrlKey) { e.preventDefault(); goToPrevRecord(); }
-        else if (e.key === 'ArrowDown' && e.ctrlKey) { e.preventDefault(); goToNextRecord(); }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [viewMode, hasRecords, activeRecordIndex, tableData.length]);
-
-  // View mode change
-  useEffect(() => {
-    if (!rawResults || streamMode === 'stream') return;
-    if (viewMode === "raw") setResults(rawResults);
-    else if (viewMode === "parsed") {
-      try {
-        const cleanedResults = parseMultipartResponse(rawResults);
-        setResults(cleanedResults || "Query executed successfully (no results)");
-      } catch (err) {
-        console.error('Failed to parse multipart response:', err);
-        setError(`Error: ${err.message || 'Unable to parse response'}`);
-      }
-    }
-  }, [viewMode, rawResults, streamMode]);
 
   async function executeQuery(databaseConfigOverride = null) {
     if (!query.trim()) { setError("Please enter a query"); return; }
@@ -627,65 +486,6 @@ function App() {
               <div className="card-header bg-base-200 px-4 py-2 border-b border-base-300">
                 <div className="flex items-center justify-between">
                   <h2 className="card-title text-base">Results</h2>
-                  <div className="card-actions flex items-center gap-2">
-                    <select
-                      value={viewMode}
-                      onChange={(e) => setViewMode(e.target.value)}
-                      className="select select-bordered select-xs w-28"
-                    >
-                      <option value="table">Table View</option>
-                      <option value="parsed">Parsed Text</option>
-                      <option value="raw">Raw Output</option>
-                    </select>
-                    {viewMode === 'table' && streamIndex && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          className="btn btn-xs"
-                          onClick={prevPage}
-                          disabled={pageStart === 0}
-                          title="Previous 50"
-                        >
-                          Previous 50
-                        </button>
-                        <button
-                          className="btn btn-xs"
-                          onClick={nextPage}
-                          disabled={pageStart + pageSize >= totalRecords}
-                          title="Next 50"
-                        >
-                          Next 50
-                        </button>
-                        <span className="text-xs text-base-content/70">
-                          {Math.min(pageStart + 1, totalRecords)}–{Math.min(pageStart + pageSize, totalRecords)} of {totalRecords}
-                        </span>
-                      </div>
-                    )}
-                    {viewMode === "table" && hasRecords && (
-                      <div className="flex items-center gap-2">
-                        <div className="join">
-                          <button
-                            onClick={goToPrevRecord}
-                            disabled={activeRecordIndex <= 0}
-                            className="btn btn-xs btn-outline join-item"
-                            title="Previous record (Ctrl+↑)"
-                          >
-                            ↑
-                          </button>
-                          <button
-                            onClick={goToNextRecord}
-                            disabled={activeRecordIndex >= tableData.length - 1}
-                            className="btn btn-xs btn-outline join-item"
-                            title="Next record (Ctrl+↓)"
-                          >
-                            ↓
-                          </button>
-                        </div>
-                        <span className="text-xs text-base-content/70">
-                          {activeRecordIndex + 1} of {tableData.length}
-                        </span>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
               <div className="card-body p-0 flex-1 min-w-0 overflow-hidden">
@@ -706,56 +506,24 @@ function App() {
                           <span className="text-lg">Executing query...</span>
                         </div>
                       </div>
-                    ) : viewMode === "table" ? (
-                      <div className="overflow-x-auto">
-                        {tableData.length > 0 ? (
-                          <div className="space-y-4 p-4">
-                            {tableData.map((record, index) => {
-                              const globalIndex = typeof record.index === 'number' ? record.index : (pageStart + index);
-                              return (
-                                <ResultRecord
-                                  key={`record-${globalIndex}-${record.uri || 'no-uri'}`}
-                                  record={record}
-                                  index={index}
-                                  globalIndex={globalIndex}
-                                  pageStart={pageStart}
-                                  isActive={index === activeRecordIndex}
-                                  recordRefs={recordRefs}
-                                  monacoTheme={monacoTheme}
-                                  getMonacoLanguageFromContentType={getMonacoLanguageFromContentType}
-                                  MemoMonacoEditor={MemoMonacoEditor}
-                                />
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center h-32 text-base-content/50">
-                            <div className="text-center">
-                              <svg className="mx-auto h-12 w-12 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                              <p className="mt-2">No results to display</p>
-                            </div>
-                          </div>
-                        )}
+                    ) : results ? (
+                      <div className="p-4">
+                        <MonacoEditor
+                          content={results}
+                          language="plaintext"
+                          readOnly={true}
+                          height="400px"
+                          theme={monacoTheme}
+                        />
                       </div>
                     ) : (
-                      <div className="p-4">
-                        {streamIndex ? (
-                          <div className="flex items-center justify-center h-32 text-base-content/60">
-                            <div className="text-center">
-                              <p className="text-sm">Large result streamed to disk. Use Table view with pagination to browse records.</p>
-                            </div>
-                          </div>
-                        ) : (
-                          <MonacoEditor
-                            content={results}
-                            language="plaintext"
-                            readOnly={true}
-                            height="400px"
-                            theme={monacoTheme}
-                          />
-                        )}
+                      <div className="flex items-center justify-center h-32 text-base-content/50">
+                        <div className="text-center">
+                          <svg className="mx-auto h-12 w-12 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <p className="mt-2">No results to display</p>
+                        </div>
                       </div>
                     )}
                   </div>
