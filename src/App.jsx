@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import Editor from '@monaco-editor/react';
 import {
   parseMultipartResponse,
+  formatRecordContent,
   toResultEnvelope,
 } from "./services/responseService";
 import QueryEditor from "./components/QueryEditor";
@@ -49,7 +50,6 @@ function App() {
   const [error, setError] = useState("");
   const [queryType, setQueryType] = useState("xquery");
   const [activeTab, setActiveTab] = useState("console");
-  const [rawResults, setRawResults] = useState("");
   const pageSize = 50;
   const {
     state: streamState,
@@ -305,6 +305,27 @@ function App() {
     return () => clearTimeout(id);
   }, [showHistory]);
 
+  // Update results display when streaming data changes
+  useEffect(() => {
+    if (streamMode === 'stream' && tableData.length > 0) {
+      // Format all records and join them for display
+      const formattedRecords = tableData.map((record, index) => {
+        const globalIndex = typeof record.index === 'number' ? record.index : (pageStart + index);
+        const content = formatRecordContent(record);
+        const uri = record.uri || 'No URI';
+        return `<!-- Record #${globalIndex + 1}: ${uri} -->\n<!-- Content-Type: ${record.contentType || 'N/A'} -->\n\n${content}\n\n${'='.repeat(80)}\n`;
+      }).join('\n');
+      setResults(formattedRecords);
+    } else if (streamMode === 'static' && tableData.length > 0) {
+      // Static mode - format all records
+      const formattedRecords = tableData.map((record, index) => {
+        const content = formatRecordContent(record);
+        const uri = record.uri || 'No URI';
+        return `<!-- Record #${index + 1}: ${uri} -->\n<!-- Content-Type: ${record.contentType || 'N/A'} -->\n\n${content}\n\n${'='.repeat(80)}\n`;
+      }).join('\n');
+      setResults(formattedRecords);
+    }
+  }, [tableData, streamMode, pageStart]);
 
   async function executeQuery(databaseConfigOverride = null) {
     if (!query.trim()) { setError("Please enter a query"); return; }
@@ -317,7 +338,7 @@ function App() {
       return;
     }
     setIsLoading(true); setError(""); setResults("");
-    setRawResults(""); resetStreaming();
+    resetStreaming();
     const executionStartTime = Date.now();
     try {
       const response = await queryService.executeQuery({
@@ -334,7 +355,6 @@ function App() {
       } else {
         const envelope = toResultEnvelope(response);
         loadStaticRecords(envelope.rows);
-        setRawResults(envelope.rawText);
         setResults(envelope.formattedText || 'Query executed successfully (no results)');
       }
       await saveQueryToHistory(query, queryType, dbConfig, Date.now() - executionStartTime, 'executed');
@@ -509,7 +529,7 @@ function App() {
                       <div className="p-4">
                         <MonacoEditor
                           content={results}
-                          language="plaintext"
+                          language="xml"
                           readOnly={true}
                           height="400px"
                           theme={monacoTheme}
