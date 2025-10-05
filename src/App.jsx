@@ -123,8 +123,6 @@ function App() {
   const [error, setError] = useState("");
   const [queryType, setQueryType] = useState("xquery");
   const [activeTab, setActiveTab] = useState("console");
-  const [rawResults, setRawResults] = useState("");
-  const [viewMode, setViewMode] = useState("table"); // "table", "parsed", "raw"
   const pageSize = 50;
   const {
     state: streamState,
@@ -423,29 +421,15 @@ function App() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (viewMode === "table" && hasRecords) {
+      if (hasRecords) {
         if (e.key === 'ArrowUp' && e.ctrlKey) { e.preventDefault(); goToPrevRecord(); }
         else if (e.key === 'ArrowDown' && e.ctrlKey) { e.preventDefault(); goToNextRecord(); }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [viewMode, hasRecords, activeRecordIndex, tableData.length]);
+  }, [hasRecords, activeRecordIndex, tableData.length]);
 
-  // View mode change
-  useEffect(() => {
-    if (!rawResults || streamMode === 'stream') return;
-    if (viewMode === "raw") setResults(rawResults);
-    else if (viewMode === "parsed") {
-      try {
-        const cleanedResults = parseMultipartResponse(rawResults);
-        setResults(cleanedResults || "Query executed successfully (no results)");
-      } catch (err) {
-        console.error('Failed to parse multipart response:', err);
-        setError(`Error: ${err.message || 'Unable to parse response'}`);
-      }
-    }
-  }, [viewMode, rawResults, streamMode]);
 
   async function executeQuery(databaseConfigOverride = null) {
     if (!query.trim()) { setError("Please enter a query"); return; }
@@ -458,7 +442,7 @@ function App() {
       return;
     }
     setIsLoading(true); setError(""); setResults("");
-    setRawResults(""); resetStreaming();
+    resetStreaming();
     const executionStartTime = Date.now();
     try {
       const response = await queryService.executeQuery({
@@ -472,11 +456,9 @@ function App() {
 
       if (response.mode === 'stream') {
         await initializeStream(response.streamIndex);
-        setViewMode('table');
       } else {
         const envelope = toResultEnvelope(response);
         loadStaticRecords(envelope.rows);
-        setRawResults(envelope.rawText);
         setResults(envelope.formattedText || 'Query executed successfully (no results)');
       }
       await saveQueryToHistory(query, queryType, dbConfig, Date.now() - executionStartTime, 'executed');
@@ -628,16 +610,7 @@ function App() {
                 <div className="flex items-center justify-between">
                   <h2 className="card-title text-base">Results</h2>
                   <div className="card-actions flex items-center gap-2">
-                    <select
-                      value={viewMode}
-                      onChange={(e) => setViewMode(e.target.value)}
-                      className="select select-bordered select-xs w-28"
-                    >
-                      <option value="table">Table View</option>
-                      <option value="parsed">Parsed Text</option>
-                      <option value="raw">Raw Output</option>
-                    </select>
-                    {viewMode === 'table' && streamIndex && (
+                    {streamIndex && (
                       <div className="flex items-center gap-2">
                         <button
                           className="btn btn-xs"
@@ -660,7 +633,7 @@ function App() {
                         </span>
                       </div>
                     )}
-                    {viewMode === "table" && hasRecords && (
+                    {hasRecords && (
                       <div className="flex items-center gap-2">
                         <div className="join">
                           <button
@@ -706,7 +679,7 @@ function App() {
                           <span className="text-lg">Executing query...</span>
                         </div>
                       </div>
-                    ) : viewMode === "table" ? (
+                    ) : (
                       <div className="overflow-x-auto">
                         {tableData.length > 0 ? (
                           <div className="space-y-4 p-4">
@@ -728,6 +701,16 @@ function App() {
                               );
                             })}
                           </div>
+                        ) : results ? (
+                          <div className="p-4">
+                            <MonacoEditor
+                              content={results}
+                              language="plaintext"
+                              readOnly={true}
+                              height="400px"
+                              theme={monacoTheme}
+                            />
+                          </div>
                         ) : (
                           <div className="flex items-center justify-center h-32 text-base-content/50">
                             <div className="text-center">
@@ -737,24 +720,6 @@ function App() {
                               <p className="mt-2">No results to display</p>
                             </div>
                           </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="p-4">
-                        {streamIndex ? (
-                          <div className="flex items-center justify-center h-32 text-base-content/60">
-                            <div className="text-center">
-                              <p className="text-sm">Large result streamed to disk. Use Table view with pagination to browse records.</p>
-                            </div>
-                          </div>
-                        ) : (
-                          <MonacoEditor
-                            content={results}
-                            language="plaintext"
-                            readOnly={true}
-                            height="400px"
-                            theme={monacoTheme}
-                          />
                         )}
                       </div>
                     )}
