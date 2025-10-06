@@ -330,8 +330,8 @@ function App() {
     setQuery(defaultQueries[queryType] || '');
     setResults('');
     setError('');
-    resetStreamingResults();
-  }, [queryType, resetStreamingResults]);
+    resetStreaming();
+  }, [queryType, resetStreaming]);
 
   // Monaco editor for record content (read-only viewer)
   function MonacoEditor({ content, language, readOnly = true, height = "200px", path, theme = "vs" }) {
