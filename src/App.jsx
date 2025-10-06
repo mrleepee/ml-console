@@ -195,19 +195,33 @@ function App() {
     const record = tableData[pageRelativeIndex];
     const globalIndex = typeof record?.index === 'number' ? record.index : (pageStart + pageRelativeIndex);
     const element = document.getElementById(`record-${globalIndex}`);
+    console.log('scrollToRecord:', {
+      pageRelativeIndex,
+      globalIndex,
+      elementId: `record-${globalIndex}`,
+      found: !!element,
+      record,
+      pageStart,
+      tableDataLength: tableData.length
+    });
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      // Debug: Check what container is scrolling
+      const scrollContainer = element.closest('.overflow-y-auto');
+      console.log('Scroll container found:', scrollContainer?.className);
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
 
   const goToPrevRecord = () => {
     if (!hasRecords) return;
     const target = Math.max(rewindStreamRecord(), 0);
+    console.log('goToPrevRecord: target index =', target, 'activeRecordIndex =', activeRecordIndex);
     scrollToRecord(target);
   };
   const goToNextRecord = () => {
     if (!hasRecords) return;
     const target = Math.min(advanceStreamRecord(), tableData.length - 1);
+    console.log('goToNextRecord: target index =', target, 'activeRecordIndex =', activeRecordIndex);
     scrollToRecord(target);
   };
 
