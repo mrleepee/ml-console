@@ -38,6 +38,11 @@ export const getEnhancedTheme = (themeName) => {
 
 // Define custom Monaco themes with proper selection highlighting
 export const defineCustomMonacoThemes = (monaco) => {
+  if (!monaco || !monaco.editor) {
+    console.warn('Monaco editor not available, skipping theme definition');
+    return;
+  }
+
   // Enhanced light theme with visible selection
   monaco.editor.defineTheme('vs-enhanced', {
     base: 'vs',
