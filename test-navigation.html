@@ -69,6 +69,7 @@
             <button onclick="testNearest()">Test block: 'nearest'</button>
             <button onclick="testCenter()">Test block: 'center'</button>
             <button onclick="testStart()">Test block: 'start'</button>
+            <button onclick="testManual()">Test Manual Scroll (Fix)</button>
             <div class="info">
                 <strong>Current Index:</strong> <span id="currentIndex">0</span><br>
                 <strong>Scroll Mode:</strong> <span id="scrollMode">center</span><br>
@@ -116,7 +117,19 @@
             document.getElementById('lastAction').textContent = `Scroll to record-${index} with block: '${scrollMode}'`;
 
             if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: scrollMode });
+                // Use explicit container scrolling instead of scrollIntoView
+                const scrollContainer = document.getElementById('resultsContainer');
+                if (scrollContainer && scrollMode === 'manual') {
+                    const containerRect = scrollContainer.getBoundingClientRect();
+                    const elementRect = element.getBoundingClientRect();
+                    const currentScroll = scrollContainer.scrollTop;
+                    const offsetWithinContainer = elementRect.top - containerRect.top + currentScroll;
+                    const targetTop = offsetWithinContainer - ((scrollContainer.clientHeight - elementRect.height) / 2);
+                    scrollContainer.scrollTo({ top: Math.max(targetTop, 0), behavior: 'smooth' });
+                    console.log('Manual scroll - container to:', targetTop, 'from:', currentScroll);
+                } else {
+                    element.scrollIntoView({ behavior: 'smooth', block: scrollMode });
+                }
             }
         }
 
@@ -153,6 +166,12 @@
         function testStart() {
             scrollMode = 'start';
             document.getElementById('scrollMode').textContent = scrollMode;
+            scrollToRecord(activeIndex);
+        }
+
+        function testManual() {
+            scrollMode = 'manual';
+            document.getElementById('scrollMode').textContent = 'manual (explicit container scroll)';
             scrollToRecord(activeIndex);
         }
 

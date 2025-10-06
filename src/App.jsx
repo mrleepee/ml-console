@@ -205,10 +205,23 @@ function App() {
       tableDataLength: tableData.length
     });
     if (element) {
-      // Debug: Check what container is scrolling
+      // Find the specific scroll container - the overflow-y-auto div
       const scrollContainer = element.closest('.overflow-y-auto');
       console.log('Scroll container found:', scrollContainer?.className);
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      if (scrollContainer) {
+        // Calculate position within the container and center it
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+        const currentScroll = scrollContainer.scrollTop;
+        const offsetWithinContainer = elementRect.top - containerRect.top + currentScroll;
+        const targetTop = offsetWithinContainer - ((scrollContainer.clientHeight - elementRect.height) / 2);
+        scrollContainer.scrollTo({ top: Math.max(targetTop, 0), behavior: 'smooth' });
+        console.log('Scrolling container to:', targetTop, 'from:', currentScroll);
+      } else {
+        // Fallback if container not found
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }
   };
 
