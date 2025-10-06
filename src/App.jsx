@@ -285,6 +285,8 @@ function App() {
       if (window.electronAPI && window.electronAPI.database) {
         const result = await window.electronAPI.database.getQueryById(id);
         if (result.success && result.query) {
+          // Set flag to prevent newQuery from triggering when we change queryType
+          isLoadingFromHistory.current = true;
           setQuery(result.query.content);
           setQueryType(result.query.queryType);
           if (result.query.databaseId && result.query.databaseName) {
@@ -436,10 +438,16 @@ function App() {
 
   // Trigger newQuery when query type changes
   const isInitialMount = useRef(true);
+  const isLoadingFromHistory = useRef(false);
   useEffect(() => {
     // Skip on initial mount (let the default query load first)
     if (isInitialMount.current) {
       isInitialMount.current = false;
+      return;
+    }
+    // Skip if we're loading from history (to prevent overwriting the loaded query)
+    if (isLoadingFromHistory.current) {
+      isLoadingFromHistory.current = false;
       return;
     }
     // When user changes query type, load the appropriate template

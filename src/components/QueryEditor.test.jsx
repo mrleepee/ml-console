@@ -235,6 +235,194 @@ describe('Query Editor Functionality', () => {
     });
   });
 
+  describe('History Loading Bug Fix', () => {
+    it('should not trigger newQuery when loading query from history', async () => {
+      const { result } = renderHook(() => {
+        const [queryType, setQueryType] = useState('xquery');
+        const [query, setQuery] = useState('');
+        const isInitialMount = useRef(true);
+        const isLoadingFromHistory = useRef(false);
+        const [newQueryCallCount, setNewQueryCallCount] = useState(0);
+
+        const newQuery = useCallback(() => {
+          const defaultQueries = {
+            xquery: 'xquery version "1.0-ml";\n\n',
+            javascript: "'use strict';\n\n",
+            sparql: 'PREFIX : <http://example.org/>\n\nSELECT * WHERE {\n  ?s ?p ?o\n}\nLIMIT 10'
+          };
+          setQuery(defaultQueries[queryType] || '');
+          setNewQueryCallCount(c => c + 1);
+        }, [queryType]);
+
+        // Effect that triggers newQuery on queryType change
+        useEffect(() => {
+          if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+          }
+          if (isLoadingFromHistory.current) {
+            isLoadingFromHistory.current = false;
+            return;
+          }
+          newQuery();
+        }, [queryType, newQuery]);
+
+        // Simulate loading from history
+        const loadFromHistory = useCallback((historyQuery, historyQueryType) => {
+          isLoadingFromHistory.current = true;
+          setQuery(historyQuery);
+          setQueryType(historyQueryType);
+        }, []);
+
+        return { query, queryType, newQueryCallCount, loadFromHistory };
+      });
+
+      // Initial state
+      expect(result.current.newQueryCallCount).toBe(0);
+      expect(result.current.query).toBe('');
+
+      // Simulate loading a JavaScript query from history
+      act(() => {
+        result.current.loadFromHistory('const x = 42;', 'javascript');
+      });
+
+      // Wait for state updates
+      await waitFor(() => {
+        expect(result.current.query).toBe('const x = 42;');
+        expect(result.current.queryType).toBe('javascript');
+      });
+
+      // newQuery should NOT have been called (count should still be 0)
+      expect(result.current.newQueryCallCount).toBe(0);
+    });
+
+    it('should allow newQuery to trigger normally after history load', async () => {
+      const { result } = renderHook(() => {
+        const [queryType, setQueryType] = useState('xquery');
+        const [query, setQuery] = useState('');
+        const isInitialMount = useRef(true);
+        const isLoadingFromHistory = useRef(false);
+        const [newQueryCallCount, setNewQueryCallCount] = useState(0);
+
+        const newQuery = useCallback(() => {
+          const defaultQueries = {
+            xquery: 'xquery version "1.0-ml";\n\n',
+            javascript: "'use strict';\n\n",
+            sparql: 'PREFIX : <http://example.org/>\n\nSELECT * WHERE {\n  ?s ?p ?o\n}\nLIMIT 10'
+          };
+          setQuery(defaultQueries[queryType] || '');
+          setNewQueryCallCount(c => c + 1);
+        }, [queryType]);
+
+        useEffect(() => {
+          if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+          }
+          if (isLoadingFromHistory.current) {
+            isLoadingFromHistory.current = false;
+            return;
+          }
+          newQuery();
+        }, [queryType, newQuery]);
+
+        const loadFromHistory = useCallback((historyQuery, historyQueryType) => {
+          isLoadingFromHistory.current = true;
+          setQuery(historyQuery);
+          setQueryType(historyQueryType);
+        }, []);
+
+        return { query, queryType, setQueryType, newQueryCallCount, loadFromHistory };
+      });
+
+      // Load from history
+      act(() => {
+        result.current.loadFromHistory('const x = 42;', 'javascript');
+      });
+
+      await waitFor(() => {
+        expect(result.current.query).toBe('const x = 42;');
+      });
+
+      expect(result.current.newQueryCallCount).toBe(0);
+
+      // Now change query type manually (not from history)
+      act(() => {
+        result.current.setQueryType('sparql');
+      });
+
+      // This time newQuery SHOULD trigger
+      await waitFor(() => {
+        expect(result.current.newQueryCallCount).toBe(1);
+        expect(result.current.query).toBe('PREFIX : <http://example.org/>\n\nSELECT * WHERE {\n  ?s ?p ?o\n}\nLIMIT 10');
+      });
+    });
+
+    it('should handle multiple history loads without triggering newQuery', async () => {
+      const { result } = renderHook(() => {
+        const [queryType, setQueryType] = useState('xquery');
+        const [query, setQuery] = useState('');
+        const isInitialMount = useRef(true);
+        const isLoadingFromHistory = useRef(false);
+        const [newQueryCallCount, setNewQueryCallCount] = useState(0);
+
+        const newQuery = useCallback(() => {
+          const defaultQueries = {
+            xquery: 'xquery version "1.0-ml";\n\n',
+            javascript: "'use strict';\n\n",
+            sparql: 'PREFIX : <http://example.org/>\n\nSELECT * WHERE {\n  ?s ?p ?o\n}\nLIMIT 10'
+          };
+          setQuery(defaultQueries[queryType] || '');
+          setNewQueryCallCount(c => c + 1);
+        }, [queryType]);
+
+        useEffect(() => {
+          if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+          }
+          if (isLoadingFromHistory.current) {
+            isLoadingFromHistory.current = false;
+            return;
+          }
+          newQuery();
+        }, [queryType, newQuery]);
+
+        const loadFromHistory = useCallback((historyQuery, historyQueryType) => {
+          isLoadingFromHistory.current = true;
+          setQuery(historyQuery);
+          setQueryType(historyQueryType);
+        }, []);
+
+        return { query, queryType, newQueryCallCount, loadFromHistory };
+      });
+
+      // Load first query from history
+      act(() => {
+        result.current.loadFromHistory('for $x in 1 to 10 return $x', 'xquery');
+      });
+
+      await waitFor(() => {
+        expect(result.current.query).toBe('for $x in 1 to 10 return $x');
+      });
+
+      expect(result.current.newQueryCallCount).toBe(0);
+
+      // Load second query from history with different type
+      act(() => {
+        result.current.loadFromHistory('console.log("hello");', 'javascript');
+      });
+
+      await waitFor(() => {
+        expect(result.current.query).toBe('console.log("hello");');
+        expect(result.current.queryType).toBe('javascript');
+      });
+
+      // Still should not have triggered newQuery
+      expect(result.current.newQueryCallCount).toBe(0);
+    });
+  });
+
   describe('Template Content Validation', () => {
     it('should have correct XQuery version declaration', () => {
       const template = 'xquery version "1.0-ml";\n\n';
