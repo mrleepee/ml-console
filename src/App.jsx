@@ -321,17 +321,17 @@ function App() {
   }
 
   // Create a new blank query
-  const newQuery = () => {
+  const newQuery = useCallback(() => {
     const defaultQueries = {
       xquery: 'xquery version "1.0-ml";\n\n',
-      javascript: '',
+      javascript: "'use strict';\n\n",
       sparql: 'PREFIX : <http://example.org/>\n\nSELECT * WHERE {\n  ?s ?p ?o\n}\nLIMIT 10'
     };
     setQuery(defaultQueries[queryType] || '');
     setResults('');
     setError('');
     resetStreamingResults();
-  };
+  }, [queryType, resetStreamingResults]);
 
   // Monaco editor for record content (read-only viewer)
   function MonacoEditor({ content, language, readOnly = true, height = "200px", path, theme = "vs" }) {
@@ -433,6 +433,18 @@ function App() {
     };
     loadHistoryAndSetDefault();
   }, []);
+
+  // Trigger newQuery when query type changes
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    // Skip on initial mount (let the default query load first)
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    // When user changes query type, load the appropriate template
+    newQuery();
+  }, [queryType, newQuery]);
 
   // Force Monaco to relayout when the sidebar opens/closes
   useEffect(() => {
