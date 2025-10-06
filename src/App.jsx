@@ -28,7 +28,6 @@ const ResultRecord = React.memo(function ResultRecord({
   globalIndex,
   pageStart,
   isActive,
-  recordRefs,
   monacoTheme,
   getMonacoLanguageFromContentType,
   MemoMonacoEditor
@@ -45,10 +44,6 @@ const ResultRecord = React.memo(function ResultRecord({
     <div
       key={stableId}
       className={`card bg-base-100 shadow-sm border ${isActive ? 'border-primary ring-2 ring-primary/20' : 'border-base-300'}`}
-      ref={(el) => {
-        if (el) recordRefs.current[recordId] = el;
-        else delete recordRefs.current[recordId];
-      }}
       id={recordId}
     >
       <div className="card-header bg-primary text-primary-content px-4 py-2">
@@ -78,7 +73,7 @@ const ResultRecord = React.memo(function ResultRecord({
   );
 }, (prevProps, nextProps) => {
   // Custom comparison: re-render when isActive, record content, or theme changes
-  // Ignore function prop changes (recordRefs, getMonacoLanguageFromContentType, MemoMonacoEditor)
+  // Ignore function prop changes (getMonacoLanguageFromContentType, MemoMonacoEditor)
   // CRITICAL: Check isActive FIRST - if it changed, must re-render to update border styling
   if (prevProps.isActive !== nextProps.isActive) {
     return false; // Force re-render when active state changes
@@ -195,28 +190,29 @@ function App() {
     persistConfig: true
   });
 
-  const recordRefs = useRef({});
-  const resultsOutputRef = useRef(null);
-
   // Record navigation functions
   const scrollToRecord = (pageRelativeIndex) => {
-    // Convert page-relative index to global index
-    // pageRelativeIndex is 0-based within current page
-    // globalIndex accounts for pagination offset
-    const globalIndex = pageStart + pageRelativeIndex;
-    const recordId = `record-${globalIndex}`;
-    const element = recordRefs.current[recordId];
-    const container = resultsOutputRef.current;
-    if (element && container) {
-      const containerRect = container.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
-      const currentScroll = container.scrollTop;
-      const containerTop = containerRect.top;
-      const elementTop = elementRect.top;
-      const targetScroll = currentScroll + (elementTop - containerTop) - 20;
-      container.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
-      // Note: activeRecordIndex is already set by advanceStreamRecord/rewindStreamRecord
-      // Don't set it again here to avoid race conditions
+    const record = tableData[pageRelativeIndex];
+    const globalIndex = typeof record?.index === 'number' ? record.index : (pageStart + pageRelativeIndex);
+    const element = document.getElementById(`record-${globalIndex}`);
+    if (element) {
+      // Find the specific scroll container - the overflow-y-auto div
+      const scrollContainer = element.closest('.overflow-y-auto');
+
+      if (scrollContainer) {
+        // Calculate position within the container - position with padding from top
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+        const currentScroll = scrollContainer.scrollTop;
+        const offsetWithinContainer = elementRect.top - containerRect.top + currentScroll;
+        // Position element with 20px padding from top instead of centering
+        // This ensures the purple bar is always visible
+        const targetTop = offsetWithinContainer - 20;
+        scrollContainer.scrollTo({ top: Math.max(targetTop, 0), behavior: 'smooth' });
+      } else {
+        // Fallback if container not found
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }
   };
 
@@ -670,7 +666,7 @@ function App() {
                     <span>{error}</span>
                   </div>
                 )}
-                <div className="results-output flex-1 min-w-0 overflow-hidden" ref={resultsOutputRef}>
+                <div className="results-output flex-1 min-w-0 overflow-hidden">
                   <div className="h-full w-full overflow-y-auto">
                     {isLoading ? (
                       <div className="flex items-center justify-center h-full">
@@ -693,7 +689,6 @@ function App() {
                                   globalIndex={globalIndex}
                                   pageStart={pageStart}
                                   isActive={index === activeRecordIndex}
-                                  recordRefs={recordRefs}
                                   monacoTheme={monacoTheme}
                                   getMonacoLanguageFromContentType={getMonacoLanguageFromContentType}
                                   MemoMonacoEditor={MemoMonacoEditor}
