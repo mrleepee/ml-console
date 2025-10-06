@@ -31,7 +31,6 @@ const ResultRecord = React.memo(function ResultRecord({
   globalIndex,
   pageStart,
   isActive,
-  recordRefs,
   monacoTheme,
   getMonacoLanguageFromContentType,
   MemoMonacoEditor
@@ -47,10 +46,6 @@ const ResultRecord = React.memo(function ResultRecord({
     <div
       data-testid={`result-record-${index}`}
       className={`card bg-base-100 shadow-sm border ${isActive ? 'border-primary ring-2 ring-primary/20' : 'border-base-300'}`}
-      ref={(el) => {
-        if (el) recordRefs.current[recordId] = el;
-        else delete recordRefs.current[recordId];
-      }}
       id={recordId}
     >
       <div className="card-header bg-primary text-primary-content px-4 py-2">
@@ -89,11 +84,9 @@ const ResultRecord = React.memo(function ResultRecord({
 });
 
 describe('ResultRecord Component', () => {
-  let mockRecordRefs;
   let mockGetLanguage;
 
   beforeEach(() => {
-    mockRecordRefs = { current: {} };
     mockGetLanguage = vi.fn((contentType) => {
       if (!contentType) return 'plaintext';
       if (contentType.includes('xml')) return 'xml';
@@ -119,7 +112,6 @@ describe('ResultRecord Component', () => {
         globalIndex={0}
         pageStart={0}
         isActive={false}
-        recordRefs={mockRecordRefs}
         monacoTheme="vs"
         getMonacoLanguageFromContentType={mockGetLanguage}
         MemoMonacoEditor={MockMonacoEditor}
@@ -149,7 +141,6 @@ describe('ResultRecord Component', () => {
         globalIndex={0}
         pageStart={0}
         isActive={false}
-        recordRefs={mockRecordRefs}
         monacoTheme="vs"
         getMonacoLanguageFromContentType={mockGetLanguage}
         MemoMonacoEditor={MockMonacoEditor}
@@ -168,7 +159,6 @@ describe('ResultRecord Component', () => {
         globalIndex={0}
         pageStart={0}
         isActive={true}
-        recordRefs={mockRecordRefs}
         monacoTheme="vs"
         getMonacoLanguageFromContentType={mockGetLanguage}
         MemoMonacoEditor={MockMonacoEditor}
@@ -194,7 +184,6 @@ describe('ResultRecord Component', () => {
         globalIndex={0}
         pageStart={0}
         isActive={false}
-        recordRefs={mockRecordRefs}
         monacoTheme="vs"
         getMonacoLanguageFromContentType={mockGetLanguage}
         MemoMonacoEditor={MockMonacoEditor}
@@ -221,7 +210,6 @@ describe('ResultRecord Component', () => {
         globalIndex={0}
         pageStart={0}
         isActive={false}
-        recordRefs={mockRecordRefs}
         monacoTheme="vs"
         getMonacoLanguageFromContentType={mockGetLanguage}
         MemoMonacoEditor={MockMonacoEditor}
@@ -246,7 +234,6 @@ describe('ResultRecord Component', () => {
         globalIndex={0}
         pageStart={0}
         isActive={false}
-        recordRefs={mockRecordRefs}
         monacoTheme="vs"
         getMonacoLanguageFromContentType={mockGetLanguage}
         MemoMonacoEditor={MockMonacoEditor}
@@ -271,7 +258,6 @@ describe('ResultRecord Component', () => {
         globalIndex={0}
         pageStart={0}
         isActive={false}
-        recordRefs={mockRecordRefs}
         monacoTheme="vs"
         getMonacoLanguageFromContentType={mockGetLanguage}
         MemoMonacoEditor={MockMonacoEditor}
@@ -303,7 +289,6 @@ describe('ResultRecord Component', () => {
         globalIndex={0}
         pageStart={0}
         isActive={false}
-        recordRefs={mockRecordRefs}
         monacoTheme="vs"
         getMonacoLanguageFromContentType={mockGetLanguage}
         MemoMonacoEditor={CountingMonacoEditor}
@@ -321,7 +306,6 @@ describe('ResultRecord Component', () => {
         globalIndex={0}
         pageStart={0}
         isActive={false}
-        recordRefs={mockRecordRefs}
         monacoTheme="vs"
         getMonacoLanguageFromContentType={newGetLanguage}
         MemoMonacoEditor={CountingMonacoEditor}
@@ -351,7 +335,6 @@ describe('ResultRecord Component', () => {
         globalIndex={0}
         pageStart={0}
         isActive={false}
-        recordRefs={mockRecordRefs}
         monacoTheme="vs"
         getMonacoLanguageFromContentType={mockGetLanguage}
         MemoMonacoEditor={CountingMonacoEditor}
@@ -368,7 +351,6 @@ describe('ResultRecord Component', () => {
         globalIndex={0}
         pageStart={0}
         isActive={true}
-        recordRefs={mockRecordRefs}
         monacoTheme="vs"
         getMonacoLanguageFromContentType={mockGetLanguage}
         MemoMonacoEditor={CountingMonacoEditor}
@@ -394,7 +376,6 @@ describe('ResultRecord Component', () => {
         globalIndex={0}
         pageStart={0}
         isActive={false}
-        recordRefs={mockRecordRefs}
         monacoTheme="vs"
         getMonacoLanguageFromContentType={mockGetLanguage}
         MemoMonacoEditor={MockMonacoEditor}
@@ -411,7 +392,6 @@ describe('ResultRecord Component', () => {
         globalIndex={0}
         pageStart={0}
         isActive={true}
-        recordRefs={mockRecordRefs}
         monacoTheme="vs"
         getMonacoLanguageFromContentType={mockGetLanguage}
         MemoMonacoEditor={MockMonacoEditor}
@@ -420,31 +400,6 @@ describe('ResultRecord Component', () => {
 
     // formatRecordContent should NOT be called again (memoized)
     expect(formatRecordContent).toHaveBeenCalledTimes(1);
-  });
-
-  test('stores ref in recordRefs.current with correct ID', () => {
-    const record = {
-      uri: '/test/record.xml',
-      content: '<test>data</test>',
-      contentType: 'application/xml'
-    };
-
-    render(
-      <ResultRecord
-        record={record}
-        index={0}
-        globalIndex={5}
-        pageStart={0}
-        isActive={false}
-        recordRefs={mockRecordRefs}
-        monacoTheme="vs"
-        getMonacoLanguageFromContentType={mockGetLanguage}
-        MemoMonacoEditor={MockMonacoEditor}
-      />
-    );
-
-    expect(mockRecordRefs.current['record-5']).toBeDefined();
-    expect(mockRecordRefs.current['record-5'].id).toBe('record-5');
   });
 
   test('handles missing optional fields gracefully', () => {
@@ -460,7 +415,6 @@ describe('ResultRecord Component', () => {
         globalIndex={0}
         pageStart={0}
         isActive={false}
-        recordRefs={mockRecordRefs}
         monacoTheme="vs"
         getMonacoLanguageFromContentType={mockGetLanguage}
         MemoMonacoEditor={MockMonacoEditor}
@@ -490,7 +444,6 @@ describe('ResultRecord Component', () => {
           globalIndex={0}
           pageStart={0}
           isActive={false}
-          recordRefs={mockRecordRefs}
           monacoTheme="vs"
           getMonacoLanguageFromContentType={mockGetLanguage}
           MemoMonacoEditor={MockMonacoEditor}
@@ -509,7 +462,6 @@ describe('ResultRecord Component', () => {
           globalIndex={0}
           pageStart={0}
           isActive={true}
-          recordRefs={mockRecordRefs}
           monacoTheme="vs"
           getMonacoLanguageFromContentType={mockGetLanguage}
           MemoMonacoEditor={MockMonacoEditor}
@@ -539,7 +491,6 @@ describe('ResultRecord Component', () => {
               globalIndex={index}
               pageStart={0}
               isActive={index === 0}
-              recordRefs={mockRecordRefs}
               monacoTheme="vs"
               getMonacoLanguageFromContentType={mockGetLanguage}
               MemoMonacoEditor={MockMonacoEditor}
@@ -564,7 +515,6 @@ describe('ResultRecord Component', () => {
               globalIndex={index}
               pageStart={0}
               isActive={index === 1}
-              recordRefs={mockRecordRefs}
               monacoTheme="vs"
               getMonacoLanguageFromContentType={mockGetLanguage}
               MemoMonacoEditor={MockMonacoEditor}
@@ -590,7 +540,6 @@ describe('ResultRecord Component', () => {
               globalIndex={index}
               pageStart={0}
               isActive={index === 2}
-              recordRefs={mockRecordRefs}
               monacoTheme="vs"
               getMonacoLanguageFromContentType={mockGetLanguage}
               MemoMonacoEditor={MockMonacoEditor}
@@ -626,7 +575,6 @@ describe('ResultRecord Component', () => {
           globalIndex={0}
           pageStart={0}
           isActive={false}
-          recordRefs={mockRecordRefs}
           monacoTheme="vs"
           getMonacoLanguageFromContentType={mockGetLanguage}
           MemoMonacoEditor={CountingMonacoEditor}
@@ -643,7 +591,6 @@ describe('ResultRecord Component', () => {
           globalIndex={0}
           pageStart={0}
           isActive={true}
-          recordRefs={mockRecordRefs}
           monacoTheme="vs"
           getMonacoLanguageFromContentType={mockGetLanguage}
           MemoMonacoEditor={CountingMonacoEditor}
@@ -674,7 +621,6 @@ describe('ResultRecord Component', () => {
           globalIndex={0}
           pageStart={0}
           isActive={false}
-          recordRefs={mockRecordRefs}
           monacoTheme="vs"
           getMonacoLanguageFromContentType={mockGetLanguage}
           MemoMonacoEditor={CountingMonacoEditor}
@@ -692,7 +638,6 @@ describe('ResultRecord Component', () => {
           globalIndex={0}
           pageStart={0}
           isActive={false}
-          recordRefs={mockRecordRefs}
           monacoTheme="vs"
           getMonacoLanguageFromContentType={newGetLanguage}
           MemoMonacoEditor={CountingMonacoEditor}
