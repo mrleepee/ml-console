@@ -210,12 +210,14 @@ function App() {
       console.log('Scroll container found:', scrollContainer?.className);
 
       if (scrollContainer) {
-        // Calculate position within the container and center it
+        // Calculate position within the container - position with padding from top
         const containerRect = scrollContainer.getBoundingClientRect();
         const elementRect = element.getBoundingClientRect();
         const currentScroll = scrollContainer.scrollTop;
         const offsetWithinContainer = elementRect.top - containerRect.top + currentScroll;
-        const targetTop = offsetWithinContainer - ((scrollContainer.clientHeight - elementRect.height) / 2);
+        // Position element with 20px padding from top instead of centering
+        // This ensures the purple bar is always visible
+        const targetTop = offsetWithinContainer - 20;
         scrollContainer.scrollTo({ top: Math.max(targetTop, 0), behavior: 'smooth' });
         console.log('Scrolling container to:', targetTop, 'from:', currentScroll);
       } else {
