@@ -320,6 +320,19 @@ function App() {
     }
   }
 
+  // Create a new blank query
+  const newQuery = () => {
+    const defaultQueries = {
+      xquery: 'xquery version "1.0-ml";\n\n',
+      javascript: '',
+      sparql: 'PREFIX : <http://example.org/>\n\nSELECT * WHERE {\n  ?s ?p ?o\n}\nLIMIT 10'
+    };
+    setQuery(defaultQueries[queryType] || '');
+    setResults('');
+    setError('');
+    resetStreamingResults();
+  };
+
   // Monaco editor for record content (read-only viewer)
   function MonacoEditor({ content, language, readOnly = true, height = "200px", path, theme = "vs" }) {
     const [editorMounted, setEditorMounted] = useState(false);
@@ -405,7 +418,21 @@ function App() {
   );
 
 
-  useEffect(() => { loadQueryHistory(); }, []);
+  // Load query history and set last query as default on mount
+  useEffect(() => {
+    const loadHistoryAndSetDefault = async () => {
+      await loadQueryHistory();
+      // After history loads, set the most recent query as default if available
+      if (window.electronAPI && window.electronAPI.database) {
+        const result = await window.electronAPI.database.getRecentQueries(1);
+        if (result.success && result.queries.length > 0) {
+          setQuery(result.queries[0].content);
+          setQueryType(result.queries[0].queryType || 'xquery');
+        }
+      }
+    };
+    loadHistoryAndSetDefault();
+  }, []);
 
   // Force Monaco to relayout when the sidebar opens/closes
   useEffect(() => {
@@ -515,6 +542,18 @@ function App() {
                 <div className="flex items-center justify-between">
                   <h2 className="card-title text-lg">Query</h2>
                   <div className="card-actions flex items-center gap-3">
+                    {/* New Query Button */}
+                    <button
+                      onClick={newQuery}
+                      className="btn btn-primary btn-sm"
+                      title="Create new blank query"
+                    >
+                      New Query
+                    </button>
+
+                    {/* Divider */}
+                    <div className="divider divider-horizontal mx-0"></div>
+
                     {/* Editor Controls */}
                     <QueryEditorControls
                       preferences={editorPreferences}
