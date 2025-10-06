@@ -542,6 +542,18 @@ function App() {
                 <div className="flex items-center justify-between">
                   <h2 className="card-title text-lg">Query</h2>
                   <div className="card-actions flex items-center gap-3">
+                    {/* New Query Button */}
+                    <button
+                      onClick={newQuery}
+                      className="btn btn-primary btn-sm"
+                      title="Create new blank query"
+                    >
+                      New Query
+                    </button>
+
+                    {/* Divider */}
+                    <div className="divider divider-horizontal mx-0"></div>
+
                     {/* Editor Controls */}
                     <QueryEditorControls
                       preferences={editorPreferences}
@@ -583,15 +595,6 @@ function App() {
                         </svg>
                       </button>
                     </div>
-
-                    {/* New Query Button */}
-                    <button
-                      onClick={newQuery}
-                      className="btn btn-ghost btn-sm"
-                      title="Create new blank query"
-                    >
-                      New Query
-                    </button>
 
                     {/* Execute Button */}
                     <button
