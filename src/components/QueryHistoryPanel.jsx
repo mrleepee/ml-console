@@ -136,7 +136,7 @@ export default function QueryHistoryPanel({
         className="btn btn-ghost btn-sm btn-square"
         title="Expand history panel"
       >
-        →
+        ←
       </button>
     );
   }
@@ -153,7 +153,7 @@ export default function QueryHistoryPanel({
               className="btn btn-ghost btn-sm btn-square"
               title="Collapse history panel"
             >
-              ←
+              →
             </button>
             <button
               onClick={onRefreshHistory}
