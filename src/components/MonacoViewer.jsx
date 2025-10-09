@@ -7,7 +7,7 @@ import { monacoOptimizationManager } from "../utils/monacoOptimizations";
 import { isValidTheme } from "../utils/themeLoader";
 import useEditorPreferences from "../hooks/useEditorPreferences";
 
-export default function MonacoViewer({ value = "", language = "plaintext", theme = "vs" }) {
+function MonacoViewer({ value = "", language = "plaintext", theme = "vs" }) {
   const containerRef = useRef(null);
   const editorRef = useRef(null);
 
@@ -140,3 +140,6 @@ export default function MonacoViewer({ value = "", language = "plaintext", theme
     </div>
   );
 }
+
+// Memoize component to prevent unnecessary re-renders
+export default React.memo(MonacoViewer);

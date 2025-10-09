@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 
 /**
  * QueryHistoryPanel Component
@@ -26,7 +26,7 @@ import React from 'react';
  * @param {Function} props.onRefreshHistory Callback when refreshing history
  * @returns {JSX.Element} QueryHistoryPanel component
  */
-export default function QueryHistoryPanel({
+function QueryHistoryPanel({
   showHistory = true,
   onToggleHistory,
   queryHistory = [],
@@ -36,29 +36,29 @@ export default function QueryHistoryPanel({
   onRefreshHistory
 }) {
 
-  // Handle query item click
-  const handleQueryClick = (historyItem) => {
+  // Handle query item click (memoized to prevent re-renders)
+  const handleQueryClick = useCallback((historyItem) => {
     if (onLoadQuery) {
       onLoadQuery(historyItem.id);
     }
-  };
+  }, [onLoadQuery]);
 
-  // Handle delete click with event propagation stop
-  const handleDeleteClick = (historyItem, event) => {
+  // Handle delete click with event propagation stop (memoized to prevent re-renders)
+  const handleDeleteClick = useCallback((historyItem, event) => {
     event.stopPropagation();
     if (onDeleteQuery) {
       onDeleteQuery(historyItem.id, event);
     }
-  };
+  }, [onDeleteQuery]);
 
-  // Format creation date
-  const formatTime = (dateString) => {
+  // Format creation date (memoized to prevent re-renders)
+  const formatTime = useCallback((dateString) => {
     try {
       return new Date(dateString).toLocaleTimeString();
     } catch (error) {
       return 'Unknown time';
     }
-  };
+  }, []);
 
   // Render loading state
   const renderLoadingState = () => (
@@ -82,51 +82,56 @@ export default function QueryHistoryPanel({
     </div>
   );
 
-  // Render history item
-  const renderHistoryItem = (historyItem) => (
-    <div
-      key={historyItem.id}
-      className="card bg-base-100 border border-base-300 hover:border-primary/50 cursor-pointer transition-colors"
-      onClick={() => handleQueryClick(historyItem)}
-    >
-      <div className="card-body p-3">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="badge badge-primary badge-sm">
-              {historyItem.queryType.toUpperCase()}
-            </span>
-            <span className="text-xs text-base-content/60">
-              {formatTime(historyItem.createdAt)}
-            </span>
+  // Render history item (memoized to prevent re-renders)
+  const renderHistoryItem = useCallback((historyItem) => {
+    const handleItemClick = () => handleQueryClick(historyItem);
+    const handleItemDelete = (e) => handleDeleteClick(historyItem, e);
+
+    return (
+      <div
+        key={historyItem.id}
+        className="card bg-base-100 border border-base-300 hover:border-primary/50 cursor-pointer transition-colors"
+        onClick={handleItemClick}
+      >
+        <div className="card-body p-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="badge badge-primary badge-sm">
+                {historyItem.queryType.toUpperCase()}
+              </span>
+              <span className="text-xs text-base-content/60">
+                {formatTime(historyItem.createdAt)}
+              </span>
+            </div>
+            <button
+              className="btn btn-ghost btn-xs btn-square"
+              onClick={handleItemDelete}
+              title="Delete query"
+            >
+              ×
+            </button>
           </div>
-          <button
-            className="btn btn-ghost btn-xs btn-square"
-            onClick={(e) => handleDeleteClick(historyItem, e)}
-            title="Delete query"
-          >
-            ×
-          </button>
-        </div>
-        <div className="text-sm text-base-content/80 font-mono mb-2">
-          {historyItem.preview}
-        </div>
-        <div className="flex items-center justify-between text-xs text-base-content/60">
-          <span>
-            {historyItem.databaseName}
-            {historyItem.modulesDatabase &&
-             historyItem.modulesDatabase !== historyItem.databaseName &&
-             ` (${historyItem.modulesDatabase})`
-            }
-          </span>
-          {historyItem.executionTimeMs && (
-            <span className="badge badge-outline badge-xs">
-              {historyItem.executionTimeMs}ms
+          <div className="text-sm text-base-content/80 font-mono mb-2">
+            {historyItem.preview}
+          </div>
+          <div className="flex items-center justify-between text-xs text-base-content/60">
+            <span>
+              {historyItem.databaseName}
+              {historyItem.modulesDatabase &&
+               historyItem.modulesDatabase !== historyItem.databaseName &&
+               ` (${historyItem.modulesDatabase})`
+              }
             </span>
-          )}
+            {historyItem.executionTimeMs && (
+              <span className="badge badge-outline badge-xs">
+                {historyItem.executionTimeMs}ms
+              </span>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }, [handleQueryClick, handleDeleteClick, formatTime]);
 
   // If history is hidden, show expand button
   if (!showHistory) {
@@ -183,3 +188,6 @@ export default function QueryHistoryPanel({
     </div>
   );
 }
+
+// Memoize component to prevent unnecessary re-renders
+export default React.memo(QueryHistoryPanel);

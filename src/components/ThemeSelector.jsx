@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   getAllAvailableThemes,
   getThemesByCategory,
@@ -7,6 +7,14 @@ import {
 } from '../utils/themeLoader.js';
 import MonacoViewer from './MonacoViewer.jsx';
 import EditorPreferencesSettings from './EditorPreferencesSettings.jsx';
+
+// Built-in themes (hoisted to module scope to prevent recreation on every render)
+const BUILT_IN_THEMES = [
+  { id: 'vs', name: 'vs', displayName: 'Light (Visual Studio)', category: 'built-in' },
+  { id: 'vs-dark', name: 'vs-dark', displayName: 'Dark (Visual Studio Dark)', category: 'built-in' },
+  { id: 'hc-black', name: 'hc-black', displayName: 'High Contrast Black', category: 'built-in' }
+  // Note: hc-light removed - Monaco doesn't properly support it, causes loading errors
+];
 
 /**
  * Enhanced theme selector component with search, categories, and preview
@@ -26,20 +34,12 @@ export function EnhancedThemeSelector({
   const themesByCategory = useMemo(() => getThemesByCategory(), []);
   const allCustomThemes = useMemo(() => getAllAvailableThemes(), []);
 
-  // Built-in themes for backward compatibility
-  const builtInThemes = [
-    { id: 'vs', name: 'vs', displayName: 'Light (Visual Studio)', category: 'built-in' },
-    { id: 'vs-dark', name: 'vs-dark', displayName: 'Dark (Visual Studio Dark)', category: 'built-in' },
-    { id: 'hc-black', name: 'hc-black', displayName: 'High Contrast Black', category: 'built-in' }
-    // Note: hc-light removed - Monaco doesn't properly support it, causes loading errors
-  ];
-
   // Filter themes based on search and category
   const filteredThemes = useMemo(() => {
     let themes = [...allCustomThemes];
 
     if (showBuiltInThemes) {
-      themes = [...builtInThemes, ...themes];
+      themes = [...BUILT_IN_THEMES, ...themes];
     }
 
     if (searchTerm) {
@@ -65,7 +65,7 @@ export function EnhancedThemeSelector({
       categories.push({
         value: 'built-in',
         label: 'Built-in Themes',
-        count: builtInThemes.length
+        count: BUILT_IN_THEMES.length
       });
     }
 
@@ -83,27 +83,45 @@ export function EnhancedThemeSelector({
     });
 
     return categories;
-  }, [themesByCategory, builtInThemes, showBuiltInThemes, filteredThemes.length]);
+  }, [themesByCategory, showBuiltInThemes, filteredThemes.length]);
 
-  // Get display name for current value
-  const getCurrentDisplayName = () => {
+  // Get display name for current value (memoized)
+  const getCurrentDisplayName = useCallback(() => {
     if (!value) return 'Select a theme...';
 
-    const foundTheme = [...builtInThemes, ...allCustomThemes].find(theme => theme.name === value);
+    const foundTheme = [...BUILT_IN_THEMES, ...allCustomThemes].find(theme => theme.name === value);
     return foundTheme ? foundTheme.displayName : getThemeDisplayName(value);
-  };
+  }, [value, allCustomThemes]);
 
-  const handleThemeSelect = (themeName) => {
+  const handleThemeSelect = useCallback((themeName) => {
     onChange(themeName);
     setIsOpen(false);
     setSearchTerm('');
-  };
+  }, [onChange]);
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape') {
       setIsOpen(false);
     }
-  };
+  }, []);
+
+  const handleToggleOpen = useCallback(() => {
+    if (!disabled) {
+      setIsOpen(!isOpen);
+    }
+  }, [disabled, isOpen]);
+
+  const handleCloseDropdown = useCallback(() => {
+    setIsOpen(false);
+  }, []);
+
+  const handleSearchChange = useCallback((e) => {
+    setSearchTerm(e.target.value);
+  }, []);
+
+  const handleCategoryChange = useCallback((e) => {
+    setSelectedCategory(e.target.value);
+  }, []);
 
   return (
     <div className={`theme-selector relative ${className}`}>
@@ -112,7 +130,7 @@ export function EnhancedThemeSelector({
         <button
           type="button"
           className={`select select-bordered w-full justify-between ${disabled ? 'select-disabled' : ''}`}
-          onClick={() => !disabled && setIsOpen(!isOpen)}
+          onClick={handleToggleOpen}
           disabled={disabled}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
@@ -139,14 +157,14 @@ export function EnhancedThemeSelector({
                   placeholder="Search themes..."
                   className="input input-sm input-bordered flex-1"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={handleSearchChange}
                   onKeyDown={handleKeyDown}
                   autoFocus
                 />
                 <select
                   className="select select-sm select-bordered w-32"
                   value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  onChange={handleCategoryChange}
                 >
                   {availableCategories.map(category => (
                     <option key={category.value} value={category.value}>
@@ -164,15 +182,17 @@ export function EnhancedThemeSelector({
             <div className="max-h-64 overflow-y-auto">
               {filteredThemes.length > 0 ? (
                 <div className="py-1">
-                  {filteredThemes.map((theme) => (
-                    <button
-                      key={`${theme.category}-${theme.id || theme.name}`}
-                      type="button"
-                      className={`w-full px-3 py-2 text-left hover:bg-base-200 flex items-center justify-between group ${
-                        value === theme.name ? 'bg-primary text-primary-content' : ''
-                      }`}
-                      onClick={() => handleThemeSelect(theme.name)}
-                    >
+                  {filteredThemes.map((theme) => {
+                    const handleClick = () => handleThemeSelect(theme.name);
+                    return (
+                      <button
+                        key={`${theme.category}-${theme.id || theme.name}`}
+                        type="button"
+                        className={`w-full px-3 py-2 text-left hover:bg-base-200 flex items-center justify-between group ${
+                          value === theme.name ? 'bg-primary text-primary-content' : ''
+                        }`}
+                        onClick={handleClick}
+                      >
                       <div>
                         <div className="font-medium">{theme.displayName}</div>
                         <div className="text-xs opacity-60">
@@ -193,7 +213,8 @@ export function EnhancedThemeSelector({
                         </svg>
                       )}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="p-4 text-center text-base-content/60">
@@ -213,7 +234,7 @@ export function EnhancedThemeSelector({
       {isOpen && (
         <div
           className="fixed inset-0 z-40"
-          onClick={() => setIsOpen(false)}
+          onClick={handleCloseDropdown}
           aria-hidden="true"
         />
       )}
@@ -361,17 +382,21 @@ function example() {
 
 // Optional: Export a simplified version for basic use cases
 export function SimpleThemeSelector({ value, onChange, className = '', disabled = false }) {
+  const handleChange = useCallback((e) => {
+    onChange(e.target.value);
+  }, [onChange]);
+
   return (
     <select
       className={`select select-bordered ${className}`}
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={handleChange}
       disabled={disabled}
     >
       <option value="vs">Light (Visual Studio)</option>
       <option value="vs-dark">Dark (Visual Studio Dark)</option>
       <option value="hc-black">High Contrast Black</option>
-      <option value="hc-light">High Contrast Light</option>
+      {/* hc-light removed - Monaco doesn't properly support it, causes loading errors */}
       <option value="GitHub Light">GitHub Light</option>
       <option value="GitHub Dark">GitHub Dark</option>
       <option value="Night Owl">Night Owl</option>
