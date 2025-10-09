@@ -55,7 +55,7 @@ export function EnhancedThemeSelector({
     }
 
     return themes;
-  }, [allCustomThemes, builtInThemes, showBuiltInThemes, searchTerm, selectedCategory]);
+  }, [allCustomThemes, showBuiltInThemes, searchTerm, selectedCategory]);
 
   // Get categories for filter dropdown
   const availableCategories = useMemo(() => {
