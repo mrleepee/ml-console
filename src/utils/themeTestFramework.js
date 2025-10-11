@@ -1,5 +1,5 @@
 import { getAllAvailableThemes } from './themeLoader';
-import { registerXQueryLanguage, XQUERY_LANGUAGE } from './monacoXquery';
+import { registerXQueryLanguage, XQUERY_LANGUAGE } from '../services/monaco/monacoXquery';
 
 const XQUERY_TEST_FIXTURE = `
 (: Comprehensive XQuery test fixture for theme validation :)

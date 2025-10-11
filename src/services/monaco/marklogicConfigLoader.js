@@ -1,4 +1,4 @@
-import rawMarkLogicXQueryConfig from '../../config/marklogic/xquery.yaml?raw';
+import rawMarkLogicXQueryConfig from '../../../config/marklogic/xquery.yaml?raw';
 
 let cachedConfig = null;
 let yamlModule = null;

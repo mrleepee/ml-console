@@ -10,7 +10,7 @@ import LoadingBoundary, { EditorFallback } from "./components/LoadingBoundary";
 import ErrorBoundary from "./components/ErrorBoundary";
 import useEditorPreferences, { EditorPreferencesProvider } from "./hooks/useEditorPreferences";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
-import { XQUERY_LANGUAGE } from "./utils/monacoXqueryConstants";
+import { XQUERY_LANGUAGE } from "./services/monaco/monacoXqueryConstants";
 import { calculateResultEditorHeight } from "./utils/editorSizing";
 import "./App.css";
 import useStreamingResults from "./hooks/useStreamingResults";

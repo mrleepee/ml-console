@@ -2,8 +2,8 @@ import React, { useEffect, useRef, Suspense, useCallback, useMemo } from "react"
 // Lazy-load Monaco editor to keep initial bundle size small
 const Editor = React.lazy(() => import("@monaco-editor/react"));
 
-import { defineCustomMonacoThemes, getEnhancedTheme, loadAndDefineTheme, preloadPopularThemes } from "../utils/monacoThemes";
-import { monacoOptimizationManager } from "../utils/monacoOptimizations";
+import { defineCustomMonacoThemes, getEnhancedTheme, loadAndDefineTheme, preloadPopularThemes } from "../services/monaco/monacoThemes";
+import { monacoOptimizationManager } from "../services/monaco/monacoOptimizations";
 import { isValidTheme } from "../utils/themeLoader";
 import useEditorPreferences from "../hooks/useEditorPreferences";
 
