@@ -8,6 +8,7 @@ import QueryEditor from "./components/QueryEditor";
 import QueryEditorControls from "./components/QueryEditorControls";
 import LoadingBoundary, { EditorFallback } from "./components/LoadingBoundary";
 import ErrorBoundary from "./components/ErrorBoundary";
+import ResultRecord from "./components/results/ResultRecord";
 import useEditorPreferences, { EditorPreferencesProvider } from "./hooks/useEditorPreferences";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
 import { XQUERY_LANGUAGE } from "./services/monaco/monacoXqueryConstants";
@@ -22,74 +23,6 @@ import ThemeSelector from "./components/ThemeSelector";
 
 // Lazy-load Monaco editor to reduce initial bundle size (Phase 2)
 const MonacoEditor = lazy(() => import("./components/MonacoEditor"));
-
-// Memoized component for individual result records to prevent unnecessary re-renders
-const ResultRecord = React.memo(function ResultRecord({
-  record,
-  index,
-  globalIndex,
-  pageStart,
-  isActive,
-  monacoTheme,
-  getMonacoLanguageFromContentType
-}) {
-  // Format content once and memoize
-  const formattedContent = React.useMemo(() => formatRecordContent(record), [record]);
-  const recordHeight = React.useMemo(() => calculateResultEditorHeight(formattedContent), [formattedContent]);
-
-  const contentHash = record.content?.substring(0, 50)?.replace(/\W+/g, '') || 'empty';
-  const stableId = `record-${globalIndex}-${record.uri || 'no-uri'}-${contentHash}`;
-  const recordId = `record-${globalIndex}`;
-
-  return (
-    <div
-      key={stableId}
-      className={`card bg-base-100 shadow-sm border ${isActive ? 'border-primary ring-2 ring-primary/20' : 'border-base-300'}`}
-      id={recordId}
-    >
-      <div className="card-header bg-primary text-primary-content px-4 py-2">
-        <div className="flex justify-between items-center">
-          <span className="font-medium">#{globalIndex + 1}</span>
-          <span className="text-sm opacity-90">{record.uri || 'No URI'}</span>
-        </div>
-      </div>
-      <div className="card-body p-4">
-        <div className="flex flex-wrap gap-4 text-sm text-base-content/70 mb-4">
-          <span><strong>Content Type:</strong> {record.contentType || 'Not available'}</span>
-          <span><strong>Datatype:</strong> {record.primitive || 'Not available'}</span>
-          {record.path && <span><strong>XPath:</strong> {record.path}</span>}
-        </div>
-        <div className="border border-base-300 rounded-lg overflow-hidden">
-          <LoadingBoundary fallback={<EditorFallback height={recordHeight} />}>
-            <MonacoEditor
-              content={formattedContent}
-              language={getMonacoLanguageFromContentType(record.contentType)}
-              readOnly={true}
-              height={recordHeight}
-              path={stableId}
-              theme={monacoTheme}
-            />
-          </LoadingBoundary>
-        </div>
-      </div>
-    </div>
-  );
-}, (prevProps, nextProps) => {
-  // Custom comparison: re-render when isActive, record content, or theme changes
-  // Ignore function prop changes (getMonacoLanguageFromContentType)
-  // CRITICAL: Check isActive FIRST - if it changed, must re-render to update border styling
-  if (prevProps.isActive !== nextProps.isActive) {
-    return false; // Force re-render when active state changes
-  }
-
-  // Skip re-render only if all relevant props are unchanged
-  return (
-    prevProps.record === nextProps.record &&
-    prevProps.index === nextProps.index &&
-    prevProps.monacoTheme === nextProps.monacoTheme &&
-    prevProps.globalIndex === nextProps.globalIndex
-  );
-});
 
 function App() {
   console.log("🚀 App component loaded - React code is running!");
