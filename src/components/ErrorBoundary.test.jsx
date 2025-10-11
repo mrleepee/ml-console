@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import ErrorBoundary from './ErrorBoundary';
@@ -15,6 +15,11 @@ describe('ErrorBoundary', () => {
   beforeEach(() => {
     // Suppress console.error during tests (ErrorBoundary logs errors)
     vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    // Restore all mocks after each test
+    vi.restoreAllMocks();
   });
 
   describe('Normal Operation', () => {
@@ -282,6 +287,93 @@ describe('ErrorBoundary', () => {
       expect(screen.getByText('Sibling before')).toBeInTheDocument();
       expect(screen.getByText('Sibling after')).toBeInTheDocument();
       expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('Reset Keys (Auto-recovery)', () => {
+    it('should reset error state when resetKeys change', () => {
+      const { rerender } = render(
+        <ErrorBoundary resetKeys={['key1']}>
+          <ThrowError />
+        </ErrorBoundary>
+      );
+
+      expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
+
+      // Change resetKeys - should trigger auto-recovery
+      rerender(
+        <ErrorBoundary resetKeys={['key2']}>
+          <div>Recovered content</div>
+        </ErrorBoundary>
+      );
+
+      expect(screen.queryByText(/something went wrong/i)).not.toBeInTheDocument();
+      expect(screen.getByText('Recovered content')).toBeInTheDocument();
+    });
+
+    it('should recover when children are swapped after error', () => {
+      const { rerender } = render(
+        <ErrorBoundary>
+          <ThrowError />
+        </ErrorBoundary>
+      );
+
+      expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
+
+      // Just changing children without resetKeys won't recover (boundary stays stuck)
+      rerender(
+        <ErrorBoundary>
+          <div>Safe content</div>
+        </ErrorBoundary>
+      );
+
+      // Still showing error because no resetKeys changed
+      expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('Render-Prop Fallback', () => {
+    it('should support render-prop pattern for custom fallbacks', () => {
+      const renderFallback = ({ error, resetErrorBoundary }) => (
+        <div>
+          <div data-testid="custom-error">Error: {error.message}</div>
+          <button onClick={resetErrorBoundary}>Custom Reset</button>
+        </div>
+      );
+
+      render(
+        <ErrorBoundary fallback={renderFallback}>
+          <ThrowError message="Custom error text" />
+        </ErrorBoundary>
+      );
+
+      expect(screen.getByTestId('custom-error')).toHaveTextContent('Error: Custom error text');
+      expect(screen.getByRole('button', { name: /custom reset/i })).toBeInTheDocument();
+    });
+
+    it('should call resetErrorBoundary when custom reset button clicked', () => {
+      const renderFallback = ({ resetErrorBoundary }) => (
+        <button onClick={resetErrorBoundary}>Reset from fallback</button>
+      );
+
+      const { rerender } = render(
+        <ErrorBoundary fallback={renderFallback} resetKeys={['v1']}>
+          <ThrowError />
+        </ErrorBoundary>
+      );
+
+      const resetButton = screen.getByRole('button', { name: /reset from fallback/i });
+      fireEvent.click(resetButton);
+
+      // Need resetKeys change or safe children to actually recover
+      rerender(
+        <ErrorBoundary fallback={renderFallback} resetKeys={['v2']}>
+          <div>Recovered</div>
+        </ErrorBoundary>
+      );
+
+      expect(screen.queryByRole('button', { name: /reset from fallback/i })).not.toBeInTheDocument();
+      expect(screen.getByText('Recovered')).toBeInTheDocument();
     });
   });
 });

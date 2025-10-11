@@ -21,14 +21,16 @@ class ErrorBoundary extends React.Component {
     };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError() {
     // Update state so the next render will show the fallback UI
     return { hasError: true };
   }
 
   componentDidCatch(error, errorInfo) {
-    // Log error details for debugging
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    // Log error details for debugging (development only to avoid double logging)
+    if (process.env.NODE_ENV === 'development') {
+      console.error('ErrorBoundary caught an error:', error, errorInfo);
+    }
 
     // Store error details in state
     this.setState({
@@ -38,6 +40,19 @@ class ErrorBoundary extends React.Component {
 
     // Optional: Send error to logging service
     // logErrorToService(error, errorInfo);
+  }
+
+  componentDidUpdate(prevProps) {
+    // Reset error state when resetKeys change (allows recovery after fixing the error)
+    const { resetKeys } = this.props;
+    const { hasError } = this.state;
+
+    if (hasError && resetKeys && prevProps.resetKeys) {
+      const hasResetKeysChanged = resetKeys.some((key, index) => key !== prevProps.resetKeys[index]);
+      if (hasResetKeysChanged) {
+        this.handleReset();
+      }
+    }
   }
 
   handleReset = () => {
@@ -50,8 +65,18 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      const { error, errorInfo } = this.state;
+
       // Use custom fallback if provided
       if (this.props.fallback) {
+        // Support render-prop pattern for custom fallbacks that need error details
+        if (typeof this.props.fallback === 'function') {
+          return this.props.fallback({
+            error,
+            errorInfo,
+            resetErrorBoundary: this.handleReset
+          });
+        }
         return this.props.fallback;
       }
 
