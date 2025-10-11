@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 
 /**
  * DatabaseSelector Component
@@ -22,7 +22,7 @@ import React from 'react';
  * @param {Object} props.currentDatabaseConfigRef Ref for current database config
  * @returns {JSX.Element} DatabaseSelector component
  */
-export default function DatabaseSelector({
+function DatabaseSelector({
   queryType = 'xquery',
   onQueryTypeChange,
   selectedDatabaseId = '',
@@ -31,8 +31,8 @@ export default function DatabaseSelector({
   currentDatabaseConfigRef
 }) {
 
-  // Handle database selection change
-  const handleDatabaseChange = (e) => {
+  // Handle database selection change (memoized to prevent re-renders)
+  const handleDatabaseChange = useCallback((e) => {
     const selectedId = e.target.value;
     const config = databaseConfigs.find(c => c.id === selectedId);
 
@@ -43,7 +43,12 @@ export default function DatabaseSelector({
         currentDatabaseConfigRef.current = config;
       }
     }
-  };
+  }, [databaseConfigs, onDatabaseChange, currentDatabaseConfigRef]);
+
+  // Handle query type change (memoized to prevent re-renders)
+  const handleQueryTypeChange = useCallback((e) => {
+    onQueryTypeChange(e.target.value);
+  }, [onQueryTypeChange]);
 
   // Query type options
   const queryTypeOptions = [
@@ -65,7 +70,7 @@ export default function DatabaseSelector({
         <select
           className="select select-bordered select-sm w-32"
           value={queryType}
-          onChange={(e) => onQueryTypeChange(e.target.value)}
+          onChange={handleQueryTypeChange}
           aria-label="Select query type"
         >
           {queryTypeOptions.map(option => (
@@ -91,9 +96,9 @@ export default function DatabaseSelector({
           {!hasDatabases ? (
             <option value="">No databases available - check connection</option>
           ) : (
-            databaseConfigs.map((config, index) => (
+            databaseConfigs.map((config) => (
               <option
-                key={`db-${index}-${config.id}`}
+                key={config.id}
                 value={config.id}
                 title={`Database: ${config.name}, Modules: ${config.modulesDatabase}`}
               >
@@ -115,3 +120,6 @@ export default function DatabaseSelector({
     </div>
   );
 }
+
+// Memoize component to prevent unnecessary re-renders
+export default React.memo(DatabaseSelector);

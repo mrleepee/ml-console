@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import Editor from '@monaco-editor/react';
 import {
   parseMultipartResponse,
   formatRecordContent,
@@ -7,11 +6,10 @@ import {
 } from "./services/responseService";
 import QueryEditor from "./components/QueryEditor";
 import QueryEditorControls from "./components/QueryEditorControls";
+import MonacoEditor from "./components/MonacoEditor";
 import useEditorPreferences, { EditorPreferencesProvider } from "./hooks/useEditorPreferences";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
-import { defineCustomMonacoThemes, getEnhancedTheme } from "./utils/monacoThemes";
 import { XQUERY_LANGUAGE } from "./utils/monacoXqueryConstants";
-import { monacoOptimizationManager } from "./utils/monacoOptimizations";
 import { calculateResultEditorHeight } from "./utils/editorSizing";
 import "./App.css";
 import useStreamingResults from "./hooks/useStreamingResults";
@@ -29,8 +27,7 @@ const ResultRecord = React.memo(function ResultRecord({
   pageStart,
   isActive,
   monacoTheme,
-  getMonacoLanguageFromContentType,
-  MemoMonacoEditor
+  getMonacoLanguageFromContentType
 }) {
   // Format content once and memoize
   const formattedContent = React.useMemo(() => formatRecordContent(record), [record]);
@@ -59,7 +56,7 @@ const ResultRecord = React.memo(function ResultRecord({
           {record.path && <span><strong>XPath:</strong> {record.path}</span>}
         </div>
         <div className="border border-base-300 rounded-lg overflow-hidden">
-          <MemoMonacoEditor
+          <MonacoEditor
             content={formattedContent}
             language={getMonacoLanguageFromContentType(record.contentType)}
             readOnly={true}
@@ -73,7 +70,7 @@ const ResultRecord = React.memo(function ResultRecord({
   );
 }, (prevProps, nextProps) => {
   // Custom comparison: re-render when isActive, record content, or theme changes
-  // Ignore function prop changes (getMonacoLanguageFromContentType, MemoMonacoEditor)
+  // Ignore function prop changes (getMonacoLanguageFromContentType)
   // CRITICAL: Check isActive FIRST - if it changed, must re-render to update border styling
   if (prevProps.isActive !== nextProps.isActive) {
     return false; // Force re-render when active state changes
@@ -91,8 +88,8 @@ const ResultRecord = React.memo(function ResultRecord({
 function App() {
   console.log("🚀 App component loaded - React code is running!");
   
-  // Content-Type to Monaco language mapping
-  function getMonacoLanguageFromContentType(contentType) {
+  // Content-Type to Monaco language mapping (memoized to prevent re-renders)
+  const getMonacoLanguageFromContentType = useCallback((contentType) => {
     if (!contentType) return 'plaintext';
     const type = contentType.toLowerCase();
     if (type.includes('json')) return 'json';
@@ -100,17 +97,17 @@ function App() {
     if (type.includes('html')) return 'html';
     if (type.includes('javascript') || type.includes('js')) return 'javascript';
     return 'plaintext';
-  }
+  }, []);
 
-  // Query type to Monaco language mapping
-  function getMonacoLanguageFromQueryType(queryType) {
+  // Query type to Monaco language mapping (memoized to prevent re-renders)
+  const getMonacoLanguageFromQueryType = useCallback((queryType) => {
     switch (queryType) {
       case 'javascript': return 'javascript';
       case 'xquery': return XQUERY_LANGUAGE;
       case 'sparql': return 'sql'; // SPARQL is similar to SQL
       default: return 'plaintext';
     }
-  }
+  }, []);
 
   const [query, setQuery] = useState('xquery version "1.0-ml";\n\n(//*[not(*)])[1 to 3]');
   const [results, setResults] = useState("");
@@ -216,16 +213,17 @@ function App() {
     }
   };
 
-  const goToPrevRecord = () => {
+  const goToPrevRecord = useCallback(() => {
     if (!hasRecords) return;
     const target = Math.max(rewindStreamRecord(), 0);
     scrollToRecord(target);
-  };
-  const goToNextRecord = () => {
+  }, [hasRecords, rewindStreamRecord, scrollToRecord]);
+
+  const goToNextRecord = useCallback(() => {
     if (!hasRecords) return;
     const target = Math.min(advanceStreamRecord(), tableData.length - 1);
     scrollToRecord(target);
-  };
+  }, [hasRecords, advanceStreamRecord, tableData.length, scrollToRecord]);
 
   const nextPage = async () => {
     await nextStreamPage();
@@ -335,89 +333,6 @@ function App() {
     resetStreaming();
   }, [queryType, resetStreaming]);
 
-  // Monaco editor for record content (read-only viewer)
-  function MonacoEditor({ content, language, readOnly = true, height = "200px", path, theme = "vs" }) {
-    const [editorMounted, setEditorMounted] = useState(false);
-    const editorRef = useRef(null);
-
-    const formatContent = React.useCallback(async () => {
-      if (editorRef.current && content && (language === 'json' || language === 'xml' || language === 'html')) {
-        try {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          const action = editorRef.current.getAction('editor.action.formatDocument');
-          if (action) await action.run();
-        } catch (error) {
-          console.debug('Auto-format failed:', error);
-        }
-      }
-    }, [content, language]);
-
-    const handleEditorMount = React.useCallback(async (editor, monaco) => {
-      editorRef.current = editor;
-      setEditorMounted(true);
-      defineCustomMonacoThemes(monaco);
-      await monacoOptimizationManager.registerXQueryLanguageOptimized(monaco);
-    }, []);
-
-    useEffect(() => { if (editorMounted && content) formatContent(); }, [editorMounted, content, formatContent]);
-
-    return (
-      <div style={{ height, width: "100%", border: "1px solid #ddd", borderRadius: "4px" }}>
-        <Editor
-          height={height}
-          language={language}
-          value={content}
-          path={path}
-          keepCurrentModel={true}
-          onMount={handleEditorMount}
-          options={{
-            readOnly,
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            wordWrap: 'on',
-            fontSize: 12,
-            fontFamily: "Monaco, Menlo, 'Ubuntu Mono', monospace",
-            lineNumbers: 'on',
-            folding: true,
-            foldingStrategy: 'indentation',
-            showFoldingControls: 'mouseover',
-            lineDecorationsWidth: 10,
-            lineNumbersMinChars: 3,
-            renderLineHighlight: 'none',
-            selectOnLineNumbers: true,
-            selectionHighlight: true,
-            occurrencesHighlight: true,
-            renderWhitespace: 'selection',
-            showUnused: true,
-            multiCursorModifier: 'alt',
-            multiCursorMergeOverlapping: true,
-            automaticLayout: true,
-            tabSize: 2,
-            insertSpaces: true,
-            detectIndentation: true,
-            formatOnPaste: true,
-            formatOnType: false,
-            dragAndDrop: true,
-            mouseWheelZoom: false,
-            contextmenu: true,
-            hideCursorInOverviewRuler: false,
-            overviewRulerBorder: false,
-            find: { autoFindInSelection: 'never', seedSearchStringFromSelection: 'never' }
-          }}
-          theme={getEnhancedTheme(theme)}
-        />
-      </div>
-    );
-  }
-
-  const MemoMonacoEditor = React.memo(MonacoEditor, (prev, next) =>
-    prev.content === next.content &&
-    prev.language === next.language &&
-    prev.readOnly === next.readOnly &&
-    prev.height === next.height &&
-    prev.path === next.path &&
-    prev.theme === next.theme
-  );
 
 
   // Load query history and set last query as default on mount
@@ -471,7 +386,7 @@ function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [hasRecords, activeRecordIndex, tableData.length]);
+  }, [hasRecords, goToPrevRecord, goToNextRecord]);
 
 
   async function executeQuery(databaseConfigOverride = null) {
@@ -750,7 +665,6 @@ function App() {
                                   isActive={index === activeRecordIndex}
                                   monacoTheme={monacoTheme}
                                   getMonacoLanguageFromContentType={getMonacoLanguageFromContentType}
-                                  MemoMonacoEditor={MemoMonacoEditor}
                                 />
                               );
                             })}

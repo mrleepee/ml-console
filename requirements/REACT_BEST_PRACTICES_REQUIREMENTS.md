@@ -15,6 +15,51 @@ Source: React Best Practices – A 10-Point Guide (UXPin, 2024-09-05)
 - Set up Error Boundaries: missing
 - Supplemental tips from article: needs attention
 
+## Priority Ranking
+
+### High Priority (Critical Performance & Architecture)
+
+1. **Optimize Re-Renders** (STATUS: needs attention)
+   - Impact: Performance degradation from unnecessary renders
+   - Blockers: `MemoMonacoEditor` recreated every render in [App.jsx:360-420](src/App.jsx#L360-L420)
+   - Inline arrow handlers causing re-renders in [ThemeSelector.jsx:115-175](src/components/ThemeSelector.jsx#L115-L175), [DatabaseSelector.jsx:68-104](src/components/DatabaseSelector.jsx#L68-L104), [QueryHistoryPanel.jsx:90-178](src/components/QueryHistoryPanel.jsx#L90-L178)
+   - Keys using index fallbacks: `db-${index}-${config.id}` in [DatabaseSelector.jsx:94](src/components/DatabaseSelector.jsx#L94)
+
+2. **Optimize Component Loading** (STATUS: needs attention)
+   - Impact: Large initial bundle, slow time-to-interactive
+   - Actions: Lazy-load Monaco editor components, defer theme catalog loading in [ThemeSelector.jsx:24-120](src/components/ThemeSelector.jsx#L24-L120)
+
+3. **Set up Error Boundaries** (STATUS: missing)
+   - Impact: Production stability risk—uncaught errors crash entire UI
+   - Actions: Create top-level error boundary, wrap editor/history/streaming result trees
+
+### Medium Priority (Architecture & Maintainability)
+
+4. **Master Component Nesting and Parent-Child Relationships** (STATUS: partial)
+   - Impact: Maintainability, testability
+   - Actions: Extract record rendering and Monaco viewer logic from [App.jsx:200-420](src/App.jsx#L200-L420) into dedicated components
+
+5. **Keep a Clear Folder Structure** (STATUS: partial)
+   - Impact: Developer experience, onboarding
+   - Actions: Move query history UI, streaming controls, Monaco helpers out of App.jsx into `src/components/` and `src/services/`
+
+### Low Priority (Code Quality)
+
+6. **Supplemental tips from article** (STATUS: needs attention)
+   - Impact: Code quality, debugging efficiency
+   - Actions: Refactor inline arrows to memoized handlers, add `React.forwardRef` for Monaco wrappers, document React DevTools usage
+
+7. **Maintain a Consistent Code Style** (STATUS: aligned with minor gaps)
+   - Impact: Code cleanliness
+   - Actions: Remove debug logging from [App.jsx:51](src/App.jsx#L51)
+
+### Already Aligned (No Action Needed)
+
+- **Master Prop Drilling and Context API**: Editor preferences use context correctly
+- **Employ React Hooks**: Consistent functional component patterns with proper hooks
+- **Agree on Naming Conventions**: PascalCase components, camelCase hooks
+- **Make Use of Functional Components**: No class components in codebase
+
 ## Detailed Requirements
 
 ### Master Component Nesting and Parent-Child Relationships
