@@ -141,7 +141,7 @@ function QueryHistoryPanel({
         className="btn btn-ghost btn-sm btn-square"
         title="Expand history panel"
       >
-        →
+        ←
       </button>
     );
   }
@@ -158,7 +158,7 @@ function QueryHistoryPanel({
               className="btn btn-ghost btn-sm btn-square"
               title="Collapse history panel"
             >
-              ←
+              →
             </button>
             <button
               onClick={onRefreshHistory}

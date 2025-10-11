@@ -711,14 +711,14 @@ function App() {
                 <div className="flex items-center justify-between">
                   <h2 className="card-title text-lg">Query History</h2>
                   <div className="card-actions flex gap-1">
-                    <button 
+                    <button
                       onClick={() => setShowHistory(false)}
                       className="btn btn-ghost btn-sm btn-square"
                       title="Collapse history panel"
                     >
-                      ←
+                      →
                     </button>
-                    <button 
+                    <button
                       onClick={() => loadQueryHistory()}
                       className="btn btn-ghost btn-sm btn-square"
                       disabled={historyLoading}
@@ -794,12 +794,12 @@ function App() {
           )}
 
           {!showHistory && (
-            <button 
+            <button
               onClick={() => setShowHistory(true)}
               className="btn btn-ghost btn-sm btn-square"
               title="Expand history panel"
             >
-              →
+              ←
             </button>
           )}
         </div>
