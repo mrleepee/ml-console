@@ -7,6 +7,7 @@ import {
 import QueryEditor from "./components/QueryEditor";
 import QueryEditorControls from "./components/QueryEditorControls";
 import LoadingBoundary, { EditorFallback } from "./components/LoadingBoundary";
+import ErrorBoundary from "./components/ErrorBoundary";
 import useEditorPreferences, { EditorPreferencesProvider } from "./hooks/useEditorPreferences";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
 import { XQUERY_LANGUAGE } from "./utils/monacoXqueryConstants";
@@ -564,17 +565,22 @@ function App() {
                 }}
               >
                 <div className="h-full w-full min-w-0">
-                  {/* key forces clean re-measure when sidebar toggles */}
-                  <QueryEditor
-                    key={showHistory ? 'withHistory' : 'withoutHistory'}
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={handleQueryKeyDown}
-                    language={getMonacoLanguageFromQueryType(queryType)}
-                    placeholder={`Enter your ${queryType === 'xquery' ? 'XQuery' : queryType === 'sparql' ? 'SPARQL' : 'JavaScript'} query here...`}
-                    disabled={isLoading}
-                    theme={monacoTheme}
-                  />
+                  <ErrorBoundary
+                    title="Query Editor Error"
+                    message="The query editor encountered an error. Try refreshing the page."
+                  >
+                    {/* key forces clean re-measure when sidebar toggles */}
+                    <QueryEditor
+                      key={showHistory ? 'withHistory' : 'withoutHistory'}
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={handleQueryKeyDown}
+                      language={getMonacoLanguageFromQueryType(queryType)}
+                      placeholder={`Enter your ${queryType === 'xquery' ? 'XQuery' : queryType === 'sparql' ? 'SPARQL' : 'JavaScript'} query here...`}
+                      disabled={isLoading}
+                      theme={monacoTheme}
+                    />
+                  </ErrorBoundary>
                 </div>
               </div>
             </div>
@@ -637,16 +643,20 @@ function App() {
                 </div>
               </div>
               <div className="card-body p-0 flex-1 min-w-0 overflow-hidden">
-                {error && (
-                  <div className="alert alert-error m-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>{error}</span>
-                  </div>
-                )}
-                <div className="results-output flex-1 min-w-0 overflow-hidden">
-                  <div className="h-full w-full overflow-y-auto">
+                <ErrorBoundary
+                  title="Results Panel Error"
+                  message="An error occurred while displaying query results."
+                >
+                  {error && (
+                    <div className="alert alert-error m-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{error}</span>
+                    </div>
+                  )}
+                  <div className="results-output flex-1 min-w-0 overflow-hidden">
+                    <div className="h-full w-full overflow-y-auto">
                     {isLoading ? (
                       <div className="flex items-center justify-center h-full">
                         <div className="flex flex-col items-center gap-4">
@@ -700,6 +710,7 @@ function App() {
                     )}
                   </div>
                 </div>
+                </ErrorBoundary>
               </div>
             </div>
           </div>
