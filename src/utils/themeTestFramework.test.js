@@ -37,7 +37,7 @@ vi.mock('./themeLoader', () => ({
   ]
 }));
 
-vi.mock('./monacoXquery', () => ({
+vi.mock('../services/monaco/monacoXquery', () => ({
   registerXQueryLanguage: vi.fn(),
   XQUERY_LANGUAGE: 'xquery-ml'
 }));
