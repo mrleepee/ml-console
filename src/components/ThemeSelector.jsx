@@ -29,10 +29,18 @@ export function EnhancedThemeSelector({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isOpen, setIsOpen] = useState(false);
+  const [themesLoaded, setThemesLoaded] = useState(false);
 
-  // Get all themes organized by category
-  const themesByCategory = useMemo(() => getThemesByCategory(), []);
-  const allCustomThemes = useMemo(() => getAllAvailableThemes(), []);
+  // Defer theme catalog loading until dropdown opens (Phase 2 optimization)
+  const themesByCategory = useMemo(() => {
+    if (!themesLoaded) return {};
+    return getThemesByCategory();
+  }, [themesLoaded]);
+
+  const allCustomThemes = useMemo(() => {
+    if (!themesLoaded) return [];
+    return getAllAvailableThemes();
+  }, [themesLoaded]);
 
   // Filter themes based on search and category
   const filteredThemes = useMemo(() => {
@@ -107,9 +115,13 @@ export function EnhancedThemeSelector({
 
   const handleToggleOpen = useCallback(() => {
     if (!disabled) {
+      // Load themes on first open (Phase 2: deferred loading)
+      if (!themesLoaded) {
+        setThemesLoaded(true);
+      }
       setIsOpen(!isOpen);
     }
-  }, [disabled, isOpen]);
+  }, [disabled, isOpen, themesLoaded]);
 
   const handleCloseDropdown = useCallback(() => {
     setIsOpen(false);

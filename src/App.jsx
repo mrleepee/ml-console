@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, lazy } from "react";
 import {
   parseMultipartResponse,
   formatRecordContent,
@@ -6,7 +6,7 @@ import {
 } from "./services/responseService";
 import QueryEditor from "./components/QueryEditor";
 import QueryEditorControls from "./components/QueryEditorControls";
-import MonacoEditor from "./components/MonacoEditor";
+import LoadingBoundary, { EditorFallback } from "./components/LoadingBoundary";
 import useEditorPreferences, { EditorPreferencesProvider } from "./hooks/useEditorPreferences";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
 import { XQUERY_LANGUAGE } from "./utils/monacoXqueryConstants";
@@ -18,6 +18,9 @@ import { request as ipcRequest, checkConnection as adapterCheck } from "./ipc/qu
 import useTheme from "./hooks/useTheme";
 import useDatabaseConfig from "./hooks/useDatabaseConfig";
 import ThemeSelector from "./components/ThemeSelector";
+
+// Lazy-load Monaco editor to reduce initial bundle size (Phase 2)
+const MonacoEditor = lazy(() => import("./components/MonacoEditor"));
 
 // Memoized component for individual result records to prevent unnecessary re-renders
 const ResultRecord = React.memo(function ResultRecord({
@@ -56,14 +59,16 @@ const ResultRecord = React.memo(function ResultRecord({
           {record.path && <span><strong>XPath:</strong> {record.path}</span>}
         </div>
         <div className="border border-base-300 rounded-lg overflow-hidden">
-          <MonacoEditor
-            content={formattedContent}
-            language={getMonacoLanguageFromContentType(record.contentType)}
-            readOnly={true}
-            height={recordHeight}
-            path={stableId}
-            theme={monacoTheme}
-          />
+          <LoadingBoundary fallback={<EditorFallback height={recordHeight} />}>
+            <MonacoEditor
+              content={formattedContent}
+              language={getMonacoLanguageFromContentType(record.contentType)}
+              readOnly={true}
+              height={recordHeight}
+              path={stableId}
+              theme={monacoTheme}
+            />
+          </LoadingBoundary>
         </div>
       </div>
     </div>
@@ -671,13 +676,15 @@ function App() {
                           </div>
                         ) : results ? (
                           <div className="p-4">
-                            <MonacoEditor
-                              content={results}
-                              language="plaintext"
-                              readOnly={true}
-                              height="400px"
-                              theme={monacoTheme}
-                            />
+                            <LoadingBoundary fallback={<EditorFallback height="400px" />}>
+                              <MonacoEditor
+                                content={results}
+                                language="plaintext"
+                                readOnly={true}
+                                height="400px"
+                                theme={monacoTheme}
+                              />
+                            </LoadingBoundary>
                           </div>
                         ) : (
                           <div className="flex items-center justify-center h-32 text-base-content/50">
