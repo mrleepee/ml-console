@@ -3,27 +3,29 @@
 Source: React Best Practices – A 10-Point Guide (UXPin, 2024-09-05)
 
 ## Status Snapshot
-- Master Component Nesting and Parent-Child Relationships: partial
-- Optimize Re-Renders: ✅ completed (Phase 1 - PR #58)
+- Master Component Nesting and Parent-Child Relationships: partial (ResultRecord extracted in Phase 4)
+- Optimize Re-Renders: ✅ completed (Phase 1 - PR #58 merged)
 - Master Prop Drilling and Context API: aligned
 - Employ React Hooks: aligned
 - Maintain a Consistent Code Style: aligned with minor gaps
-- Keep a Clear Folder Structure: partial
+- Keep a Clear Folder Structure: ✅ partial progress (Phase 4 Part 1 - PR #61)
 - Agree on Naming Conventions: aligned
-- Optimize Component Loading: ✅ completed (Phase 2 - PR pending)
+- Optimize Component Loading: ✅ completed (Phase 2 - PR #59 merged)
 - Make Use of Functional Components: aligned
-- Set up Error Boundaries: ✅ completed (Phase 3 - PR pending)
+- Set up Error Boundaries: ✅ completed (Phase 3 - PR #60 merged)
 - Supplemental tips from article: needs attention
 
 ## Priority Ranking
 
 ### High Priority (Critical Performance & Architecture)
 
-1. **Optimize Re-Renders** (STATUS: needs attention)
+1. **Optimize Re-Renders** (STATUS: ✅ completed - Phase 1)
    - Impact: Performance degradation from unnecessary renders
-   - Blockers: `MemoMonacoEditor` recreated every render in [App.jsx:360-420](src/App.jsx#L360-L420)
-   - Inline arrow handlers causing re-renders in [ThemeSelector.jsx:115-175](src/components/ThemeSelector.jsx#L115-L175), [DatabaseSelector.jsx:68-104](src/components/DatabaseSelector.jsx#L68-L104), [QueryHistoryPanel.jsx:90-178](src/components/QueryHistoryPanel.jsx#L90-L178)
-   - Keys using index fallbacks: `db-${index}-${config.id}` in [DatabaseSelector.jsx:94](src/components/DatabaseSelector.jsx#L94)
+   - ✅ Fixed `MemoMonacoEditor` recreation by extracting to module scope
+   - ✅ Converted inline arrow handlers to useCallback in key components
+   - ✅ Improved list key stability
+   - ✅ Added React.memo to frequently re-rendered components
+   - PR: #58 merged
 
 2. **Optimize Component Loading** (STATUS: ✅ completed - Phase 2)
    - Impact: Large initial bundle, slow time-to-interactive
@@ -31,7 +33,7 @@ Source: React Best Practices – A 10-Point Guide (UXPin, 2024-09-05)
    - ✅ Deferred theme catalog loading until ThemeSelector opens
    - ✅ Created LoadingBoundary component with skeleton loaders
    - ✅ Monaco code-split into separate chunk (1.66 kB)
-   - PR: Pending
+   - PR: #59 merged
 
 3. **Set up Error Boundaries** (STATUS: ✅ completed - Phase 3)
    - Impact: Production stability risk—uncaught errors crash entire UI
@@ -39,17 +41,24 @@ Source: React Best Practices – A 10-Point Guide (UXPin, 2024-09-05)
    - ✅ Wrapped QueryEditor in error boundary
    - ✅ Wrapped Results Panel in error boundary
    - ✅ Development mode shows error details
-   - PR: Pending
+   - ✅ Added resetKeys auto-recovery pattern
+   - ✅ Added render-prop pattern for custom fallbacks
+   - PR: #60 merged
 
 ### Medium Priority (Architecture & Maintainability)
 
-4. **Master Component Nesting and Parent-Child Relationships** (STATUS: partial)
+4. **Master Component Nesting and Parent-Child Relationships** (STATUS: partial progress)
    - Impact: Maintainability, testability
-   - Actions: Extract record rendering and Monaco viewer logic from [App.jsx:200-420](src/App.jsx#L200-L420) into dedicated components
+   - ✅ Extracted ResultRecord component from App.jsx (Phase 4 Part 1 - PR #61)
+   - Remaining: Extract QueryPanel, ResultsPanel, QueryHistoryPanel, AppSettingsPanel (Phase 4 Part 2)
 
-5. **Keep a Clear Folder Structure** (STATUS: partial)
+5. **Keep a Clear Folder Structure** (STATUS: ✅ partial progress - Phase 4 Part 1)
    - Impact: Developer experience, onboarding
-   - Actions: Move query history UI, streaming controls, Monaco helpers out of App.jsx into `src/components/` and `src/services/`
+   - ✅ Moved 27 Monaco-related files from utils/ to services/monaco/ (PR #61)
+   - ✅ Created domain-based folder structure: components/{results,query,query-history,app,theme,layout}
+   - ✅ Extracted ResultRecord to components/results/
+   - Remaining: Extract query history UI and streaming controls from App.jsx (Phase 4 Part 2)
+   - PR: #61 (Part 1 complete)
 
 ### Low Priority (Code Quality)
 
