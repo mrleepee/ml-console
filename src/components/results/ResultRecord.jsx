@@ -38,6 +38,7 @@ const ResultRecord = React.memo(function ResultRecord({
   return (
     <div
       key={stableId}
+      data-testid={`result-record-${index}`}
       className={`card bg-base-100 shadow-sm border ${isActive ? 'border-primary ring-2 ring-primary/20' : 'border-base-300'}`}
       id={recordId}
     >
