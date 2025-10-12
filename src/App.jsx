@@ -9,6 +9,7 @@ import QueryEditorControls from "./components/QueryEditorControls";
 import LoadingBoundary, { EditorFallback } from "./components/LoadingBoundary";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ResultRecord from "./components/results/ResultRecord";
+import QueryHistoryPanel from "./components/QueryHistoryPanel";
 import useEditorPreferences, { EditorPreferencesProvider } from "./hooks/useEditorPreferences";
 import { getServers, getDatabases, parseDatabaseConfigs } from "./utils/databaseApi";
 import { XQUERY_LANGUAGE } from "./services/monaco/monacoXqueryConstants";
@@ -649,103 +650,15 @@ function App() {
           </div>
 
           {/* RIGHT COLUMN: History */}
-          {showHistory && (
-            <div className="card bg-base-100 shadow-sm border border-base-300 w-80 flex flex-col h-full overflow-hidden">
-              <div className="card-header bg-base-200 px-4 py-3 border-b border-base-300">
-                <div className="flex items-center justify-between">
-                  <h2 className="card-title text-lg">Query History</h2>
-                  <div className="card-actions flex gap-1">
-                    <button
-                      onClick={() => setShowHistory(false)}
-                      className="btn btn-ghost btn-sm btn-square"
-                      title="Collapse history panel"
-                    >
-                      →
-                    </button>
-                    <button
-                      onClick={() => loadQueryHistory()}
-                      className="btn btn-ghost btn-sm btn-square"
-                      disabled={historyLoading}
-                      title="Refresh history"
-                    >
-                      {historyLoading ? <span className="loading loading-spinner loading-xs"></span> : "↻"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="card-body p-0 flex-1 overflow-y-auto min-h-0">
-                {historyLoading ? (
-                  <div className="flex items-center justify-center h-32">
-                    <div className="flex flex-col items-center gap-2">
-                      <span className="loading loading-spinner loading-md"></span>
-                      <span className="text-sm">Loading history...</span>
-                    </div>
-                  </div>
-                ) : queryHistory.length > 0 ? (
-                  <div className="space-y-2 p-2">
-                    {queryHistory.map((historyItem) => (
-                      <div 
-                        key={historyItem.id} 
-                        className="card bg-base-100 border border-base-300 hover:border-primary/50 cursor-pointer transition-colors"
-                        onClick={() => loadQueryFromHistory(historyItem.id)}
-                      >
-                        <div className="card-body p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="badge badge-primary badge-sm">{historyItem.queryType.toUpperCase()}</span>
-                              <span className="text-xs text-base-content/60">
-                                {new Date(historyItem.createdAt).toLocaleTimeString()}
-                              </span>
-                            </div>
-                            <button 
-                              className="btn btn-ghost btn-xs btn-square"
-                              onClick={(e) => deleteQueryFromHistory(historyItem.id, e)}
-                              title="Delete query"
-                            >
-                              ×
-                            </button>
-                          </div>
-                          <div className="text-sm text-base-content/80 font-mono mb-2">
-                            {historyItem.preview}
-                          </div>
-                          <div className="flex items-center justify-between text-xs text-base-content/60">
-                            <span>
-                              {historyItem.databaseName}
-                              {historyItem.modulesDatabase && historyItem.modulesDatabase !== historyItem.databaseName && 
-                                ` (${historyItem.modulesDatabase})`
-                              }
-                            </span>
-                            {historyItem.executionTimeMs && (
-                              <span className="badge badge-outline badge-xs">{historyItem.executionTimeMs}ms</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-32 text-base-content/50">
-                    <div className="text-center">
-                      <svg className="mx-auto h-8 w-8 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <p className="mt-2 text-sm">No query history yet</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {!showHistory && (
-            <button
-              onClick={() => setShowHistory(true)}
-              className="btn btn-ghost btn-sm btn-square"
-              title="Expand history panel"
-            >
-              ←
-            </button>
-          )}
+          <QueryHistoryPanel
+            showHistory={showHistory}
+            onToggleHistory={() => setShowHistory(!showHistory)}
+            queryHistory={queryHistory}
+            historyLoading={historyLoading}
+            onLoadQuery={loadQueryFromHistory}
+            onDeleteQuery={deleteQueryFromHistory}
+            onRefreshHistory={loadQueryHistory}
+          />
         </div>
       );
     }
