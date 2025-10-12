@@ -6,10 +6,10 @@ import {
   preloadPopularThemes,
   clearThemeCache
 } from './monacoThemes.js';
-import * as themeLoader from './themeLoader.js';
+import * as themeLoader from '../../utils/themeLoader.js';
 
 // Mock the themeLoader module
-vi.mock('./themeLoader.js', () => ({
+vi.mock('../../utils/themeLoader.js', () => ({
   isValidTheme: vi.fn(),
   getMonacoThemeId: vi.fn(),
   getRecommendedThemes: vi.fn(() => ({

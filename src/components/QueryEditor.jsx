@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useMemo } from "react";
 import Editor, { loader } from "@monaco-editor/react";
-import { defineCustomMonacoThemes, getEnhancedTheme, loadAndDefineTheme } from "../utils/monacoThemes";
+import { defineCustomMonacoThemes, getEnhancedTheme, loadAndDefineTheme } from "../services/monaco/monacoThemes";
 import { isValidTheme } from "../utils/themeLoader";
-import { monacoOptimizationManager, useMonacoOptimizations } from "../utils/monacoOptimizations";
+import { monacoOptimizationManager, useMonacoOptimizations } from "../services/monaco/monacoOptimizations";
 import useEditorPreferences from "../hooks/useEditorPreferences";
 
 export default function QueryEditor({

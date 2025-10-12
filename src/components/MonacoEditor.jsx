@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
-import { defineCustomMonacoThemes, getEnhancedTheme } from '../utils/monacoThemes';
-import { monacoOptimizationManager } from '../utils/monacoOptimizations';
+import { defineCustomMonacoThemes, getEnhancedTheme } from '../services/monaco/monacoThemes';
+import { monacoOptimizationManager } from '../services/monaco/monacoOptimizations';
 
 /**
  * Memoized Monaco Editor component

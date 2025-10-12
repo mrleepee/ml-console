@@ -1,7 +1,7 @@
 // Monaco Editor theme definitions and utilities
 // Centralized theme management to avoid duplication
 
-import { loadThemeFromFile, isValidTheme, getMonacoThemeId, getRecommendedThemes } from './themeLoader.js';
+import { loadThemeFromFile, isValidTheme, getMonacoThemeId, getRecommendedThemes } from '../../utils/themeLoader.js';
 
 // Cache for loaded themes to avoid repeated loading
 const themeCache = new Map();
